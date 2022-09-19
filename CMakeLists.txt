@@ -1,11 +1,10 @@
-cmake_minimum_required(VERSION 3.10)
-message("Path is $ENV{AWS_INCLUDE}")
-message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
-message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+project(Composer-Software)
+cmake_minimum_required(VERSION 3.18.2)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
-SET(lib_src src/rocc.cc src/memrocc.cc src/fpga_handle.cc src/fpga_transfer.cc src/composer_util.cc)
+SET(lib_src src/rocc.cc src/fpga_handle.cc src/fpga_transfer.cc src/composer_util.cc)
+add_library(composer STATIC ${lib_src})
 
-add_library(composer-lib STATIC ${lib_src})
+target_include_directories(composer PUBLIC include $ENV{AWS_INCLUDE})
 
-target_include_directories(composer-lib PRIVATE include $ENV{AWS_INCLUDE})
+install(TARGETS composer)
