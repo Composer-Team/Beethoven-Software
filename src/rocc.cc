@@ -12,9 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#pragma once
-
 #include <zconf.h>
 #include <rocc.h>
 #include <composer_util.h>

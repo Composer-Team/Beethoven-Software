@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef FPGA_HANDLE_H
+#define FPGA_HANDLE_H
 
-//#include "simif.h"    // from midas
 #include <cstring>
 #include <cassert>
 #include <cstdlib>
@@ -25,19 +25,7 @@
 
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
-#include "rocc.h"
-
-#define ROCC_CMD_ACCEL 0x7b
-#define ROCC_CMD_FLUSH 0xb
-
-#define RESP_BITS 0 //READONLY
-#define RESP_VALID 1 //READONLY
-#define RESP_READY 2 //WRITEONLY
-
-#define CMD_BITS 3 //WRITEONLY
-#define CMD_VALID 4 //WRITEONLY
-#define CMD_READY 5 //READONLY
-
+#include <rocc.h>
 
 struct fpga_handle_t {
   virtual void write(size_t addr, uint32_t data) const = 0;
@@ -125,3 +113,4 @@ private:
   int xdma_read_fd = -1;
 };
 
+#endif

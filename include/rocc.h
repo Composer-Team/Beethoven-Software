@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-#pragma once
-
 #include <zconf.h>
-#include "fpga_handle.h"
+#include <composer_consts.h>
+#include <fpga_handle.h>
+
+#ifndef ROCC_H
+#define ROCC_H
 
 /**
  * RoCC commands have a destination register (rd) that is sent to Composer systems. Composer reserves a number of these
@@ -104,3 +106,5 @@ struct rocc_response {
   uint8_t system_id;
   uint8_t rd;
 };
+
+#endif
