@@ -8,6 +8,4 @@ SET(lib_src src/rocc.cc src/memrocc.cc src/fpga_handle.cc src/fpga_transfer.cc s
 
 add_library(composer-lib STATIC ${lib_src})
 
-add_executable(template src/template.cc ${lib_src})
-
 target_include_directories(composer-lib PRIVATE include $ENV{AWS_INCLUDE})
