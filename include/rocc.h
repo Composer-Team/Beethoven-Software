@@ -18,49 +18,89 @@
 #include <zconf.h>
 #include "fpga_handle.h"
 
-#define SIZE_8 0
-#define SIZE_16 1
-#define SIZE_32 2
-#define SIZE_64 3
-#define SIZE_128 4
-#define SIZE_256 5
+/**
+ * RoCC commands have a destination register (rd) that is sent to Composer systems. Composer reserves a number of these
+ * registers for AXI-Mem port statistics.
+ *
+ * The AXI Spec (https://developer.arm.com/documentation/102202/0300/Channel-signals) has 5 ports for memory \n
+ * AW - Write address port \n
+ * W - Write data port \n
+ * B - Write response port \n
+ * AR - Read address port \n
+ * R - Read response port \n
+ *
+ * Composer counts the number of responses for each one of these ports for debugging purposes (presumably)
+ * Composer also collects the number of cycles spent waiting for read responses(21) and for write responses(22)
+ */
+enum RD {
+  /**
+   * General purpose registers
+   */
+  R0 = 0,
+  R1 = 1,
+  R2 = 2,
+  R3 = 3,
+  R4 = 4,
+  R5 = 5,
+  R6 = 6,
+  R7 = 7,
+  R8 = 8,
+  R9 = 9,
+  R10 = 10,
+  R11 = 11,
+  R12 = 12,
+  R13 = 13,
+  R14 = 14,
+  R15 = 15,
+  /**
+   * Special Registers
+   **/
+  AddressReadCnt = 16,
+  AddressWriteCnt = 17,
+  ReadCnt = 18,
+  WriteCnt = 19,
+  WriteResponseCnt = 20,
+  ReadWait = 21,
+  WriteWait = 22,
+  /**
+   * More general purpose registers
+   */
+  R23,
+  R24,
+  R25,
+  R26,
+  R27,
+  R28,
+  R29,
+  R30,
+  R31
+};
 
-#define CUSTOM_3 0x7b
-#define CUSTOM_0 0xb
+struct rocc_cmd {
+  uint32_t buf[5]{};
 
-#define ACC_SLOT 3
-#define MSG_SIZE 80
-#define RESP_BITS 0 //READONLY
-#define RESP_VALID 1 //READONLY
-#define RESP_READY 2 //WRITEONLY
+  rocc_cmd(uint16_t function,
+           uint16_t system_id,
+           uint8_t opcode = ROCC_CMD_ACCEL,
+           uint8_t rs1_num = 0,
+           uint8_t rs2_num = 0,
+           uint8_t xd = 0,
+           RD rd = R0,
+           uint8_t xs1 = 1,
+           uint8_t xs2 = 0,
+           uint64_t rs1 = 0,
+           uint64_t rs2 = 0);
 
-#define CMD_BITS 3 //WRITEONLY
-#define CMD_VALID 4 //WRITEONLY
-#define CMD_READY 5 //READONLY
+  static rocc_cmd flush() {
+    return {0, 0, ROCC_CMD_FLUSH, 0, 0};
+  }
 
-#define OPCODE_REDUCER (2)
-#define OPCODE_GEMM (2)
+  void decode() const;
+};
 
-uint64_t pack(uint32_t hi, uint32_t low);
-
-void decode_cmd_buf(uint32_t *buf);
-
-void encode_cmd_buf(uint32_t funct, uint8_t rd, uint8_t rs1_num, uint8_t rs2_num, uint8_t xd, uint8_t xs1, uint8_t xs2,
-                    uint8_t opcode, uint64_t rs1, uint64_t rs2, uint32_t *fpga_buf);
-
-void send_rocc_cmd(fpga_handle_t *mysim, uint32_t *data);
-
-uint64_t get_rocc_resp(fpga_handle_t *mysim);
-
-std::pair<uint32_t, uint32_t> get_id_retval(fpga_handle_t *mysim);
-void encode_cmd_buf_simple(fpga_handle_t *mysim, uint8_t opcode, uint8_t funct, uint64_t rs1, uint64_t rs2, uint8_t core);
-
-void encode_cmd_buf_rd(fpga_handle_t *mysim, uint8_t opcode, uint8_t funct, uint64_t rs1, uint64_t rs2, uint8_t rd,
-                       uint8_t core);
-
-void encode_cmd_buf_xs(fpga_handle_t *mysim, uint8_t opcode, uint8_t funct, uint64_t rs1, uint64_t rs2, uint8_t rd,
-                       uint8_t core, bool xs1, bool xs2, bool xd);
-
-uint32_t *gen_cmd_buf_rd(uint8_t opcode, uint8_t funct, uint64_t rs1, uint64_t rs2, uint8_t rd);
-
-static inline uint64_t flush(fpga_handle_t *mysim);
+struct rocc_response {
+  uint32_t data;
+  uint8_t core_id;
+  uint8_t system_id;
+  uint8_t rd;
+};

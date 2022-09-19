@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-#ifndef __SIMIF_F1_H
-#define __SIMIF_F1_H
+#pragma once
 
 //#include "simif.h"    // from midas
 #include <cstring>
@@ -24,67 +23,76 @@
 #include <cstdint>
 #include <map>
 
-#ifndef SIMULATION_XSIM
-
 #include <fpga_pci.h>
 #include <fpga_mgmt.h>
+#include "rocc.h"
 
-#endif
+#define ROCC_CMD_ACCEL 0x7b
+#define ROCC_CMD_FLUSH 0xb
 
-#define MMIO_WIDTH 8
+#define RESP_BITS 0 //READONLY
+#define RESP_VALID 1 //READONLY
+#define RESP_READY 2 //WRITEONLY
+
+#define CMD_BITS 3 //WRITEONLY
+#define CMD_VALID 4 //WRITEONLY
+#define CMD_READY 5 //READONLY
+
 
 struct fpga_handle_t {
-  virtual void write(size_t addr, uint32_t data) = 0;
+  virtual void write(size_t addr, uint32_t data) const = 0;
 
-  virtual uint32_t read(size_t addr) = 0;
+  virtual uint32_t read(size_t addr) const = 0;
 
-  virtual uint32_t is_write_ready() = 0;
+  virtual uint32_t is_write_ready() const = 0;
 
-  virtual void check_rc(int rc, std::string infostr) = 0;
+  void check_rc(int rc, const std::string& infostr) const;
 
-  virtual void fpga_shutdown() = 0;
+  virtual void fpga_shutdown() const = 0;
 
-  virtual int get_write_fd() = 0;
+  virtual int get_write_fd() const = 0;
 
-  virtual int get_read_fd() = 0;
+  virtual int get_read_fd() const = 0;
 
-  void store_resp(uint32_t rd, uint32_t unit_id, uint32_t retval);
+  void store_resp(RD rd, uint32_t unit_id, uint32_t retval);
 
-  uint32_t resp_lookup(uint32_t rd, uint32_t unit_id);
+  uint32_t resp_lookup(RD rd, uint32_t unit_id) const;
 
-  virtual bool is_real() = 0;
+  virtual bool is_real() const = 0;
+
+  void send(const rocc_cmd &) const;
+
+  rocc_response get_response();
+
+  rocc_response flush();
 
 protected:
-  char in_buf[MMIO_WIDTH];
-  char out_buf[MMIO_WIDTH];
   std::map<uint32_t, std::map<uint32_t, uint32_t> > rocc_resp_table;
 };
 
 class fpga_handle_sim_t : public fpga_handle_t {
 public:
-  explicit fpga_handle_sim_t(int id);
+  explicit fpga_handle_sim_t();
 
   ~fpga_handle_sim_t();
 
-  void write(size_t addr, uint32_t data) override;
+  void write(size_t addr, uint32_t data) const override;
 
-  uint32_t read(size_t addr) override;
+  uint32_t read(size_t addr) const override;
 
-  uint32_t is_write_ready() override;
+  uint32_t is_write_ready() const override;
 
-  void check_rc(int rc, std::string infostr) override;
+  void fpga_shutdown() const override;
 
-  void fpga_shutdown() override;
+  int get_write_fd() const override;
 
-  int get_write_fd() override;
+  int get_read_fd() const override;
 
-  int get_read_fd() override;
-
-  bool is_real() override;
+  bool is_real() const override;
 
 private:
-  char driver_to_xsim[1024];
-  char xsim_to_driver[1024];
+  char driver_to_xsim[1024]{};
+  char xsim_to_driver[1024]{};
   int driver_to_xsim_fd = -1;
   int xsim_to_driver_fd = -1;
 };
@@ -95,23 +103,19 @@ public:
 
   ~fpga_handle_real_t();
 
-  void write(size_t addr, uint32_t data) override;
+  void write(size_t addr, uint32_t data) const override;
 
-  uint32_t read(size_t addr) override;
+  uint32_t read(size_t addr) const override;
 
-  uint32_t is_write_ready() override;
+  uint32_t is_write_ready() const override;
 
-  void check_rc(int rc, std::string infostr) override;
+  void fpga_shutdown() const override;
 
-  void fpga_shutdown() override;
+  int get_write_fd() const override;
 
-  void fpga_setup(int id);
+  int get_read_fd() const override;
 
-  int get_write_fd() override;
-
-  int get_read_fd() override;
-
-  bool is_real() override;
+  bool is_real() const override;
 
 private:
   //    int rc;
@@ -121,4 +125,3 @@ private:
   int xdma_read_fd = -1;
 };
 
-#endif // __SIMIF_F1_H

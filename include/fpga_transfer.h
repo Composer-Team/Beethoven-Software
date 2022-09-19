@@ -79,10 +79,6 @@
 #define COMPARE(i, a, b, name) {                                        \
         if (a != b) printf("%s idx %d: expected: %#x, actual: %#x\n", name, i, a, b); } 
 
-// calculates how many cache lines it takes to store
-// <count> elements with <size> bytes each
-uint64_t cacheLines(uint64_t size, uint64_t count);
-
 // move <num_bytes> from the sh to the fpga
 void transfer_chunk_to_fpga_ocl(fpga_handle_t *mysim, uint32_t * data, uint64_t write_byte_addr, uint64_t num_bytes);
 
@@ -91,14 +87,7 @@ void transfer_chunk_to_fpga(fpga_handle_t *mysim, uint32_t * data, uint64_t writ
 
 // move <num_bytes> from the fpga to the sh
 void get_chunk_from_fpga_ocl(fpga_handle_t *mysim, uint32_t * outputdata, uint64_t read_byte_addr, uint64_t num_bytes);
+
 void get_chunk_from_fpga(fpga_handle_t *mysim, uint32_t * outputdata, uint64_t read_byte_addr, uint64_t num_bytes);
-
-void dataTransfer(fpga_handle_t* mysim, int num_cols, uint32_t** data, uint64_t* addrs, uint64_t* sizes);
-
-void waitForResponse(fpga_handle_t* mysim, char* unit_name);
-
-uint64_t calcNextAddr(uint64_t prev_addr, int num_elems, int bytes_per_elem);
-
-uint64_t calcNextAddrAligned(uint64_t prev_addr, int num_elems, int bytes_per_elem);
 
 #endif //TESTHELP_INCLUDED
