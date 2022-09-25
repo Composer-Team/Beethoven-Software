@@ -39,11 +39,7 @@ Send a RoCC command to the accelerator. If the build is a debug build, it will p
 
 ```c++
 fpga_handle_real_t my_handle;
-rocc_cmd my_flush_cmd (
-        0, // function
-        0, // system_id
-        ROCC_CMD_FLUSH // opcode
-        );
+auto my_flush_cmd = rocc::flush_cmd();
 my_handle.send(my_flush_cmd);
 ```
 
@@ -53,7 +49,7 @@ Wait for a response from the accelerator. Returns a `rocc_response` type.
 
 ```c++
 fpga_handle_real_t my_handle;
-rocc_cmd my_cmd (...);
+auto my_cmd = rocc::start_cmd(...);
 my_handle.send(my_cmd);
 
 auto resp = my_handle.get_response();
@@ -72,35 +68,51 @@ my_handle.flush()
 
 ## RoCC Composer Instructions: `rocc_cmd`
 
-The RoCC Instruction format is shown below. 
+The RoCC Instruction format is shown below.
 [Credit](https://inst.eecs.berkeley.edu/~cs250/fa13/handouts/lab3-sumaccel.pdf) to Ben Keller for this figure.
 
 ![](resources/rocc_format.png)
 
-Commands for the composer use this format for the instruction base and sends an additional 2 64-bit payloads.
-The 7 function bits are slightly mis-used in Composer. The top 4 bits are the system_id corresponding to which type
-of composer core is being used. The actual function that you want the composer core to perform is the bottom 3 bits.
+Commands for the composer use this format for the instruction base and sends an additional 2 64-bit payloads. The 7
+function bits are slightly mis-used in Composer. The top 4 bits are the system_id corresponding to which type of
+composer core is being used. The actual function that you want the composer core to perform is the bottom 3 bits.
+
+Currently, the composer supports 3 different functions that use a different combination of opcode and function bits.
+To ensure that these bits are set correctly, the end-user is unable to set these bits directly and the exposed interface
+sets these according to the function called. The functions are `rocc::flush_cmd()`, `rocc::start_cmd(...)`, and
+`rocc::addr_cmd(...)`.
+
+### `rocc::flush_cmd()`
+
+The flush command takes no user arguments and waits for all in-flight instructions to complete executing before the
+flush command returns.
+
+### `rocc::start_cmd()`
 
 ```c++
-// Composer Instruction Constructor
-rocc_cmd::rocc_cmd(uint16_t function,  // 4 bits
-                   uint16_t system_id, // 3 bits
-                   uint8_t opcode,     // ROCC_CMD_ACCEL or ROCC_CMD_FLUSH
-                   uint8_t rs1_num,    
-                   uint8_t rs2_num,
-                   uint8_t xd,
-                   RD rd,
-                   uint8_t xs1,
-                   uint8_t xs2,
-                   uint64_t rs1,
-                   uint64_t rs2);
+rocc_cmd start_cmd(uint16_t system_id, // 4 bits
+                   uint8_t rs1_num, // 5 bits
+                   uint8_t rs2_num, // 5 bits
+                   uint8_t xd, // 1b
+                   RD rd, // 5 bits
+                   uint8_t xs1, // 1b
+                   uint8_t xs2, // 1b
+                   uint8_t core_id, // 8b
+                   uint64_t rs1, // 64 bits
+                   uint64_t rs2); // 64 bits
 ```
 
+The `start_cmd` interface allows a user to begin a kernel execution inside a functional unit. The only fields here
+that have a special purpose on the Composer system are `system_id`, `core_id`, and `rd`. `system_id` obviously
+determines what group of cores that a command is routed to. `core_id` as well determines which core the command is
+routed to within the system. Composer also has a few "special-purpose" registers that can be accessed by properly
+setting the `rd` field.
+
 Notice that the destination register is type `RD`. To emphasize the use of special-purpose Composer registers, we
-use `enum RD`. There are 32 registers, but register 16 through 22 (inclusive) are special purpose registers for 
-accumulating AXI-4 memory bus statistics. If a non-special register is provided for `rd`, then the return value as
-part of `rocc_response` will be the value returned from the Composer core during execution. If `rd` is a special
-register, then the value stored within the special composer register will be returned. 
+use `enum RD`. There are 32 registers, but register 16 through 22 (inclusive) are special purpose registers for
+accumulating AXI-4 memory bus statistics. If a non-special register is provided for `rd`, then the return value as part
+of `rocc_response` will be the value returned from the Composer core during execution. If `rd` is a special register,
+then the value stored within the special composer register will be returned.
 
 ```c++
 enum RD {
@@ -149,14 +161,34 @@ enum RD {
 ```
 
 The [AXI Spec](https://developer.arm.com/documentation/102202/0300/Channel-signals) has 5 ports for memory
+
 - AW - Write address port
 - W - Write data port
-- B - Write response port 
-- AR - Read address port 
+- B - Write response port
+- AR - Read address port
 - R - Read response port
 
-Composer counts the number of responses for each one of these ports for debugging purposes (presumably).
-Composer also collects the number of cycles spent waiting for read responses(21) and for write responses(22)
+Composer counts the number of responses for each one of these ports for debugging purposes (presumably). Composer also
+collects the number of cycles spent waiting for read responses(21) and for write responses(22)
+
+### `addr_cmd(...)`
+
+The composer simplifies the memory interface by exposing a simpler memory interface than DDR to the programmer.
+Currently, the only memory interface supported naturally in the Composer interface is contiguous accesses. 
+Code exists to support sparse (random) reads/writes but it is not properly integrated into the Composer
+interface yet.
+
+To use the contiguous read interface, the cpu provides a starting address for each channel, and then the hardware module
+can signal that it is ready for the next 512b starting from that address, simultaneously incrementing the address
+for the next access. To provide the starting address, we provide the following command
+interface.
+
+```c++
+  static rocc_cmd addr_cmd(uint16_t system_id,
+                           uint8_t core_id,
+                           uint8_t channel_id,
+                           uint64_t addr);
+```
 
 ### decode()
 

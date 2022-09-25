@@ -282,7 +282,7 @@ rocc_response fpga_handle_t::get_response() {
 }
 
 rocc_response fpga_handle_t::flush() {
-  auto q = rocc_cmd::flush();
+  auto q = rocc_cmd::flush_cmd();
   send(q);
   return get_response();
 }

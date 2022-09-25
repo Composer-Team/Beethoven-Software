@@ -23,7 +23,6 @@
 #include <cstdint>
 #include <map>
 
-#include <fpga_pci.h>
 #include <fpga_mgmt.h>
 #include <rocc.h>
 

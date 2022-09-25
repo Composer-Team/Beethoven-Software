@@ -13,23 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef TESTHELP_INCLUDED
-#define TESTHELP_INCLUDED
+#ifndef FPGA_TRANSFER_H
+#define FPGA_TRANSFER_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <fcntl.h>
-#include <errno.h>
+#include <cerrno>
 #include <unistd.h>
-#include <assert.h>
+#include <cassert>
 #include <csignal>
 
 #include "rocc.h"
 #include "fpga_handle.h"
-
-// Macro used for comparing output of unit for testing
-#define COMPARE(i, a, b, name) {                                        \
-        if (a != b) printf("%s idx %d: expected: %#x, actual: %#x\n", name, i, a, b); } 
 
 // move <num_bytes> from the sh to the fpga
 void transfer_chunk_to_fpga_ocl(fpga_handle_t *mysim, uint32_t * data, uint64_t write_byte_addr, uint64_t num_bytes);
@@ -42,4 +38,4 @@ void get_chunk_from_fpga_ocl(fpga_handle_t *mysim, uint32_t * outputdata, uint64
 
 void get_chunk_from_fpga(fpga_handle_t *mysim, uint32_t * outputdata, uint64_t read_byte_addr, uint64_t num_bytes);
 
-#endif //TESTHELP_INCLUDED
+#endif //FPGA_TRANSFER_H

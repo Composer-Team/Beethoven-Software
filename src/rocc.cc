@@ -15,6 +15,8 @@
 #include <zconf.h>
 #include <rocc.h>
 #include <composer_util.h>
+#include <iostream>
+#include <cstring>
 
 void rocc_cmd::decode() const {
   uint32_t funct = (buf[0] >> 25) & 0x7f;
@@ -58,8 +60,24 @@ rocc_cmd::rocc_cmd(uint16_t function,
                    RD rd,
                    uint8_t xs1,
                    uint8_t xs2,
+                   uint8_t core_id,
                    uint64_t rs1,
                    uint64_t rs2) {
+
+#define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }
+
+  CHECK(function, 3)
+  CHECK(system_id, 4)
+  CHECK(rs1_num, 5)
+  CHECK(rs2_num, 5)
+  CHECK(int(rd), 5)
+  CHECK(xs1, 1)
+  CHECK(xs2, 1)
+  CHECK(rs1, 56)
+
+  // combine core id into rs1 for delivery to core
+  rs1 |= long(core_id) << 56;
+
   memset(buf, 0, sizeof(int32_t) * 5);
   // TODO check that there are no overflows for the provided values (not outside logical range)
   buf[4] = rs2 & 0xFFFFFFFF;
@@ -84,4 +102,21 @@ rocc_cmd::rocc_cmd(uint16_t function,
   uint32_t funct = (system_id << 3) | (function & 0x7);
   buf[0] |= ((funct & 0x7F) << 25);
   // 7 + 5 + 1 + 1 + 1 + 5 + 5 + 7 = 32bit
+}
+
+rocc_cmd rocc_cmd::addr_cmd(uint16_t system_id, uint8_t core_id, uint8_t channel_id, uint64_t addr) {
+  return {ROCC_FUNC_ADDR, system_id, ROCC_OP_ACCEL, 0, 0,
+                  0, RD::R0, 0, 0,
+                  core_id, channel_id, addr};
+}
+
+rocc_cmd
+rocc_cmd::start_cmd(uint16_t system_id, uint8_t rs1_num, uint8_t rs2_num, uint8_t xd, RD rd, uint8_t xs1, uint8_t xs2,
+                    uint8_t core_id, uint64_t rs1, uint64_t rs2) {
+  return {ROCC_FUNC_START, system_id, ROCC_OP_ACCEL, rs1_num, rs2_num, xd, rd, xs1, xs2, core_id, rs1, rs2};
+}
+
+rocc_cmd
+rocc_cmd::flush_cmd() {
+  return {0, 0, ROCC_OP_FLUSH, 0, 0, 0, RD::R0, 0, 0, 0, 0, 0};
 }
