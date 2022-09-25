@@ -78,7 +78,7 @@ private:
 };
 
 struct rocc_response {
-  uint32_t data;
+  uint64_t data;
   uint8_t core_id;
   uint8_t system_id;
   uint8_t rd;

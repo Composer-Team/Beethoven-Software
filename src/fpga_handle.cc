@@ -267,12 +267,18 @@ rocc_response fpga_handle_t::get_response() {
   retval.system_id = (resp1 & 0xFF00) >> 8;
 
   write(RESP_READY, 0x1);
-  while (!read(RESP_VALID)) {}
 
+  while (!read(RESP_VALID)) {}
   uint32_t resp2 = read(RESP_BITS);    // len / error
-  retval.data = resp2;
+  retval.data = uint64_t(resp2) << 32;
   write(RESP_READY, 0x1);
   uint32_t rd;
+
+  while (!read(RESP_VALID)) {}
+  uint32_t resp4 = read(RESP_BITS);    // len / error
+  retval.data |= resp4;
+  write(RESP_READY, 0x1);
+
   while (!read(RESP_VALID)) {}
   rd = read(RESP_BITS);
   retval.rd = rd;

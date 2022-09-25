@@ -10,6 +10,7 @@ target_include_directories(composer PUBLIC include $ENV{AWS_INCLUDE})
 
 install(TARGETS composer
         ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib  # <-- Add this line
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_PREFIX}/include
         COMPONENT library
         )
