@@ -30,6 +30,186 @@ fpga_handle_sim_t::fpga_handle_sim_t() {
   xsim_to_driver_fd = open(xsim_to_driver, O_RDONLY);
 }
 
+void fpga_handle_t::check_rc(int rc, const std::string& infostr) const {
+  if (rc) {
+    std::cerr << "Invalid return code (" << rc << ") - " << infostr;
+#ifdef NDEBUG
+    std::cerr << "\n";
+#else
+    std::cerr << std::endl;
+#endif
+    fpga_shutdown();
+    exit(1);
+  }
+
+}
+
+void fpga_handle_sim_t::fpga_shutdown() const {}
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "VirtualCallInCtorOrDtor"
+
+#pragma clang diagnostic pop
+
+fpga_handle_sim_t::~fpga_handle_sim_t() {
+  int exit = 0x12459333;
+  ::write(driver_to_xsim_fd, (char *) &exit, 4);
+  close(xsim_to_driver_fd);
+  close(driver_to_xsim_fd);
+}
+
+void fpga_handle_t::store_resp(RD rd, uint32_t unit_id, uint32_t retval) {
+  rocc_resp_table[rd][unit_id] = retval;
+}
+
+uint32_t fpga_handle_t::resp_lookup(RD rd, uint32_t unit_id) const {
+  return rocc_resp_table.at((uint32_t)rd).at(unit_id);
+}
+
+int fpga_handle_sim_t::get_write_fd() const {
+  return int(NULL);
+}
+
+int fpga_handle_sim_t::get_read_fd() const {
+  return int(NULL);
+}
+
+void fpga_handle_sim_t::write(size_t addr, uint32_t data) const {
+  addr <<= 2;
+  // printf("addr, data: %#x, %#x\n", addr, data);
+  uint64_t cmd = (((uint64_t) (0x80000000 | addr)) << 32) | (uint64_t) data;
+  char *buf = (char *) &cmd;
+  ::write(driver_to_xsim_fd, buf, 8);
+}
+
+uint32_t fpga_handle_sim_t::read(size_t addr) const {
+  addr <<= 2;
+  uint64_t cmd = addr;
+  char *buf = (char *) &cmd;
+  ::write(driver_to_xsim_fd, buf, 8);
+
+  size_t gotdata = 0;
+  while (gotdata == 0) {
+    gotdata = ::read(xsim_to_driver_fd, buf, 8);
+    if (gotdata != 0 && gotdata != 8) {
+      std::cerr << "Error! Got data: " << gotdata << std::endl;
+    }
+  }
+  return *((uint64_t *) buf);
+}
+
+
+uint32_t fpga_handle_sim_t::is_write_ready() const {
+  uint64_t cmd = CMD_READY;
+  char *buf = (char *) &cmd;
+  ::write(driver_to_xsim_fd, buf, 8);
+
+  size_t gotdata = 0;
+  while (gotdata == 0) {
+    gotdata = ::read(xsim_to_driver_fd, buf, 8);
+    if (gotdata != 0 && gotdata != 8) {
+      std::cerr << "Error! Got data: " << gotdata << std::endl;
+    }
+  }
+  return *((uint64_t *) buf);
+}
+
+bool fpga_handle_sim_t::is_real() const { return false; }
+
+void fpga_handle_t::send(const rocc_cmd &cmd) const {
+#ifndef NDEBUG
+  printf("Sending the following commands:\n");
+  cmd.decode();
+  fflush(stdout);
+#endif
+  for (const uint32_t c: cmd.buf) {
+    while (!read(CMD_READY)) {}
+    write(CMD_BITS, c);
+    write(CMD_VALID, 0x1);
+  }
+}
+
+rocc_response fpga_handle_t::get_response() {
+  rocc_response retval{};
+  while (!read(RESP_VALID)) {}
+  uint32_t resp1 = read(RESP_BITS);    // id
+  retval.core_id = resp1 & 0xFF;
+  retval.system_id = (resp1 & 0xFF00) >> 8;
+
+  write(RESP_READY, 0x1);
+
+  while (!read(RESP_VALID)) {}
+  uint32_t resp2 = read(RESP_BITS);    // len / error
+  retval.data = uint64_t(resp2) << 32;
+  write(RESP_READY, 0x1);
+  uint32_t rd;
+
+  while (!read(RESP_VALID)) {}
+  uint32_t resp4 = read(RESP_BITS);    // len / error
+  retval.data |= resp4;
+  write(RESP_READY, 0x1);
+
+  while (!read(RESP_VALID)) {}
+  rd = read(RESP_BITS);
+  retval.rd = rd;
+  write(RESP_READY, 0x1);
+  store_resp(RD(rd), resp1, resp2);
+  return retval;
+}
+
+rocc_response fpga_handle_t::flush() {
+  auto q = rocc_cmd::flush_cmd();
+  send(q);
+  return get_response();
+}
+
+#ifdef USE_AWS
+
+uint32_t fpga_handle_real_t::read(size_t addr) const {
+  addr <<= 2;
+  uint32_t value;
+  int rc = fpga_pci_peek(pci_bar_handle, addr, &value);
+  check_rc(rc, "From read");
+  return value & 0xFFFFFFFF;
+}
+
+bool fpga_handle_real_t::is_real() const { return true; }
+
+uint32_t fpga_handle_real_t::is_write_ready() const {
+  uint32_t value;
+  // TODO - check this is right. addr used to be 0x4, which was CMD_VALID - I think CMD_READY is correct
+  int rc = fpga_pci_peek(pci_bar_handle, CMD_READY, &value);
+  check_rc(rc, "from is_write_ready");
+  return value & 0xFFFFFFFF;
+}
+
+void fpga_handle_real_t::write(size_t addr, uint32_t data) const {
+  // addr is really a (32-byte) word address because of zynq implementation
+  addr <<= 2;
+  int rc = fpga_pci_poke(pci_bar_handle, addr, data);
+  check_rc(rc, "");
+}
+
+int fpga_handle_real_t::get_read_fd() const {
+  return xdma_read_fd;
+}
+
+int fpga_handle_real_t::get_write_fd() const {
+  return xdma_write_fd;
+}
+
+fpga_handle_real_t::~fpga_handle_real_t() {
+  if (close(xdma_write_fd) < 0) {
+    perror("failed to close xdma h2c");
+    exit(1);
+  }
+  if (close(xdma_read_fd) < 0) {
+    perror("failed to close xdma c2h");
+    exit(1);
+  }
+  fpga_shutdown();
+}
+
 fpga_handle_real_t::fpga_handle_real_t(int id) {
   /*
   * pci_vendor_id and pci_device_id values below are Amazon's and avaliable
@@ -108,19 +288,6 @@ fpga_handle_real_t::fpga_handle_real_t(int id) {
   }
 }
 
-void fpga_handle_t::check_rc(int rc, const std::string& infostr) const {
-  if (rc) {
-    std::cerr << "Invalid return code (" << rc << ") - " << infostr;
-#ifdef NDEBUG
-    std::cerr << "\n";
-#else
-    std::cerr << std::endl;
-#endif
-    fpga_shutdown();
-    exit(1);
-  }
-
-}
 void fpga_handle_real_t::fpga_shutdown() const {
   int rc = fpga_pci_detach(pci_bar_handle);
   // don't call check_rc because of fpga_shutdown call. do it manually:
@@ -129,166 +296,4 @@ void fpga_handle_real_t::fpga_shutdown() const {
   }
 }
 
-void fpga_handle_sim_t::fpga_shutdown() const {}
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "VirtualCallInCtorOrDtor"
-
-fpga_handle_real_t::~fpga_handle_real_t() {
-  if (close(xdma_write_fd) < 0) {
-    perror("failed to close xdma h2c");
-    exit(1);
-  }
-  if (close(xdma_read_fd) < 0) {
-    perror("failed to close xdma c2h");
-    exit(1);
-  }
-  fpga_shutdown();
-}
-
-#pragma clang diagnostic pop
-
-fpga_handle_sim_t::~fpga_handle_sim_t() {
-  int exit = 0x12459333;
-  ::write(driver_to_xsim_fd, (char *) &exit, 4);
-  close(xsim_to_driver_fd);
-  close(driver_to_xsim_fd);
-}
-
-void fpga_handle_t::store_resp(RD rd, uint32_t unit_id, uint32_t retval) {
-  rocc_resp_table[rd][unit_id] = retval;
-}
-
-uint32_t fpga_handle_t::resp_lookup(RD rd, uint32_t unit_id) const {
-  return rocc_resp_table.at((uint32_t)rd).at(unit_id);
-}
-
-int fpga_handle_real_t::get_write_fd() const {
-  return xdma_write_fd;
-}
-
-int fpga_handle_sim_t::get_write_fd() const {
-  return int(NULL);
-}
-
-int fpga_handle_real_t::get_read_fd() const {
-  return xdma_read_fd;
-}
-
-int fpga_handle_sim_t::get_read_fd() const {
-  return int(NULL);
-}
-
-void fpga_handle_real_t::write(size_t addr, uint32_t data) const {
-  // addr is really a (32-byte) word address because of zynq implementation
-  addr <<= 2;
-  int rc = fpga_pci_poke(pci_bar_handle, addr, data);
-  check_rc(rc, "");
-}
-
-void fpga_handle_sim_t::write(size_t addr, uint32_t data) const {
-  addr <<= 2;
-  // printf("addr, data: %#x, %#x\n", addr, data);
-  uint64_t cmd = (((uint64_t) (0x80000000 | addr)) << 32) | (uint64_t) data;
-  char *buf = (char *) &cmd;
-  ::write(driver_to_xsim_fd, buf, 8);
-}
-
-
-uint32_t fpga_handle_real_t::read(size_t addr) const {
-  addr <<= 2;
-  uint32_t value;
-  int rc = fpga_pci_peek(pci_bar_handle, addr, &value);
-  check_rc(rc, "From read");
-  return value & 0xFFFFFFFF;
-}
-
-uint32_t fpga_handle_sim_t::read(size_t addr) const {
-  addr <<= 2;
-  uint64_t cmd = addr;
-  char *buf = (char *) &cmd;
-  ::write(driver_to_xsim_fd, buf, 8);
-
-  size_t gotdata = 0;
-  while (gotdata == 0) {
-    gotdata = ::read(xsim_to_driver_fd, buf, 8);
-    if (gotdata != 0 && gotdata != 8) {
-      std::cerr << "Error! Got data: " << gotdata << std::endl;
-    }
-  }
-  return *((uint64_t *) buf);
-}
-
-uint32_t fpga_handle_real_t::is_write_ready() const {
-  uint32_t value;
-  // TODO - check this is right. addr used to be 0x4, which was CMD_VALID - I think CMD_READY is correct
-  int rc = fpga_pci_peek(pci_bar_handle, CMD_READY, &value);
-  check_rc(rc, "from is_write_ready");
-  return value & 0xFFFFFFFF;
-}
-
-uint32_t fpga_handle_sim_t::is_write_ready() const {
-  uint64_t cmd = CMD_READY;
-  char *buf = (char *) &cmd;
-  ::write(driver_to_xsim_fd, buf, 8);
-
-  size_t gotdata = 0;
-  while (gotdata == 0) {
-    gotdata = ::read(xsim_to_driver_fd, buf, 8);
-    if (gotdata != 0 && gotdata != 8) {
-      std::cerr << "Error! Got data: " << gotdata << std::endl;
-    }
-  }
-  return *((uint64_t *) buf);
-}
-
-bool fpga_handle_sim_t::is_real() const { return false; }
-
-bool fpga_handle_real_t::is_real() const { return true; }
-
-void fpga_handle_t::send(const rocc_cmd &cmd) const {
-#ifndef NDEBUG
-  printf("Sending the following commands:\n");
-  cmd.decode();
-  fflush(stdout);
 #endif
-  for (const uint32_t c: cmd.buf) {
-    while (!read(CMD_READY)) {}
-    write(CMD_BITS, c);
-    write(CMD_VALID, 0x1);
-  }
-}
-
-rocc_response fpga_handle_t::get_response() {
-  rocc_response retval{};
-  while (!read(RESP_VALID)) {}
-  uint32_t resp1 = read(RESP_BITS);    // id
-  retval.core_id = resp1 & 0xFF;
-  retval.system_id = (resp1 & 0xFF00) >> 8;
-
-  write(RESP_READY, 0x1);
-
-  while (!read(RESP_VALID)) {}
-  uint32_t resp2 = read(RESP_BITS);    // len / error
-  retval.data = uint64_t(resp2) << 32;
-  write(RESP_READY, 0x1);
-  uint32_t rd;
-
-  while (!read(RESP_VALID)) {}
-  uint32_t resp4 = read(RESP_BITS);    // len / error
-  retval.data |= resp4;
-  write(RESP_READY, 0x1);
-
-  while (!read(RESP_VALID)) {}
-  rd = read(RESP_BITS);
-  retval.rd = rd;
-  write(RESP_READY, 0x1);
-  store_resp(RD(rd), resp1, resp2);
-  return retval;
-}
-
-rocc_response fpga_handle_t::flush() {
-  auto q = rocc_cmd::flush_cmd();
-  send(q);
-  return get_response();
-}

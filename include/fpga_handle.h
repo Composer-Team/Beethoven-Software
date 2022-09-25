@@ -23,7 +23,10 @@
 #include <cstdint>
 #include <map>
 
+#ifdef USE_AWS
 #include <fpga_mgmt.h>
+#endif
+
 #include <rocc.h>
 
 struct fpga_handle_t {
@@ -84,6 +87,7 @@ private:
   int xsim_to_driver_fd = -1;
 };
 
+#ifdef USE_AWS
 class fpga_handle_real_t : public fpga_handle_t {
 public:
   explicit fpga_handle_real_t(int id);
@@ -111,5 +115,6 @@ private:
   int xdma_write_fd = -1;
   int xdma_read_fd = -1;
 };
+#endif
 
 #endif

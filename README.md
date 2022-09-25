@@ -14,11 +14,28 @@ If you are
 
 ### Installation
 
-```cmake -B build -S . && cd build && make install```
+```cmake -B build -S . && cd build && sudo make install```
 
 This requires root permissions. For user-mode builds make sure to pass the `-DCMAKE_INSTALL_PREFIX=<dir>` to cmake.
-After which, make sure that this path is accessible to the linker and cmake.
+After which, make sure that this path is accessible to the linker and cmake. Then, of course, there's no
+reason to use `sudo`.
 
+### Using in your project
+
+The project is currently set up to support CMake-based projects. I suppose you could use Makefile or whatever, but you'll
+just have to make sure to help your compiler find the include path and use the `-lcomposer` flag during link time.
+
+```cmake
+# your CMake project
+#...
+find_package(composer REQUIRED)
+target_link_libraries(<your_target> PUBLIC composer)
+#...
+```
+
+That's all it should take and you'll have access to the `rocc.h`, `fpga_handle.h`, `fpga_transfer`, and `composer_util.h`
+headers.
+d
 # Interface Basics
 
 The composer software library uses 3 main types to communicate with an accelerator:
