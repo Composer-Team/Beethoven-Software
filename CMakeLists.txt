@@ -33,7 +33,7 @@ else()
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> # for headers when building
             $<INSTALL_INTERFACE:${COMPOSER_HEADER_INSTALL_DIR}>
             )
-    message("The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
+    message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
 endif()
 
 set_target_properties(composer PROPERTIES PUBLIC_HEADER "include/composer_consts.h;include/composer_util.h;include/fpga_handle.h;include/fpga_transfer.h;include/rocc.h")
