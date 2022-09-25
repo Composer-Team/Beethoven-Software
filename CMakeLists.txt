@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 add_library(composer SHARED src/rocc.cc src/fpga_handle.cc src/fpga_transfer.cc src/composer_util.cc)
 
 target_include_directories(composer PUBLIC include $ENV{AWS_INCLUDE})
+set_target_properties(composer PROPERTIES PUBLIC_HEADER "include/composer_consts.h;include/composer_util.h;include/fpga_handle.h;include/fpga_transfer.h;include/rocc.h")
+
 
 install(TARGETS composer
         ARCHIVE DESTINATION lib
