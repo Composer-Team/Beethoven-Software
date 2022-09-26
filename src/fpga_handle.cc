@@ -28,6 +28,10 @@ fpga_handle_sim_t::fpga_handle_sim_t() {
   driver_to_xsim_fd = open(driver_to_xsim, O_WRONLY);
   fprintf(stderr, "opening xsim to driver\n");
   xsim_to_driver_fd = open(xsim_to_driver, O_RDONLY);
+  if (driver_to_xsim_fd == -1 || xsim_to_driver_fd == -1) {
+    fprintf(stderr, "FAILED TO OPEN PORTS TO SIM\n");
+    exit(1);
+  }
 }
 
 void fpga_handle_t::check_rc(int rc, const std::string& infostr) const {
