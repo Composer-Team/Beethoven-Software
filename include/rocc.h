@@ -19,10 +19,9 @@
 #include <zconf.h>
 #include <composer_consts.h>
 #include <cstdint>
+#include <ostream>
 
 struct rocc_cmd {
-  uint32_t buf[5]{};
-
   /**
    * Generate a command to start kernel execution on the accelerator. TODO: maybe an accelerator
    * should be able to support more than one command per functional unit. You could of course do that
@@ -40,6 +39,20 @@ struct rocc_cmd {
    * @param rs2
    * @return
    */
+
+  uint16_t function{};
+  uint16_t system_id{};
+  uint8_t opcode{};
+  uint8_t rs1_num{};
+  uint8_t rs2_num{};
+  uint8_t xd{};
+  RD rd;
+  uint8_t xs1{};
+  uint8_t xs2{};
+  uint8_t core_id{};
+  uint64_t rs1{};
+  uint64_t rs2{};
+
   static rocc_cmd start_cmd(uint16_t system_id,
                             uint8_t rs1_num,
                             uint8_t rs2_num,
@@ -58,22 +71,13 @@ struct rocc_cmd {
 
   static rocc_cmd flush_cmd();
 
-  void decode() const;
+  uint32_t *pack();
+
+  friend std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd);
 
 private:
-  rocc_cmd(uint16_t function,
-                     uint16_t system_id,
-                     uint8_t opcode,
-                     uint8_t rs1_num,
-                     uint8_t rs2_num,
-                     uint8_t xd,
-                     RD rd,
-                     uint8_t xs1,
-                     uint8_t xs2,
-                     uint8_t core_id,
-                     uint64_t rs1,
-                     uint64_t rs2);
-
+  rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t rs1Num, uint8_t rs2Num, uint8_t xd, RD rd,
+           uint8_t xs1, uint8_t xs2, uint8_t coreId, uint64_t rs1, uint64_t rs2);
 
 };
 

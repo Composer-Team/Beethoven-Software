@@ -207,9 +207,14 @@ interface.
                            uint64_t addr);
 ```
 
-### decode()
+### std::ostream &operator<<
 
-Output the contents of a RoCC command.
+You can print out `rocc_cmd`s using the `<<` operator:
+
+```c++
+auto my_flush = rocc_cmd::flush();
+std::cout << "My flush command is composed like so: " << my_flush << std::endl;
+```
 
 ## RoCC Response
 

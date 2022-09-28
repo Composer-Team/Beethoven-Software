@@ -12,57 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <zconf.h>
 #include <rocc.h>
 #include <composer_util.h>
 #include <iostream>
 #include <cstring>
 
-void rocc_cmd::decode() const {
-  uint32_t funct = (buf[0] >> 25) & 0x7f;
-  uint8_t rd = (buf[0] >> 7) & 0x1f;
-  uint8_t rs1_num = (buf[0] >> 15) & 0x1f;
-  uint8_t rs2_num = (buf[0] >> 20) & 0x1f;
-  uint8_t xd = (buf[0] >> 14) & 0x1;
-  uint8_t xs1 = (buf[0] >> 13) & 0x1;
-  uint8_t xs2 = (buf[0] >> 12) & 0x1;
-  uint8_t opcode = (buf[0] >> 0) & 0x7f;
-  uint64_t rs2 = pack(buf[3], buf[4]);
-  uint64_t rs1 = pack(buf[1], buf[2]);
-  printf("funct=%02x "
-         "rd=%02x "
-         "rs1_num=%02x "
-         "rs2_num=%02x "
-         "xd=%01x "
-         "xs1=%01x "
-         "xs2=%01x "
-         "opcode=%02x "
-         "rs1=%016lx "
-         "rs2=%016lx\n",
-         funct,
-         rd,
-         rs1_num,
-         rs2_num,
-         xd,
-         xs1,
-         xs2,
-         opcode,
-         rs1,
-         rs2);
-}
 
-rocc_cmd::rocc_cmd(uint16_t function,
-                   uint16_t system_id,
-                   uint8_t opcode,
-                   uint8_t rs1_num,
-                   uint8_t rs2_num,
-                   uint8_t xd,
-                   RD rd,
-                   uint8_t xs1,
-                   uint8_t xs2,
-                   uint8_t core_id,
-                   uint64_t rs1,
-                   uint64_t rs2) {
+uint32_t *rocc_cmd::pack() {
+  auto buf = new uint32_t[5];
 
 #define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }
 
@@ -102,12 +59,14 @@ rocc_cmd::rocc_cmd(uint16_t function,
   uint32_t funct = (system_id << 3) | (function & 0x7);
   buf[0] |= ((funct & 0x7F) << 25);
   // 7 + 5 + 1 + 1 + 1 + 5 + 5 + 7 = 32bit
+
+  return buf;
 }
 
 rocc_cmd rocc_cmd::addr_cmd(uint16_t system_id, uint8_t core_id, uint8_t channel_id, uint64_t addr) {
   return {ROCC_FUNC_ADDR, system_id, ROCC_OP_ACCEL, 0, 0,
-                  0, RD::R0, 0, 0,
-                  core_id, channel_id, addr};
+          0, RD::R0, 0, 0,
+          core_id, channel_id, addr};
 }
 
 rocc_cmd
@@ -120,3 +79,22 @@ rocc_cmd
 rocc_cmd::flush_cmd() {
   return {0, 0, ROCC_OP_FLUSH, 0, 0, 0, RD::R0, 0, 0, 0, 0, 0};
 }
+
+rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t rs1Num, uint8_t rs2Num, uint8_t xd,
+                   RD rd, uint8_t xs1, uint8_t xs2, uint8_t coreId, uint64_t rs1, uint64_t rs2) : function(function),
+                                                                                                  system_id(systemId),
+                                                                                                  opcode(opcode),
+                                                                                                  rs1_num(rs1Num),
+                                                                                                  rs2_num(rs2Num),
+                                                                                                  xd(xd), rd(rd),
+                                                                                                  xs1(xs1), xs2(xs2),
+                                                                                                  core_id(coreId),
+                                                                                                  rs1(rs1), rs2(rs2) {}
+
+std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd) {
+  os << "function: " << cmd.function << " system_id: " << cmd.system_id << " opcode: " << cmd.opcode << " rs1_num: "
+     << cmd.rs1_num << " rs2_num: " << cmd.rs2_num << " xd: " << cmd.xd << " rd: " << cmd.rd << " xs1: " << cmd.xs1
+     << " xs2: " << cmd.xs2 << " core_id: " << cmd.core_id << " rs1: " << cmd.rs1 << " rs2: " << cmd.rs2;
+  return os;
+}
+

@@ -122,9 +122,7 @@ bool fpga_handle_sim_t::is_real() const { return false; }
 
 void fpga_handle_t::send(const rocc_cmd &cmd) const {
 #ifndef NDEBUG
-  printf("Sending the following commands:\n");
-  cmd.decode();
-  fflush(stdout);
+  std::cout << "Sending the following command: " << cmd << std::endl;
 #endif
   for (const uint32_t c: cmd.buf) {
     while (!read(CMD_READY)) {}
