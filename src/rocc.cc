@@ -33,14 +33,14 @@ uint32_t *rocc_cmd::pack() const{
   CHECK(rs1, 56)
 
   // combine core id into rs1 for delivery to core
-  rs1 |= long(core_id) << 56;
+  uint64_t rs1_shadow = rs1 | long(core_id) << 56;
 
   memset(buf, 0, sizeof(int32_t) * 5);
   // TODO check that there are no overflows for the provided values (not outside logical range)
   buf[4] = rs2 & 0xFFFFFFFF;
   buf[3] = rs2 >> 32;
-  buf[2] = (rs1 & 0xFFFFFFFF);
-  buf[1] = rs1 >> 32;
+  buf[2] = (rs1_shadow & 0xFFFFFFFF);
+  buf[1] = rs1_shadow >> 32;
   // 7 bits
   buf[0] |= opcode & 0x7F;
   // 5 bits
