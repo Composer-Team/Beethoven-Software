@@ -18,7 +18,7 @@
 #include <cstring>
 
 
-uint32_t *rocc_cmd::pack() {
+uint32_t *rocc_cmd::pack() const{
   auto buf = new uint32_t[5];
 
 #define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }

@@ -124,11 +124,13 @@ void fpga_handle_t::send(const rocc_cmd &cmd) const {
 #ifndef NDEBUG
   std::cout << "Sending the following command: " << cmd << std::endl;
 #endif
-  for (const uint32_t c: cmd.buf) {
+  uint32_t *buf = cmd.pack();
+  for (uint i = 0; i < 5; ++i) {
     while (!read(CMD_READY)) {}
-    write(CMD_BITS, c);
+    write(CMD_BITS, buf[i]);
     write(CMD_VALID, 0x1);
   }
+  delete buf;
 }
 
 rocc_response fpga_handle_t::get_response() {
