@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <ostream>
 
+
 struct rocc_cmd {
   /**
    * Generate a command to start kernel execution on the accelerator. TODO: maybe an accelerator
@@ -71,7 +72,7 @@ struct rocc_cmd {
 
   static rocc_cmd flush_cmd();
 
-  uint32_t *pack() const;
+  [[nodiscard]] uint32_t *pack() const;
 
   friend std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd);
 
@@ -81,11 +82,26 @@ private:
 
 };
 
+struct composer_pack_info {
+  int system_id_bits = -1;
+  int core_id_bits = -1;
+  composer_pack_info(int system_id_bits, int core_id_bits) {
+    this->system_id_bits = system_id_bits;
+    this->core_id_bits = core_id_bits;
+  }
+};
+
 struct rocc_response {
   uint64_t data;
   uint8_t core_id;
   uint8_t system_id;
   uint8_t rd;
+  rocc_response(const uint32_t *buffer, const composer_pack_info &pack_info) {
+    this->rd = (uint8_t) buffer[0];
+    this->system_id = (buffer[1] >> (32 - pack_info.system_id_bits)) & ((1 << pack_info.system_id_bits) - 1);
+    this->core_id = (buffer[1] >> (32 - pack_info.system_id_bits - pack_info.core_id_bits)) & ((1 << pack_info.core_id_bits) - 1);
+    this->data = (uint64_t) (buffer[1] & ((1 << (32 - pack_info.system_id_bits - pack_info.core_id_bits)) - 1)) << 32 | buffer[2];
+  }
 };
 
 #endif //ROCC_H

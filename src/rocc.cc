@@ -97,4 +97,3 @@ std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd) {
      << " xs2: " << cmd.xs2 << " core_id: " << cmd.core_id << " rs1: " << cmd.rs1 << " rs2: " << cmd.rs2;
   return os;
 }
-

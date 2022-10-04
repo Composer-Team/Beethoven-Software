@@ -15,6 +15,7 @@ set(COMPOSER_CMAKE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cmake/composer)
 message("${CMAKE_INSTALL_PREFIX}/lib/cmake/composer")
 
 add_library(composer SHARED src/rocc.cc src/fpga_handle.cc src/fpga_transfer.cc src/composer_util.cc)
+set_target_properties(composer PROPERTIES PUBLIC_HEADER "include/composer_consts.h;include/composer_util.h;include/fpga_handle.h;include/fpga_transfer.h;include/rocc.h;composer_verilator_server.h")
 
 # If we can find the Amazon AWS FPGA, enable it a
 if(DEFINED $ENV{COMPOSER_AWS_SDK_DIR})
@@ -36,7 +37,6 @@ else()
     message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
 endif()
 
-set_target_properties(composer PROPERTIES PUBLIC_HEADER "include/composer_consts.h;include/composer_util.h;include/fpga_handle.h;include/fpga_transfer.h;include/rocc.h")
 
 
 install(TARGETS composer

@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <map>
+#include "composer_verilator_server.h"
 
 #ifdef USE_AWS
 #include <fpga_mgmt.h>
@@ -30,61 +31,50 @@
 #include <rocc.h>
 
 struct fpga_handle_t {
-  virtual void write(size_t addr, uint32_t data) const = 0;
+  // return if the handle refers to a real FPGA or not
+  [[nodiscard]] virtual bool is_real() const = 0;
+  /**
+   * @brief send a command to the FPGA
+   * @return handle referring to response that the command will return. Allows for blocking on the response.
+   */
+  [[nodiscard]] virtual int send(const rocc_cmd &c) const = 0;
+  /**
+   * @brief using the handle returned by send, wait for a response
+   * @param handle the handle returned by send
+   * @return rocc_response
+   */
+  [[nodiscard]] virtual rocc_response get_response(int handle) = 0;
 
-  virtual uint32_t read(size_t addr) const = 0;
-
-  virtual uint32_t is_write_ready() const = 0;
-
-  void check_rc(int rc, const std::string& infostr) const;
-
-  virtual void fpga_shutdown() const = 0;
-
-  virtual int get_write_fd() const = 0;
-
-  virtual int get_read_fd() const = 0;
-
-  void store_resp(RD rd, uint32_t unit_id, uint32_t retval);
-
-  uint32_t resp_lookup(RD rd, uint32_t unit_id) const;
-
-  virtual bool is_real() const = 0;
-
-  void send(const rocc_cmd &) const;
-
-  rocc_response get_response();
-
-  rocc_response flush();
-
-protected:
-  std::map<uint32_t, std::map<uint32_t, uint32_t> > rocc_resp_table;
+  /**
+   * flush all in-flight commands
+   */
+   rocc_response flush();
 };
 
 class fpga_handle_sim_t : public fpga_handle_t {
 public:
   explicit fpga_handle_sim_t();
 
+  [[nodiscard]] int send(const rocc_cmd &c) const override;
+
+  [[nodiscard]] rocc_response get_response(int handle) override;
+
+  [[nodiscard]] bool is_real() const override;
+
   ~fpga_handle_sim_t();
 
-  void write(size_t addr, uint32_t data) const override;
+  uint64_t malloc(size_t len);
 
-  uint32_t read(size_t addr) const override;
+  void copy_to_fpga(uint64_t fpga_addr, const void *host_addr, size_t len);
 
-  uint32_t is_write_ready() const override;
-
-  void fpga_shutdown() const override;
-
-  int get_write_fd() const override;
-
-  int get_read_fd() const override;
-
-  bool is_real() const override;
+  void free(uint64_t fpga_addr);
 
 private:
-  char driver_to_xsim[1024]{};
-  char xsim_to_driver[1024]{};
-  int driver_to_xsim_fd = -1;
-  int xsim_to_driver_fd = -1;
+  cmd_server_file *cmd_server;
+  int csfd;
+  comm_file *data_server;
+  int dsfd;
+  std::map<uint64_t, std::tuple<int, void*, int> > device2virtual;
 };
 
 #ifdef USE_AWS

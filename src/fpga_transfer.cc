@@ -32,6 +32,7 @@
 #define READ_VALID 13 //READONLY
 #define READ_READY 14 //WRITEONLY
 
+/*
 // calculates how many cache lines it takes to store
 // <count> elements with <size> bytes each
 static uint64_t cacheLines(uint64_t size, uint64_t count) {
@@ -228,3 +229,4 @@ void get_chunk_from_fpga(fpga_handle_t *mysim, uint32_t *outputdata, uint64_t re
   printf("Successfully receieved %u bytes from fpga\n", ret);
 #endif
 }
+ */

@@ -14,27 +14,146 @@
  */
 
 #include "fpga_handle.h"
-
-#include <fcntl.h>
-#include <sys/stat.h>
+#include "composer_verilator_server.h"
 #include <iostream>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/mman.h>
+
 
 fpga_handle_sim_t::fpga_handle_sim_t() {
-  char *user = getenv("USER");
-  sprintf(driver_to_xsim, "/tmp/%s_driver_to_xsim", user);
-  sprintf(xsim_to_driver, "/tmp/%s_xsim_to_driver", user);
-  mkfifo(driver_to_xsim, 0666);
-  fprintf(stderr, "opening driver to xsim\n");
-  driver_to_xsim_fd = open(driver_to_xsim, O_WRONLY);
-  fprintf(stderr, "opening xsim to driver\n");
-  xsim_to_driver_fd = open(xsim_to_driver, O_RDONLY);
-  if (driver_to_xsim_fd == -1 || xsim_to_driver_fd == -1) {
-    fprintf(stderr, "FAILED TO OPEN PORTS TO SIM\n");
+  FILE *file = fopen(cmd_server_file_name.c_str(), "w");
+  if (file == nullptr) {
+    std::cerr << "Error opening file " << cmd_server_file_name << std::endl;
+    exit(1);
+  }
+  csfd = fileno(file);
+  cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), PROT_READ | PROT_WRITE, MAP_SHARED, csfd, 0);
+  if (cmd_server == MAP_FAILED) {
+    std::cerr << "Failed to map in cmd_server_file" << std::endl;
+    exit(1);
+  }
+
+  FILE *f2 = fopen(data_server_file_name.c_str(), "w");
+  if (f2 == nullptr) {
+    std::cerr << "Error opening file " << data_server_file_name << std::endl;
+    exit(1);
+  }
+  dsfd = fileno(f2);
+  data_server = (comm_file *) mmap(nullptr, sizeof(comm_file), PROT_READ | PROT_WRITE, MAP_SHARED, dsfd, 0);
+  if (data_server == MAP_FAILED) {
+    std::cerr << "Failed to map in data_server_file" << std::endl;
     exit(1);
   }
 }
 
-void fpga_handle_t::check_rc(int rc, const std::string& infostr) const {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "VirtualCallInCtorOrDtor"
+
+#pragma clang diagnostic pop
+
+fpga_handle_sim_t::~fpga_handle_sim_t() {
+  munmap(cmd_server, sizeof(cmd_server_file));
+  close(csfd);
+  for(auto & it : device2virtual) {
+    auto tup = it.second;
+    free(std::get<0>(tup));
+  }
+}
+
+bool fpga_handle_sim_t::is_real() const { return false; }
+
+
+rocc_response fpga_handle_sim_t::get_response(int handle) {
+  pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
+  // command is now ready
+  auto resp = cmd_server->responses[handle];
+  // now that we've read our response, we can release the resource to be used in future responses
+  pthread_mutex_lock(&cmd_server->free_list_lock);
+  cmd_server->free_list[++cmd_server->free_list_idx] = handle;
+  pthread_mutex_unlock(&cmd_server->free_list_lock);
+  return resp;
+}
+
+int fpga_handle_sim_t::send(const rocc_cmd &c) const {
+  // acquire lock over client side
+  pthread_mutex_lock(&cmd_server->cmd_send_lock);
+  // communicate data to shared space
+  cmd_server->cmd = c;
+  // signal to server that we have a command ready
+  pthread_mutex_unlock(&cmd_server->server_mut);
+  // wait for server to signal that it has read our command
+  pthread_mutex_lock(&cmd_server->cmd_recieve_server_resp_lock);
+  // get the handle that we use to wait for response asynchronously
+  uint64_t handle = cmd_server->pthread_wait_id;
+  // release lock over client side
+  pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+  return (int)handle;
+}
+
+uint64_t fpga_handle_sim_t::malloc(size_t len) {
+  // acquire lock over client side
+  pthread_mutex_lock(&data_server->client_mutex);
+  data_server->fsize = len;
+  pthread_mutex_unlock(&data_server->server_mut);
+  // wait for server to signal that it has read our command
+  pthread_mutex_lock(&data_server->wait_for_request_process);
+  // now the server has returned the device addr (for building commands), and the file name
+  uint64_t addr = data_server->addr;
+  FILE *fn = fopen(data_server->fname, "w+");
+  if (fn == nullptr) {
+    std::cerr << "Error opening file " << data_server->fname << std::endl;
+    exit(1);
+  }
+  int fd = fileno(fn);
+  void *ptr = mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (ptr == MAP_FAILED) {
+    std::cerr << "Failed to map in file " << data_server->fname << std::endl;
+    exit(1);
+  }
+  // add device addr to private map
+  device2virtual[addr] = std::make_tuple(fd, ptr, len);
+  // release lock over client side
+  pthread_mutex_unlock(&data_server->client_mutex);
+  return addr;
+}
+
+void fpga_handle_sim_t::copy_to_fpga(uint64_t fpga_addr, const void *host_addr, size_t len) {
+  auto it = device2virtual.find(fpga_addr);
+  if (it == device2virtual.end()) {
+    std::cerr << "Error: copy_to_fpga called with invalid fpga_addr" << std::endl;
+    std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
+                 " and not a host address. Also, make sure it is the base address returned." << std::endl;
+    exit(1);
+  }
+  auto tup = it->second;
+  memcpy(std::get<1>(tup), host_addr, len);
+}
+
+void fpga_handle_sim_t::free(uint64_t fpga_addr) {
+  auto it = device2virtual.find(fpga_addr);
+  if (it == device2virtual.end()) {
+    std::cerr << "Error: free called with invalid fpga_addr" << std::endl;
+    std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
+                 " and not a host address. Also, make sure it is the base address returned." << std::endl;
+    exit(1);
+  }
+  auto tup = it->second;
+  munmap(std::get<1>(tup), std::get<2>(tup));
+  close(std::get<0>(tup));
+  device2virtual.erase(it);
+}
+
+
+rocc_response fpga_handle_t::flush() {
+  auto q = rocc_cmd::flush_cmd();
+  auto i = send(q);
+  return get_response(i);
+}
+
+#ifdef USE_AWS
+
+void fpga_handle_t::check_rc(int rc, const std::string &infostr) const {
   if (rc) {
     std::cerr << "Invalid return code (" << rc << ") - " << infostr;
 #ifdef NDEBUG
@@ -45,82 +164,10 @@ void fpga_handle_t::check_rc(int rc, const std::string& infostr) const {
     fpga_shutdown();
     exit(1);
   }
-
-}
-
-void fpga_handle_sim_t::fpga_shutdown() const {}
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "VirtualCallInCtorOrDtor"
-
-#pragma clang diagnostic pop
-
-fpga_handle_sim_t::~fpga_handle_sim_t() {
-  int exit = 0x12459333;
-  ::write(driver_to_xsim_fd, (char *) &exit, 4);
-  close(xsim_to_driver_fd);
-  close(driver_to_xsim_fd);
-}
-
-void fpga_handle_t::store_resp(RD rd, uint32_t unit_id, uint32_t retval) {
-  rocc_resp_table[rd][unit_id] = retval;
-}
-
-uint32_t fpga_handle_t::resp_lookup(RD rd, uint32_t unit_id) const {
-  return rocc_resp_table.at((uint32_t)rd).at(unit_id);
-}
-
-int fpga_handle_sim_t::get_write_fd() const {
-  return int(NULL);
-}
-
-int fpga_handle_sim_t::get_read_fd() const {
-  return int(NULL);
-}
-
-void fpga_handle_sim_t::write(size_t addr, uint32_t data) const {
-  addr <<= 2;
-  // printf("addr, data: %#x, %#x\n", addr, data);
-  uint64_t cmd = (((uint64_t) (0x80000000 | addr)) << 32) | (uint64_t) data;
-  char *buf = (char *) &cmd;
-  ::write(driver_to_xsim_fd, buf, 8);
-}
-
-uint32_t fpga_handle_sim_t::read(size_t addr) const {
-  addr <<= 2;
-  uint64_t cmd = addr;
-  char *buf = (char *) &cmd;
-  ::write(driver_to_xsim_fd, buf, 8);
-
-  size_t gotdata = 0;
-  while (gotdata == 0) {
-    gotdata = ::read(xsim_to_driver_fd, buf, 8);
-    if (gotdata != 0 && gotdata != 8) {
-      std::cerr << "Error! Got data: " << gotdata << std::endl;
-    }
-  }
-  return *((uint64_t *) buf);
 }
 
 
-uint32_t fpga_handle_sim_t::is_write_ready() const {
-  uint64_t cmd = CMD_READY;
-  char *buf = (char *) &cmd;
-  ::write(driver_to_xsim_fd, buf, 8);
-
-  size_t gotdata = 0;
-  while (gotdata == 0) {
-    gotdata = ::read(xsim_to_driver_fd, buf, 8);
-    if (gotdata != 0 && gotdata != 8) {
-      std::cerr << "Error! Got data: " << gotdata << std::endl;
-    }
-  }
-  return *((uint64_t *) buf);
-}
-
-bool fpga_handle_sim_t::is_real() const { return false; }
-
-void fpga_handle_t::send(const rocc_cmd &cmd) const {
+void fpga_handle_real_t::send(const rocc_cmd &cmd) const {
 #ifndef NDEBUG
   std::cout << "Sending the following command: " << cmd << std::endl;
 #endif
@@ -132,42 +179,6 @@ void fpga_handle_t::send(const rocc_cmd &cmd) const {
   }
   delete buf;
 }
-
-rocc_response fpga_handle_t::get_response() {
-  rocc_response retval{};
-  while (!read(RESP_VALID)) {}
-  uint32_t resp1 = read(RESP_BITS);    // id
-  retval.core_id = resp1 & 0xFF;
-  retval.system_id = (resp1 & 0xFF00) >> 8;
-
-  write(RESP_READY, 0x1);
-
-  while (!read(RESP_VALID)) {}
-  uint32_t resp2 = read(RESP_BITS);    // len / error
-  retval.data = uint64_t(resp2) << 32;
-  write(RESP_READY, 0x1);
-  uint32_t rd;
-
-  while (!read(RESP_VALID)) {}
-  uint32_t resp4 = read(RESP_BITS);    // len / error
-  retval.data |= resp4;
-  write(RESP_READY, 0x1);
-
-  while (!read(RESP_VALID)) {}
-  rd = read(RESP_BITS);
-  retval.rd = rd;
-  write(RESP_READY, 0x1);
-  store_resp(RD(rd), resp1, resp2);
-  return retval;
-}
-
-rocc_response fpga_handle_t::flush() {
-  auto q = rocc_cmd::flush_cmd();
-  send(q);
-  return get_response();
-}
-
-#ifdef USE_AWS
 
 uint32_t fpga_handle_real_t::read(size_t addr) const {
   addr <<= 2;
