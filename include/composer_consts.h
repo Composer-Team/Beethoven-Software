@@ -7,30 +7,36 @@
 #define ROCC_FUNC_ADDR 0
 #define ROCC_FUNC_START 1
 
-#define RESP_BITS 0 //READONLY
-#define RESP_VALID 1 //READONLY
-#define RESP_READY 2 //WRITEONLY
 
-#define CMD_BITS 3 //WRITEONLY
-#define CMD_VALID 4 //WRITEONLY
-#define CMD_READY 5 //READONLY
+/* TODO UG: Instead of hard-coding these into a software interface, they should be generated as part of the hardware
+ *  construction. Talk to me if this is something you want to do and I'll point you in the right direction. Should be
+ *  pretty straight-forward(ish).
+ */
+#define RESP_BITS 0 //READONLY
+#define RESP_VALID 4 //READONLY
+#define RESP_READY 8 //WRITEONLY
+
+#define CMD_BITS 12 //WRITEONLY
+#define CMD_VALID 16 //WRITEONLY
+#define CMD_READY 20 //READONLY
+
+#define WRITE_BITS 24 //WRITEONLY
+#define WRITE_VALID 28 //WRITEONLY
+#define WRITE_READY 32 //READONLY
+
+#define READ_ADDR_BITS 36 //WRITEONLY
+#define READ_ADDR_VALID 40 //WRITEONLY
+#define READ_ADDR_READY 44 //READONLY
+
+#define READ_BITS 48 //READONLY
+#define READ_VALID 52 //READONLY
+#define READ_READY 56 //WRITEONLY
 
 #define BITS_PER_CACHE_LINE 1024
+
 #define BITS_PER_BYTE 8
 
 #define DMA_BLOCK_SIZE 16777216
-
-#define WRITE_BITS 6 //WRITEONLY
-#define WRITE_VALID 7 //WRITEONLY
-#define WRITE_READY 8 //READONLY
-
-#define READ_ADDR_BITS 9 //WRITEONLY
-#define READ_ADDR_VALID 10 //WRITEONLY
-#define READ_ADDR_READY 11 //READONLY
-
-#define READ_BITS 12 //READONLY
-#define READ_VALID 13 //READONLY
-#define READ_READY 14 //WRITEONLY
 
 /**
  * RoCC commands have a destination register (rd) that is sent to Composer systems. Composer reserves a number of these
