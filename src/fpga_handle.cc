@@ -18,31 +18,37 @@
 #include <iostream>
 #include <unistd.h>
 #include <pthread.h>
+#include <errno.h>
+
+// for shared memory allocation + mmap
 #include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 
 fpga_handle_sim_t::fpga_handle_sim_t() {
-  FILE *file = fopen(cmd_server_file_name.c_str(), "w");
-  if (file == nullptr) {
+  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
+  if (csfd == -1) {
     std::cerr << "Error opening file " << cmd_server_file_name << std::endl;
     exit(1);
   }
-  csfd = fileno(file);
   cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), PROT_READ | PROT_WRITE, MAP_SHARED, csfd, 0);
   if (cmd_server == MAP_FAILED) {
     std::cerr << "Failed to map in cmd_server_file" << std::endl;
+    std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
 
-  FILE *f2 = fopen(data_server_file_name.c_str(), "w");
-  if (f2 == nullptr) {
+  cmd_server->cmd = rocc_cmd::flush_cmd();
+  dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
+  if (dsfd < 0) {
     std::cerr << "Error opening file " << data_server_file_name << std::endl;
     exit(1);
   }
-  dsfd = fileno(f2);
   data_server = (comm_file *) mmap(nullptr, sizeof(comm_file), PROT_READ | PROT_WRITE, MAP_SHARED, dsfd, 0);
   if (data_server == MAP_FAILED) {
     std::cerr << "Failed to map in data_server_file" << std::endl;
+    std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
 }
@@ -77,17 +83,21 @@ rocc_response fpga_handle_sim_t::get_response(int handle) {
 
 int fpga_handle_sim_t::send(const rocc_cmd &c) const {
   // acquire lock over client side
-  pthread_mutex_lock(&cmd_server->cmd_send_lock);
+  int success = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
   cmd_server->cmd = c;
   // signal to server that we have a command ready
-  pthread_mutex_unlock(&cmd_server->server_mut);
+  success && pthread_mutex_unlock(&cmd_server->server_mut);
   // wait for server to signal that it has read our command
-  pthread_mutex_lock(&cmd_server->cmd_recieve_server_resp_lock);
+  success && pthread_mutex_lock(&cmd_server->cmd_recieve_server_resp_lock);
   // get the handle that we use to wait for response asynchronously
   uint64_t handle = cmd_server->pthread_wait_id;
   // release lock over client side
-  pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+  success && pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+  if (not success) {
+    printf("something failed! surprise!");
+    fflush(stdout);
+  }
   return (int)handle;
 }
 
@@ -100,12 +110,11 @@ uint64_t fpga_handle_sim_t::malloc(size_t len) {
   pthread_mutex_lock(&data_server->wait_for_request_process);
   // now the server has returned the device addr (for building commands), and the file name
   uint64_t addr = data_server->addr;
-  FILE *fn = fopen(data_server->fname, "w+");
-  if (fn == nullptr) {
+  int fd = shm_open(data_server->fname, O_RDWR, S_IWUSR | S_IRUSR);
+  if (fd < 0) {
     std::cerr << "Error opening file " << data_server->fname << std::endl;
     exit(1);
   }
-  int fd = fileno(fn);
   void *ptr = mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (ptr == MAP_FAILED) {
     std::cerr << "Failed to map in file " << data_server->fname << std::endl;
