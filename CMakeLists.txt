@@ -15,9 +15,7 @@ if(NOT DEFINED ${CMAKE_BUILD_TYPE})
 endif()
 
 file(GLOB sources "src/*.cc")
-message("sources: ${sources}")
-add_library(composer SHARED "${sources}")
-
+add_library(composer SHARED src/fpga_handle.cc src/fpga_transfer.cc src/rocc.cc src/composer_util.cc)
 # If we can find the Amazon AWS FPGA, enable it a
 if(NOT "$ENV{COMPOSER_AWS_SDK_DIR}" STREQUAL "")
   set(AWS_INCLUDE $ENV{COMPOSER_AWS_SDK_DIR}/sdk/userspace/include)
