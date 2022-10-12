@@ -258,3 +258,14 @@ return value, the id of the composer system that performed the instruction, the 
 completed it, and the destination register that came from the instruction.
 
 **Note to self**: the length of the return value should be improved/clarified in the future...
+
+# Running your code
+
+Once you have your code written using this library, assuming you're using CMake, you can simply run
+```shell
+mkdir build && cd build
+cmake .. && make
+./<your_program>
+```
+Make sure to run this code AFTER the composer system has booted up.
+Otherwise, the file descriptors that the library will be looking for will not be set up and you'll crash!
