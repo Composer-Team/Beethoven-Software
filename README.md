@@ -3,14 +3,23 @@
 This repository contains the necessary software to interact with a Composer design over the AWS F1 FPGA Framework.
 
 ### Dependencies
+To my understanding, this should be pretty cross-platform and work with most UNIX systems.
 
-[Amazon F1 SDK](https://github.com/aws/aws-fpga) - this is a dependency from the
-[Composer Hardware](https://github.com/ChrisKjellqvist/Composer-Hardware) repository. Under normal circumstances, the
-Composer-Hardware directory will contain the SDK, which can be used instead of installation in another directory. For
-everything here to work properly, `SDK_DIR` needs to be defined, which is typically set when running `sdk_setup.sh` from
-the SDK directory. Do **not** set this manually.
+For AWS backend support, you will need the [AWS FPGA SDK](https://github.com/aws/aws-fpga) installed.
+This is not necessary for simulation support and the library will simply skip over any AWS specific code when building if we can't detect it.
+CMake will warn you if it can't find the SDK.
 
-If you are
+[//]: # ([Amazon F1 SDK]&#40;https://github.com/aws/aws-fpga&#41; - this is a dependency from the)
+
+[//]: # ([Composer Hardware]&#40;https://github.com/ChrisKjellqvist/Composer-Hardware&#41; repository. Under normal circumstances, the)
+
+[//]: # (Composer-Hardware directory will contain the SDK, which can be used instead of installation in another directory. For)
+
+[//]: # (everything here to work properly, `SDK_DIR` needs to be defined, which is typically set when running `sdk_setup.sh` from)
+
+[//]: # (the SDK directory. Do **not** set this manually.)
+
+[//]: # (If you are)
 
 ### Installation
 
@@ -33,7 +42,7 @@ just have to make sure to help your compiler find the include path and use the `
 # your CMake project
 #...
 find_package(composer REQUIRED)
-target_link_libraries(<your_target> PUBLIC composer)
+target_link_libraries(<your_target> PUBLIC APEX::composer)
 #...
 ```
 
@@ -50,15 +59,23 @@ The composer software library uses 3 main types to communicate with an accelerat
 
 ## `fpga_handle_t`
 
+```c
+#include <fpga_handle.h>
+```
 This is an interface for the FPGA with two specializations: `fpga_handle_sim_t` and `fpga_handle_real_t`.
-`fpga_handle_sim_t` correponds to a VSIM simulation of the composer and `fpga_handle_real_t` corresponds to a an actual
-FPGA running on an Amazon F1 instance. They both share the following interface.
+`fpga_handle_sim_t` correponds to a VSIM/Verilator simulation of the composer and `fpga_handle_real_t` corresponds to a an actual
+FPGA running on an Amazon F1 instance.
+They both share the following interface.
+
 
 ### `send(const rocc_cmd &cmd)`
 
 Send a RoCC command to the accelerator. If the build is a debug build, it will print the contents of the command.
 
 ```c++
+#include <rocc.h>
+#include <fpga_handle.h>
+...
 fpga_handle_real_t my_handle;
 auto my_flush_cmd = rocc::flush_cmd();
 my_handle.send(my_flush_cmd);
@@ -131,8 +148,8 @@ setting the `rd` field.
 
 Before we deep-dive into `rd`, a quick node on the `xd` field. This is set to high if you are expecting a response from
 the command. Otherwise, no reponse will be sent back over the AXIL interface. If you specify xd=0 and wait for a
-response, you'll be waiting a long time. **Note to self**: this really shouldn't happen. Waiting for a command to return
-that was specified to not return should throw an exception.
+response, you'll stall and never return. **Note to self**: this really shouldn't happen. Waiting for a command to return
+that was specified to not return should throw an exception (or have a timout).
 
 Notice that the destination register is type `RD`. To emphasize the use of special-purpose Composer registers, we
 use `enum RD`. There are 32 registers, but register 16 through 22 (inclusive) are special purpose registers for
@@ -236,6 +253,8 @@ struct rocc_response {
 };
 ```
 
-Whenever a instruction successfully completes, the accelerator responds with a `rocc_response`. It contains a 32-bit
+Whenever a instruction successfully completes, the accelerator responds with a `rocc_response`. It contains a 56-bit
 return value, the id of the composer system that performed the instruction, the id of the core within the system that
 completed it, and the destination register that came from the instruction.
+
+**Note to self**: the length of the return value should be improved/clarified in the future...
