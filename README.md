@@ -20,6 +20,10 @@ This requires root permissions. For user-mode builds make sure to pass the `-DCM
 After which, make sure that this path is accessible to the linker and cmake. Then, of course, there's no
 reason to use `sudo`.
 
+I haven't tried using the non-root version but with enough effort gettingn CMake to find your tool, it should work.
+It's also pretty simple to remove the includes and dynamic library from the root install folders if you don't feel like
+polluting them.
+
 ### Using in your project
 
 The project is currently set up to support CMake-based projects. I suppose you could use Makefile or whatever, but you'll
@@ -124,6 +128,11 @@ that have a special purpose on the Composer system are `system_id`, `core_id`, a
 determines what group of cores that a command is routed to. `core_id` as well determines which core the command is
 routed to within the system. Composer also has a few "special-purpose" registers that can be accessed by properly
 setting the `rd` field.
+
+Before we deep-dive into `rd`, a quick node on the `xd` field. This is set to high if you are expecting a response from
+the command. Otherwise, no reponse will be sent back over the AXIL interface. If you specify xd=0 and wait for a
+response, you'll be waiting a long time. **Note to self**: this really shouldn't happen. Waiting for a command to return
+that was specified to not return should throw an exception.
 
 Notice that the destination register is type `RD`. To emphasize the use of special-purpose Composer registers, we
 use `enum RD`. There are 32 registers, but register 16 through 22 (inclusive) are special purpose registers for
