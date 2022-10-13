@@ -70,9 +70,11 @@ rocc_cmd rocc_cmd::addr_cmd(uint16_t system_id, uint8_t core_id, uint8_t channel
 }
 
 rocc_cmd
-rocc_cmd::start_cmd(uint16_t system_id, uint8_t rs1_num, uint8_t rs2_num, uint8_t xd, RD rd, uint8_t xs1, uint8_t xs2,
+rocc_cmd::start_cmd(uint16_t system_id, uint8_t rs1_num, uint8_t rs2_num, bool expect_response, RD rd, uint8_t xs1, uint8_t xs2,
                     uint8_t core_id, uint64_t rs1, uint64_t rs2) {
-  return {ROCC_FUNC_START, system_id, ROCC_OP_ACCEL, rs1_num, rs2_num, xd, rd, xs1, xs2, core_id, rs1, rs2};
+  return {ROCC_FUNC_START, system_id, ROCC_OP_ACCEL, rs1_num, rs2_num,
+          expect_response, rd, xs1, xs2,
+          core_id, rs1, rs2};
 }
 
 rocc_cmd

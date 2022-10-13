@@ -41,23 +41,23 @@ struct rocc_cmd {
    * @return
    */
 
-  uint16_t function{};
-  uint16_t system_id{};
-  uint8_t opcode{};
-  uint8_t rs1_num{};
-  uint8_t rs2_num{};
-  uint8_t xd{};
+  uint16_t function;
+  uint16_t system_id;
+  uint8_t opcode;
+  uint8_t rs1_num;
+  uint8_t rs2_num;
+  uint8_t xd;
   RD rd;
-  uint8_t xs1{};
-  uint8_t xs2{};
-  uint8_t core_id{};
-  uint64_t rs1{};
-  uint64_t rs2{};
+  uint8_t xs1;
+  uint8_t xs2;
+  uint8_t core_id;
+  uint64_t rs1;
+  uint64_t rs2;
 
   static rocc_cmd start_cmd(uint16_t system_id,
                             uint8_t rs1_num,
                             uint8_t rs2_num,
-                            uint8_t xd,
+                            bool expect_response,
                             RD rd,
                             uint8_t xs1,
                             uint8_t xs2,
@@ -96,12 +96,24 @@ struct rocc_response {
   uint8_t core_id;
   uint8_t system_id;
   uint8_t rd;
+private:
+  static uint64_t get_mask(int l) {
+    uint64_t mask = 0;
+    for (int i = 0; i < l; ++i)
+      mask = (mask << 1) | 1;
+    return mask;
+  }
+public:
   rocc_response(const uint32_t *buffer, const composer_pack_info &pack_info) {
     this->rd = (uint8_t) buffer[2];
-    this->system_id = (buffer[0] >> (32 - pack_info.system_id_bits)) & ((1 << pack_info.system_id_bits) - 1);
-    this->core_id = (buffer[0] >> (32 - pack_info.system_id_bits - pack_info.core_id_bits)) & ((1 << pack_info.core_id_bits) - 1);
-    this->data = (uint64_t) (buffer[0] & ((1 << (32 - pack_info.system_id_bits - pack_info.core_id_bits)) - 1)) << 32 | buffer[1];
-    printf("buff0: %08x\t buff1: %08x\t buff2: %08x", buffer[0], buffer[1], buffer[2]);
+    // system_id, core_id, data packed into buffer 0, data is appended to lower 32-bits in buffer[1]
+    int system_id_loc = 32 - pack_info.system_id_bits;
+    this->system_id = (buffer[0] >> system_id_loc) & get_mask(pack_info.system_id_bits);
+    int core_id_loc = 32 - pack_info.system_id_bits - pack_info.core_id_bits;
+    this->core_id = (buffer[0] >> core_id_loc) & get_mask(pack_info.core_id_bits);
+    uint64_t data_top = (buffer[0] & get_mask(32-pack_info.core_id_bits - pack_info.system_id_bits)) << 32;
+    this->data = data_top | buffer[1];
+    printf("buff0: %08x\t buff1: %08x\t buff2: %08x", buffer[0], buffer[1], buffer[2]); fflush(stdout);
   }
 };
 
