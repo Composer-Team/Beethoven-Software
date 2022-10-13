@@ -131,7 +131,7 @@ flush command returns.
 rocc_cmd start_cmd(uint16_t system_id, // 4 bits
                    uint8_t rs1_num, // 5 bits
                    uint8_t rs2_num, // 5 bits
-                   uint8_t xd, // 1b
+                   bool expect_response, // 1b
                    RD rd, // 5 bits
                    uint8_t xs1, // 1b
                    uint8_t xs2, // 1b
@@ -146,10 +146,11 @@ determines what group of cores that a command is routed to. `core_id` as well de
 routed to within the system. Composer also has a few "special-purpose" registers that can be accessed by properly
 setting the `rd` field.
 
-Before we deep-dive into `rd`, a quick node on the `xd` field. This is set to high if you are expecting a response from
-the command. Otherwise, no reponse will be sent back over the AXIL interface. If you specify xd=0 and wait for a
-response, you'll stall and never return. **Note to self**: this really shouldn't happen. Waiting for a command to return
-that was specified to not return should throw an exception (or have a timout).
+Before we deep-dive into `rd`, a quick node on the `expect_response` field. 
+The field corresponds to `xd` in the instruction reference and is set to high if you are expecting a response from the command. 
+Otherwise, no reponse will be sent back over the AXIL interface. 
+If you specify `expect_response=0` and wait for a response, you'll stall and never return. 
+**Note to self**: this really shouldn't happen. Waiting for a command to return that was specified to not return should throw an exception (or have a timout).
 
 Notice that the destination register is type `RD`. To emphasize the use of special-purpose Composer registers, we
 use `enum RD`. There are 32 registers, but register 16 through 22 (inclusive) are special purpose registers for
