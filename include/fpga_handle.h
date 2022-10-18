@@ -22,7 +22,9 @@
 #include <cstdio>
 #include <cstdint>
 #include <map>
+#include <string>
 #include "composer_verilator_server.h"
+#include <composer_alloc.h>
 
 #ifdef USE_AWS
 #include <fpga_mgmt.h>
@@ -30,81 +32,113 @@
 
 #include <rocc.h>
 
-struct fpga_handle_t {
-  // return if the handle refers to a real FPGA or not
-  [[nodiscard]] virtual bool is_real() const = 0;
-  /**
-   * @brief send a command to the FPGA
-   * @return handle referring to response that the command will return. Allows for blocking on the response.
-   */
-  [[nodiscard]] virtual int send(const rocc_cmd &c) const = 0;
-  /**
-   * @brief using the handle returned by send, wait for a response
-   * @param handle the handle returned by send
-   * @return rocc_response
-   */
-  [[nodiscard]] virtual rocc_response get_response(int handle) = 0;
+namespace composer {
+  class response_handle;
 
-  /**
-   * flush all in-flight commands
-   */
-   rocc_response flush();
-};
+  struct fpga_handle_t {
+  private:
+    friend response_handle;
+    [[nodiscard]] virtual rocc_response get_response_from_handle(int handle) const = 0;
 
-class fpga_handle_sim_t : public fpga_handle_t {
-public:
-  explicit fpga_handle_sim_t();
+  public:
 
-  [[nodiscard]] int send(const rocc_cmd &c) const override;
+    // return if the handle refers to a real FPGA or not
+    [[nodiscard]] virtual bool is_real() const = 0;
 
-  [[nodiscard]] rocc_response get_response(int handle) override;
+    /**
+     * @brief send a command to the FPGA
+     * @return handle referring to response that the command will return. Allows for blocking on the response.
+     */
+    [[nodiscard]] virtual response_handle send(const rocc_cmd &c) const = 0;
 
-  [[nodiscard]] bool is_real() const override;
+    /**
+     * flush all in-flight commands
+     */
+    rocc_response flush();
+  };
 
-  ~fpga_handle_sim_t();
+  class response_handle {
+    bool can_wait, has_recieved = false;
+    int id;
+    const fpga_handle_t *h;
+  public:
+    explicit response_handle(bool cw, int id, const fpga_handle_t &h) : id(id), can_wait(cw), h(&h){}
 
-  uint64_t malloc(size_t len);
+    [[nodiscard]] rocc_response get() {
+      if (can_wait) {
+        if (has_recieved) {
+          fprintf(stderr, "Attempted to wait on a return handle that has already received a response!\n");
+          exit(1);
+        } else {
+          has_recieved = true;
+          return h->get_response_from_handle(id);
+        }
+      } else {
+        fprintf(stderr, "Attempting to wait on a return handle for a command that explicitly disallowed returns."
+                        "All `addr` commands do not return. Start commands that specify `xd=0` will not return.\n");
+        exit(1);
+      }
+    }
+  };
 
-  void copy_to_fpga(uint64_t fpga_addr, const void *host_addr, size_t len);
+  class fpga_handle_sim_t : public fpga_handle_t {
+  private:
+    [[nodiscard]] rocc_response get_response_from_handle(int handle) const override;
+  public:
+    explicit fpga_handle_sim_t();
 
-  void free(uint64_t fpga_addr);
+    [[nodiscard]] response_handle send(const rocc_cmd &c) const override;
 
-private:
-  cmd_server_file *cmd_server;
-  int csfd;
-  comm_file *data_server;
-  int dsfd;
-  std::map<uint64_t, std::tuple<int, void*, int> > device2virtual;
-};
+
+    [[nodiscard]] bool is_real() const override;
+
+    ~fpga_handle_sim_t();
+
+    composer::remote_ptr malloc(size_t len);
+
+    void copy_to_fpga(const composer::remote_ptr& dst, const void *host_addr);
+
+    void copy_from_fpga(void *host_addr, const composer::remote_ptr &src);
+
+    void free(composer::remote_ptr fpga_addr);
+
+  private:
+    cmd_server_file *cmd_server;
+    int csfd;
+    data_server_file *data_server;
+    int dsfd;
+    std::map<uint64_t, std::tuple<int, void *, int, std::string> > device2virtual;
+  };
 
 #ifdef USE_AWS
-class fpga_handle_real_t : public fpga_handle_t {
-public:
-  explicit fpga_handle_real_t(int id);
+  class fpga_handle_real_t : public fpga_handle_t {
+  public:
+    explicit fpga_handle_real_t(int id);
 
-  ~fpga_handle_real_t();
+    ~fpga_handle_real_t();
 
-  void write(size_t addr, uint32_t data) const override;
+    void write(size_t addr, uint32_t data) const override;
 
-  uint32_t read(size_t addr) const override;
+    uint32_t read(size_t addr) const override;
 
-  uint32_t is_write_ready() const override;
+    uint32_t is_write_ready() const override;
 
-  void fpga_shutdown() const override;
+    void fpga_shutdown() const override;
 
-  int get_write_fd() const override;
+    int get_write_fd() const override;
 
-  int get_read_fd() const override;
+    int get_read_fd() const override;
 
-  bool is_real() const override;
+    bool is_real() const override;
 
-private:
-  //    int rc;
-  int slot_id = -1;
-  pci_bar_handle_t pci_bar_handle = -1;
-  int xdma_write_fd = -1;
-  int xdma_read_fd = -1;
-};
+  private:
+    //    int rc;
+    int slot_id = -1;
+    pci_bar_handle_t pci_bar_handle = -1;
+    int xdma_write_fd = -1;
+    int xdma_read_fd = -1;
+  };
 #endif
 
+}
 #endif

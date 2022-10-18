@@ -12,13 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <rocc.h>
+#include "rocc.h"
+#include "composer_alloc.h"
 #include <composer_util.h>
 #include <iostream>
 #include <cstring>
 
 
-uint32_t *rocc_cmd::pack() const{
+uint32_t *composer::rocc_cmd::pack() const{
   auto buf = new uint32_t[5];
 
 #define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }
@@ -63,26 +64,26 @@ uint32_t *rocc_cmd::pack() const{
   return buf;
 }
 
-rocc_cmd rocc_cmd::addr_cmd(uint16_t system_id, uint8_t core_id, uint8_t channel_id, uint64_t addr) {
+composer::rocc_cmd composer::rocc_cmd::addr_cmd(uint16_t system_id, uint8_t core_id, uint8_t channel_id, const composer::remote_ptr &ptr) {
   return {ROCC_FUNC_ADDR, system_id, ROCC_OP_ACCEL, 0, 0,
           0, RD::R0, 0, 0,
-          core_id, channel_id, addr};
+          core_id, (ptr.getLen() << 8) | channel_id, ptr.getFpgaAddr()};
 }
 
-rocc_cmd
-rocc_cmd::start_cmd(uint16_t system_id, uint8_t rs1_num, uint8_t rs2_num, bool expect_response, RD rd, uint8_t xs1, uint8_t xs2,
+composer::rocc_cmd
+composer::rocc_cmd::start_cmd(uint16_t system_id, uint8_t rs1_num, uint8_t rs2_num, bool expect_response, RD rd, uint8_t xs1, uint8_t xs2,
                     uint8_t core_id, uint64_t rs1, uint64_t rs2) {
   return {ROCC_FUNC_START, system_id, ROCC_OP_ACCEL, rs1_num, rs2_num,
           expect_response, rd, xs1, xs2,
           core_id, rs1, rs2};
 }
 
-rocc_cmd
-rocc_cmd::flush_cmd() {
+composer::rocc_cmd
+composer::rocc_cmd::flush_cmd() {
   return {0, 0, ROCC_OP_FLUSH, 0, 0, 0, RD::R0, 0, 0, 0, 0, 0};
 }
 
-rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t rs1Num, uint8_t rs2Num, uint8_t xd,
+composer::rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t rs1Num, uint8_t rs2Num, uint8_t xd,
                    RD rd, uint8_t xs1, uint8_t xs2, uint8_t coreId, uint64_t rs1, uint64_t rs2) : function(function),
                                                                                                   system_id(systemId),
                                                                                                   opcode(opcode),
@@ -93,7 +94,7 @@ rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t
                                                                                                   core_id(coreId),
                                                                                                   rs1(rs1), rs2(rs2) {}
 
-std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd) {
+std::ostream &composer::operator<<(std::ostream &os, const composer::rocc_cmd &cmd) {
   os << "function: " << cmd.function << " system_id: " << cmd.system_id << " opcode: " << cmd.opcode << " rs1_num: "
      << cmd.rs1_num << " rs2_num: " << cmd.rs2_num << " xd: " << cmd.xd << " rd: " << cmd.rd << " xs1: " << cmd.xs1
      << " xs2: " << cmd.xs2 << " core_id: " << cmd.core_id << " rs1: " << cmd.rs1 << " rs2: " << cmd.rs2;

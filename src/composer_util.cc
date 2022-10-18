@@ -4,12 +4,13 @@
 
 #include "composer_util.h"
 
-uint64_t pack(uint32_t hi, uint32_t low) {
+
+uint64_t composer::pack(uint32_t hi, uint32_t low) {
   return (((uint64_t) hi) << 32) | ((uint64_t) low);
 }
 
 
-uint64_t log2Ceil(uint64_t num) {
+uint64_t composer::log2Ceil(uint64_t num) {
   uint64_t power = 1;
   while (power < num) {
     power = power * 2;
@@ -17,11 +18,11 @@ uint64_t log2Ceil(uint64_t num) {
   return power;
 }
 
-uint64_t calcNextAddr(uint64_t prev_addr, int num_elems, int bytes_per_elem) {
+uint64_t composer::calcNextAddr(uint64_t prev_addr, int num_elems, int bytes_per_elem) {
   return prev_addr + num_elems * bytes_per_elem;
 }
 
-uint64_t calcNextAddrAligned(uint64_t prev_addr, int num_elems, int bytes_per_elem) {
+uint64_t composer::calcNextAddrAligned(uint64_t prev_addr, int num_elems, int bytes_per_elem) {
   uint64_t min_addr = calcNextAddr(prev_addr, num_elems, bytes_per_elem);
   int remain = int(min_addr & 0x7FL);
   return min_addr + 128 - remain;

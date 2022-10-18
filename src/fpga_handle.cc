@@ -18,15 +18,17 @@
 #include <iostream>
 #include <unistd.h>
 #include <pthread.h>
-#include <errno.h>
+#include <composer_alloc.h>
+#include <cerrno>
 
 // for shared memory allocation + mmap
 #include <sys/mman.h>
 #include <fcntl.h>
-#include <sys/stat.h>
+
+using namespace composer;
 
 
-fpga_handle_sim_t::fpga_handle_sim_t() {
+composer::fpga_handle_sim_t::fpga_handle_sim_t() {
   csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
   if (csfd == -1) {
     std::cerr << "Error opening file " << cmd_server_file_name << std::endl;
@@ -45,7 +47,7 @@ fpga_handle_sim_t::fpga_handle_sim_t() {
     std::cerr << "Error opening file " << data_server_file_name << std::endl;
     exit(1);
   }
-  data_server = (comm_file *) mmap(nullptr, sizeof(comm_file), PROT_READ | PROT_WRITE, MAP_SHARED, dsfd, 0);
+  data_server = (data_server_file *) mmap(nullptr, sizeof(data_server_file), PROT_READ | PROT_WRITE, MAP_SHARED, dsfd, 0);
   if (data_server == MAP_FAILED) {
     std::cerr << "Failed to map in data_server_file" << std::endl;
     std::cerr << strerror(errno) << std::endl;
@@ -58,19 +60,23 @@ fpga_handle_sim_t::fpga_handle_sim_t() {
 
 #pragma clang diagnostic pop
 
-fpga_handle_sim_t::~fpga_handle_sim_t() {
+composer::fpga_handle_sim_t::~fpga_handle_sim_t() {
   munmap(cmd_server, sizeof(cmd_server_file));
   close(csfd);
-  for(auto & it : device2virtual) {
-    auto tup = it.second;
-    free(std::get<0>(tup));
+  while (not device2virtual.empty()) {
+    auto tup = device2virtual.begin();
+    this->free(remote_ptr(tup->first, 0));
+    void *mem = std::get<1>(tup->second);
+    munmap(mem, std::get<2>(tup->second));
+    shm_unlink(std::get<3>(tup->second).c_str());
+    device2virtual.erase(device2virtual.begin());
   }
 }
 
-bool fpga_handle_sim_t::is_real() const { return false; }
+bool composer::fpga_handle_sim_t::is_real() const { return false; }
 
 
-rocc_response fpga_handle_sim_t::get_response(int handle) {
+rocc_response composer::fpga_handle_sim_t::get_response_from_handle(int handle) const {
   pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
   // command is now ready
   auto resp = cmd_server->responses[handle];
@@ -81,11 +87,12 @@ rocc_response fpga_handle_sim_t::get_response(int handle) {
   return resp;
 }
 
-int fpga_handle_sim_t::send(const rocc_cmd &c) const {
+composer::response_handle composer::fpga_handle_sim_t::send(const rocc_cmd &c) const {
   // acquire lock over client side
   int success = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
   cmd_server->cmd = c;
+  std::cout << "command in file is " << cmd_server->cmd << std::endl;
   // signal to server that we have a command ready
   success && pthread_mutex_unlock(&cmd_server->server_mut);
   // wait for server to signal that it has read our command
@@ -98,21 +105,22 @@ int fpga_handle_sim_t::send(const rocc_cmd &c) const {
     printf("something failed! surprise!");
     fflush(stdout);
   }
-  return (int)handle;
+  return response_handle(c.xd, handle, *this);
 }
 
-uint64_t fpga_handle_sim_t::malloc(size_t len) {
+composer::remote_ptr composer::fpga_handle_sim_t::malloc(size_t len) {
   // acquire lock over client side
-  pthread_mutex_lock(&data_server->client_mutex);
-  data_server->fsize = len;
+  pthread_mutex_lock(&data_server->data_cmd_send_lock);
+  data_server->op_argument = len;
+  data_server->operation = ALLOC;
   pthread_mutex_unlock(&data_server->server_mut);
   // wait for server to signal that it has read our command
-  pthread_mutex_lock(&data_server->wait_for_request_process);
+  pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   // now the server has returned the device addr (for building commands), and the file name
-  uint64_t addr = data_server->addr;
+  uint64_t addr = data_server->op_argument;
   int fd = shm_open(data_server->fname, O_RDWR, S_IWUSR | S_IRUSR);
   if (fd < 0) {
-    std::cerr << "Error opening file " << data_server->fname << std::endl;
+    std::cerr << "1) Error opening file '" << data_server->fname << "'" << std::endl;
     exit(1);
   }
   void *ptr = mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -121,14 +129,14 @@ uint64_t fpga_handle_sim_t::malloc(size_t len) {
     exit(1);
   }
   // add device addr to private map
-  device2virtual[addr] = std::make_tuple(fd, ptr, len);
+  device2virtual[addr] = std::make_tuple(fd, ptr, len, std::string(data_server->fname));
   // release lock over client side
-  pthread_mutex_unlock(&data_server->client_mutex);
-  return addr;
+  pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+  return composer::remote_ptr(addr, len);
 }
 
-void fpga_handle_sim_t::copy_to_fpga(uint64_t fpga_addr, const void *host_addr, size_t len) {
-  auto it = device2virtual.find(fpga_addr);
+void composer::fpga_handle_sim_t::copy_to_fpga(const remote_ptr &dst, const void *host_addr) {
+  auto it = device2virtual.find(dst.getFpgaAddr());
   if (it == device2virtual.end()) {
     std::cerr << "Error: copy_to_fpga called with invalid fpga_addr" << std::endl;
     std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
@@ -136,28 +144,37 @@ void fpga_handle_sim_t::copy_to_fpga(uint64_t fpga_addr, const void *host_addr, 
     exit(1);
   }
   auto tup = it->second;
-  memcpy(std::get<1>(tup), host_addr, len);
+  memcpy(std::get<1>(tup), host_addr, dst.getLen());
 }
 
-void fpga_handle_sim_t::free(uint64_t fpga_addr) {
-  auto it = device2virtual.find(fpga_addr);
+void composer::fpga_handle_sim_t::copy_from_fpga(void *host_addr, const composer::remote_ptr &src) {
+  auto it = device2virtual.find(src.getFpgaAddr());
   if (it == device2virtual.end()) {
-    std::cerr << "Error: free called with invalid fpga_addr" << std::endl;
+    std::cerr << "Error: copy_from_fpga called with invalid fpga_addr" << std::endl;
     std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
                  " and not a host address. Also, make sure it is the base address returned." << std::endl;
     exit(1);
   }
-  auto tup = it->second;
-  munmap(std::get<1>(tup), std::get<2>(tup));
-  close(std::get<0>(tup));
-  device2virtual.erase(it);
+  void *srcaddr = std::get<1>(it->second);
+  memcpy(host_addr, srcaddr, src.getLen());
+}
+
+void composer::fpga_handle_sim_t::free(composer::remote_ptr ptr) {
+  pthread_mutex_lock(&data_server->data_cmd_send_lock);
+  data_server->op_argument = ptr.getFpgaAddr();
+  data_server->operation = FREE;
+  pthread_mutex_unlock(&data_server->server_mut);
+  // wait for server to signal that it has read our command
+  pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+  // now the server has returned the device addr (for building commands), and the file name
+  pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 }
 
 
-rocc_response fpga_handle_t::flush() {
+composer::rocc_response composer::fpga_handle_t::flush() {
   auto q = rocc_cmd::flush_cmd();
   auto i = send(q);
-  return get_response(i);
+  return i.get();
 }
 
 #ifdef USE_AWS
