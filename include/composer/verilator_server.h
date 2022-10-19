@@ -7,7 +7,7 @@
 
 #include <pthread.h>
 #include <cstdint>
-#include <rocc.h>
+#include "rocc_cmd.h"
 #include <vector>
 #include <tuple>
 #include <unordered_map>

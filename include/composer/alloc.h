@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef COMPOSER_COMPOSER_ALLOC_H
-#define COMPOSER_COMPOSER_ALLOC_H
+#ifndef COMPOSER_ALLOC_H
+#define COMPOSER_ALLOC_H
 
 #include <cinttypes>
 #include <array>
@@ -420,4 +420,4 @@ namespace composer {
 
 }
 
-#endif //COMPOSER_COMPOSER_ALLOC_H
+#endif //COMPOSER_ALLOC_H

@@ -13,4 +13,15 @@ namespace composer {
   uint64_t calcNextAddr(uint64_t prev_addr, int num_elems, int bytes_per_elem);
 
   uint64_t calcNextAddrAligned(uint64_t prev_addr, int num_elems, int bytes_per_elem);
+
+  struct composer_pack_info {
+    int system_id_bits = -1;
+    int core_id_bits = -1;
+
+    composer_pack_info(int system_id_bits, int core_id_bits) {
+      this->system_id_bits = system_id_bits;
+      this->core_id_bits = core_id_bits;
+    }
+  };
+
 }
