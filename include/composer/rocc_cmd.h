@@ -26,6 +26,10 @@
 #include "fpga_handle.h"
 
 namespace composer {
+  enum channel {
+    write = 0,
+    read = 1
+  };
   class rocc_cmd {
     /**
      * Generate a command to start kernel execution on the accelerator. TODO: maybe an accelerator
@@ -57,8 +61,14 @@ namespace composer {
     uint64_t rs1;
     uint64_t rs2;
 
+    bool is_addr_cmd;
+
     rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t rs1Num, uint8_t rs2Num, uint8_t xd, RD rd,
              uint8_t xs1, uint8_t xs2, uint8_t coreId, uint64_t rs1, uint64_t rs2);
+
+    rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t coreId, uint64_t addr, uint64_t length,
+             uint8_t channel_id, channel channel_ty);
+
   public:
 
     static rocc_cmd flush_cmd();
@@ -79,9 +89,10 @@ namespace composer {
             uint16_t system_id,
             uint8_t core_id,
             uint8_t channel_id,
+            composer::channel channel_ty,
             const composer::remote_ptr &ptr);
 
-    [[nodiscard]] uint32_t *pack() const;
+    [[nodiscard]] uint32_t *pack(const composer_pack_info &info) const;
 
     [[nodiscard]] uint16_t getFunction() const;
 

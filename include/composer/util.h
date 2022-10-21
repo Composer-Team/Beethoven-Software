@@ -14,14 +14,12 @@ namespace composer {
 
   uint64_t calcNextAddrAligned(uint64_t prev_addr, int num_elems, int bytes_per_elem);
 
-  struct composer_pack_info {
-    int system_id_bits = -1;
-    int core_id_bits = -1;
+  uint64_t mask(uint64_t num, uint8_t length, uint8_t shift);
 
-    composer_pack_info(int system_id_bits, int core_id_bits) {
-      this->system_id_bits = system_id_bits;
-      this->core_id_bits = core_id_bits;
-    }
+  struct composer_pack_info {
+    int system_id_bits, core_id_bits, channelSelectionBits, transactionLengthBits;
+
+    composer_pack_info(int systemIdBits, int coreIdBits, int channelSelectionBits, int transactionLengthBits);
   };
 
 }

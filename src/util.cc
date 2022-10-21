@@ -27,3 +27,18 @@ uint64_t composer::calcNextAddrAligned(uint64_t prev_addr, int num_elems, int by
   int remain = int(min_addr & 0x7FL);
   return min_addr + 128 - remain;
 }
+
+composer::composer_pack_info::composer_pack_info(
+        int systemIdBits, int coreIdBits, int channelSelectionBits, int transactionLengthBits) :
+        system_id_bits(systemIdBits),
+        core_id_bits(coreIdBits),
+        channelSelectionBits(channelSelectionBits),
+        transactionLengthBits(transactionLengthBits) {}
+
+uint64_t composer::mask(uint64_t num, uint8_t length, uint8_t shift) {
+  uint64_t acc = 0;
+  for (uint16_t i = 0; i < length; ++i) {
+    acc = (acc << 1) | 1;
+  }
+  return (num & acc) << shift;
+}

@@ -1,6 +1,6 @@
 project(composer)
 cmake_minimum_required(VERSION 3.10)
-set(version 1.0.1)
+set(version 1.0.2)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
 include(CMakePackageConfigHelpers)
@@ -29,26 +29,26 @@ add_library(composer SHARED
         include/composer/rocc_cmd.h
         include/composer/rocc_response.h)
 # If we can find the Amazon AWS FPGA, enable it a
-if(NOT "$ENV{COMPOSER_AWS_SDK_DIR}" STREQUAL "")
-  set(AWS_INCLUDE $ENV{COMPOSER_AWS_SDK_DIR}/sdk/userspace/include)
-  target_include_directories(composer PUBLIC
-    $<BUILD_INTERFACE:include> # for headers when building
-    $<BUILD_INTERFACE:${AWS_INCLUDE}>
-    $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}>
-    $<INSTALL_INTERFACE:${AWS_INCLUDE}> # for client in install mode
-    )
-  target_include_directories(composer PUBLIC include ${AWS_INCLUDE})
-  set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -DUSE_AWS )
-  message("Amazon AWS FPGA SDK detected! This installation will support the F1")
-else()
-  message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
-  target_include_directories(composer
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
-  )
-  message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
-endif()
+#if(NOT "$ENV{COMPOSER_AWS_SDK_DIR}" STREQUAL "")
+#  set(AWS_INCLUDE $ENV{COMPOSER_AWS_SDK_DIR}/sdk/userspace/include)
+#  target_include_directories(composer PUBLIC
+#    $<BUILD_INTERFACE:include> # for headers when building
+#    $<BUILD_INTERFACE:${AWS_INCLUDE}>
+#    $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}>
+#    $<INSTALL_INTERFACE:${AWS_INCLUDE}> # for client in install mode
+#    )
+#  target_include_directories(composer PUBLIC include ${AWS_INCLUDE})
+#  set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -DUSE_AWS )
+#  message("Amazon AWS FPGA SDK detected! This installation will support the F1")
+#else()
+message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
+target_include_directories(composer
+PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
+)
+#message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
+#endif()
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/composer")
 set(EXPORT_TARGETS composer)
