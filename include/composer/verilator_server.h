@@ -37,7 +37,9 @@ namespace composer {
 
   enum data_server_op {
     ALLOC = 0,
-    FREE = 1
+    FREE = 1,
+    MOVE_FROM_FPGA = 2,
+    MOVE_TO_FPGA = 3
   };
 
   struct data_server_file {
@@ -52,6 +54,8 @@ namespace composer {
     // when allocation, pass in the length argument here and return value is FPGA addr + fname
     // when free, pass in free address here and there is no return valued
     uint64_t op_argument;
+    uint64_t op2_argument;
+    uint64_t op3_argument;
   };
 }
 

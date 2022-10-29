@@ -3,6 +3,7 @@
 //
 #include "composer/response_handle.h"
 #include "composer/rocc_cmd.h"
+#include "composer/fpga_handle.h"
 
 using namespace composer;
 

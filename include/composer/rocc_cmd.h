@@ -23,7 +23,6 @@
 #include "alloc.h"
 #include <ostream>
 #include "response_handle.h"
-#include "fpga_handle.h"
 
 namespace composer {
   enum channel {

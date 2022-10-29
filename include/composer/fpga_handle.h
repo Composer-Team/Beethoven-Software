@@ -18,48 +18,55 @@
 
 #include <vector>
 #include "util.h"
+#include "verilator_server.h"
+#include <map>
 
 namespace composer {
   class response_handle;
   class rocc_cmd;
 
-  struct rocc_response {
-    uint64_t data;
-    uint8_t core_id;
-    uint8_t system_id;
-    uint8_t rd;
-  private:
-    static uint64_t get_mask(int l) {
-      uint64_t mask = 0;
-      for (int i = 0; i < l; ++i)
-        mask = (mask << 1) | 1;
-      return mask;
-    }
-  public:
-    rocc_response(const uint32_t *buffer, const composer_pack_info &pack_info);
-
-  };
+  class rocc_reponse;
 
   struct fpga_handle_t {
   private:
     friend response_handle;
-    [[nodiscard]] virtual rocc_response get_response_from_handle(int handle) const = 0;
 
-  public:
+    [[nodiscard]] rocc_response get_response_from_handle(int handle) const;
+
+  private:
+    cmd_server_file *cmd_server;
+    int csfd;
+    data_server_file *data_server;
+    int dsfd;
+    std::map<uint64_t, std::tuple<int, void *, int, std::string> > device2virtual;
 
     // return if the handle refers to a real FPGA or not
     [[nodiscard]] virtual bool is_real() const = 0;
 
-    /**
-     * @brief send a command to the FPGA
-     * @return handle referring to response that the command will return. Allows for blocking on the response.
-     */
-    [[nodiscard]] virtual response_handle send(const rocc_cmd &c) const = 0;
 
+  public:
     /**
      * flush all in-flight commands
      */
     rocc_response flush();
+
+    explicit fpga_handle_t();
+    /**
+     * @brief send a command to the FPGA
+     * @return handle referring to response that the command will return. Allows for blocking on the response.
+     */
+
+    [[nodiscard]] response_handle send(const rocc_cmd &c) const;
+
+    ~fpga_handle_t();
+
+    composer::remote_ptr malloc(size_t len);
+
+    void copy_to_fpga(const composer::remote_ptr &dst, const void *host_addr);
+
+    void copy_from_fpga(void *host_addr, const composer::remote_ptr &src);
+
+    void free(composer::remote_ptr fpga_addr);
   };
 
   extern std::vector<fpga_handle_t*> active_fpga_handles;
