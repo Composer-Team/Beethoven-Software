@@ -4,7 +4,8 @@
 
 #include "composer/fpga_handle.h"
 #include <iostream>
-
+#include <cerrno>
+#include <cstring>
 using namespace composer;
 
 std::vector<fpga_handle_t*> composer::active_fpga_handles;

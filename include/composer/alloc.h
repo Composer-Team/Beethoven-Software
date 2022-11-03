@@ -21,6 +21,9 @@
 #include <tuple>
 #include <set>
 #include <vector>
+#include <pthread.h>
+#include <iostream>
+#include <algorithm>
 
 namespace composer {
 
