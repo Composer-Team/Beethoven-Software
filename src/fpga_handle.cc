@@ -6,6 +6,8 @@
 #include <iostream>
 #include <cerrno>
 #include <cstring>
+#include <vector>
+
 using namespace composer;
 
 std::vector<fpga_handle_t*> composer::active_fpga_handles;
@@ -88,15 +90,15 @@ fpga_handle_t::~fpga_handle_t() {
   close(csfd);
   while (not device2virtual.empty()) {
     auto tup = device2virtual.begin();
-    this->free(remote_ptr(tup->first, 0));
+    // TODO consider - is it proper to free it? fpga_handle_t has to be deconstructed but user may manually free segments
+    //    in which case maybe the cleanest way for us to handle this is just implement unique_ptr
+//    this->free(remote_ptr(tup->first, 0));
     void *mem = std::get<1>(tup->second);
     munmap(mem, std::get<2>(tup->second));
     shm_unlink(std::get<3>(tup->second).c_str());
     device2virtual.erase(device2virtual.begin());
   }
 }
-
-bool fpga_handle_t::is_real() const { return false; }
 
 
 rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
@@ -167,7 +169,14 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst, const void *host_addr) {
     exit(1);
   }
   auto tup = it->second;
-  memcpy(std::get<1>(tup), host_addr, dst.getLen());
+//  memcpy(std::get<1>(tup), host_addr, dst.getLen());
+
+  printf("copying to fpga %p %p %x\n", std::get<1>(tup), host_addr, dst.getLen());
+  int *p = (int*)std::get<1>(tup);
+  for (int *pt = p, *hs = (int*)host_addr; pt < p + dst.getLen()/sizeof(int); pt++, hs++ ) {
+    printf("copying %x to %p\n", *hs, pt);
+    *pt = *hs;
+  }
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_TO_FPGA;
   data_server->op_argument = dst.getFpgaAddr();
@@ -187,7 +196,13 @@ void fpga_handle_t::copy_from_fpga(void *host_addr, const remote_ptr &src) {
     exit(1);
   }
   void *srcaddr = std::get<1>(it->second);
-  memcpy(host_addr, srcaddr, src.getLen());
+//  memcpy(host_addr, srcaddr, src.getLen());
+  int *p = (int*)std::get<1>(it->second);
+  for (int *pt = p, *hs = (int*)host_addr; pt < p + src.getLen()/sizeof(int); pt++, hs++ ) {
+    printf("copying %x from %p\n", *pt, pt);
+    *hs = *pt;
+  }
+
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_TO_FPGA;
   data_server->op_argument = (uint64_t)host_addr;

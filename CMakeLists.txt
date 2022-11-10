@@ -24,7 +24,7 @@ add_library(composer SHARED
         src/rocc_response.cc
         include/composer/response_handle.h
         include/composer/rocc_cmd.h
-        include/composer/rocc_response.h)
+        include/composer/rocc_response.h include/composer/allocator_ptr.h)
 
 message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
 target_include_directories(composer

@@ -24,26 +24,9 @@
 #include <pthread.h>
 #include <iostream>
 #include <algorithm>
+#include <composer/allocator_ptr.h>
 
 namespace composer {
-
-  class remote_ptr {
-    // NOTE: For security purposes we could probably pack this structure full of information that guarantees that the
-    //       user is behaving
-    uint64_t fpga_addr;
-    uint32_t len;
-  public:
-
-    [[nodiscard]] uint64_t getFpgaAddr() const {
-      return fpga_addr;
-    }
-
-    [[nodiscard]] uint32_t getLen() const {
-      return len;
-    }
-
-    explicit remote_ptr(uint64_t fpgaAddr, uint32_t len) : fpga_addr(fpgaAddr), len(len) {}
-  };
 
   static constexpr uint8_t log2up(const uint64_t &val) {
     uint64_t acc = 1;
@@ -58,7 +41,10 @@ namespace composer {
   template <uint64_t size,
           uint32_t superblock_size = (1 << 21),
           uint32_t min_block_size = (1 << 12)>
-  struct device_allocator {
+  class device_allocator {
+    uint64_t _sz = size;
+    uint32_t _sbsz = superblock_size;
+    uint32_t _mbsz = min_block_size;
     static constexpr uint8_t addr_bits = log2up(size);
     static constexpr uint8_t log_min_block = log2up(min_block_size);
     static constexpr uint8_t log_superblock_size = log2up(superblock_size);
@@ -148,7 +134,26 @@ namespace composer {
       }
     }
 
-    remote_ptr remote_alloc(uint64_t len) {
+
+    struct block_info {
+      uint32_t superblock_id, block_id;
+      block_info(uint32_t sid, uint32_t bid): superblock_id(sid), block_id(bid) {}
+    };
+    block_info get_block_info(const remote_ptr &ptr, bool verbose=false) {
+      if (verbose) {
+        printf("addr: %16x\n", ptr.getFpgaAddr());
+      }
+      uint32_t superblock_id = (ptr.getFpgaAddr() >> log_superblock_size) & superblock_id_mask();
+      auto &sb = superblocks[superblock_id];
+      if (sb.flags & BLOCK_ALLOC) {
+        auto log_block_size = sb.log_block_size;
+        uint32_t block_id = (ptr.getFpgaAddr() >> log_block_size) & block_id_mask(log_superblock_size);
+        return block_info(superblock_id, block_id);
+      } else return block_info(superblock_id, 0);
+    }
+
+  public:
+    remote_ptr malloc(uint64_t len) {
       const auto log_block_size = std::max(log2up(len), log_min_block);
       uint64_t block_size = 1 << log_block_size;
       uint32_t idx;
@@ -305,28 +310,15 @@ namespace composer {
       }
     }
 
-    struct block_info {
-      uint32_t superblock_id, block_id;
-      block_info(uint32_t sid, uint32_t bid): superblock_id(sid), block_id(bid) {
-
-      }
-    };
-
-    block_info get_block_info(const remote_ptr &ptr) {
-      printf("addr: %16x\n", ptr.getFpgaAddr());
-      uint32_t superblock_id = (ptr.getFpgaAddr() >> log_superblock_size) & superblock_id_mask();
-      auto &sb = superblocks[superblock_id];
-      if (sb.flags & BLOCK_ALLOC) {
-        auto log_block_size = sb.log_block_size;
-        uint32_t block_id = (ptr.getFpgaAddr() >> log_block_size) & block_id_mask(log_superblock_size);
-        return block_info(superblock_id, block_id);
-      } else return block_info(superblock_id, 0);
-    }
-
-    void remote_free(const remote_ptr &p) {
+    void free(remote_ptr p) {
       // TODO security - make sure this pointer belongs to the user who's freeing it
       auto bi = get_block_info(p);
       auto &sb = superblocks[bi.superblock_id];
+      if (p.freed) {
+        fprintf(stderr, "ERROR - attempting to double-free\n");
+        exit(1);
+      }
+      p.freed = true;
       // sanity check flags
       auto flags = sb.flags;
       if ((flags & BLOCK_ALLOC) && (flags & BASE_ALLOCATION)) {
@@ -420,7 +412,6 @@ namespace composer {
       for (auto &l: head_locks) l = PTHREAD_MUTEX_INITIALIZER;
     };
   };
-
 }
 
 #endif //COMPOSER_ALLOC_H

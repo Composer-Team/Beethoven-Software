@@ -5,14 +5,10 @@
 #ifndef COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
 #define COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
 
-#include <pthread.h>
-#include <cstdint>
-#include "rocc_cmd.h"
-#include <vector>
-#include <tuple>
-#include <unordered_map>
-#include <pthread.h>
-#include <cstdint>
+
+#include <composer/rocc_response.h>
+#include <composer/rocc_cmd.h>
+#include <string>
 
 #define MAX_CONCURRENT_COMMANDS 256
 namespace composer {

@@ -16,10 +16,10 @@
 #ifndef FPGA_HANDLE_H
 #define FPGA_HANDLE_H
 
-#include <vector>
-#include "util.h"
-#include "verilator_server.h"
+#include <composer/rocc_response.h>
+#include <composer/verilator_server.h>
 #include <map>
+#include <composer/allocator_ptr.h>
 
 namespace composer {
   class response_handle;
@@ -39,10 +39,6 @@ namespace composer {
     data_server_file *data_server;
     int dsfd;
     std::map<uint64_t, std::tuple<int, void *, int, std::string> > device2virtual;
-
-    // return if the handle refers to a real FPGA or not
-    [[nodiscard]] virtual bool is_real() const = 0;
-
 
   public:
     /**

@@ -17,12 +17,12 @@
 #ifndef ROCC_H
 #define ROCC_H
 
-#include <zconf.h>
-#include "composer_consts.h"
-#include <cstdint>
-#include "alloc.h"
-#include <ostream>
-#include "response_handle.h"
+#include <cinttypes>
+#include <composer/composer_consts.h>
+#include <composer/allocator_ptr.h>
+#include <composer/util.h>
+#include <composer/response_handle.h>
+
 
 namespace composer {
   enum channel {
