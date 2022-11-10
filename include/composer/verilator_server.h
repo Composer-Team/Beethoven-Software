@@ -12,8 +12,8 @@
 
 #define MAX_CONCURRENT_COMMANDS 256
 namespace composer {
-  static const std::string cmd_server_file_name = "/tmp/composer_cmd_server";
-  static const std::string data_server_file_name = "/tmp/composer_data_server";
+  static const std::string cmd_server_file_name = "/composer_cmd_server";
+  static const std::string data_server_file_name = "/composer_data_server";
 
   struct cmd_server_file {
     pthread_mutex_t server_mut = PTHREAD_MUTEX_INITIALIZER;
