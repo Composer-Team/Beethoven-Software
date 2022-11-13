@@ -4,6 +4,7 @@
 
 #include "composer/fpga_handle.h"
 #include <iostream>
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <vector>

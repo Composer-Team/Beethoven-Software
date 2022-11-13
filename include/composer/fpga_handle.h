@@ -19,6 +19,7 @@
 #include <composer/rocc_response.h>
 #include <composer/verilator_server.h>
 #include <map>
+#include <vector>
 #include <composer/allocator_ptr.h>
 
 namespace composer {
