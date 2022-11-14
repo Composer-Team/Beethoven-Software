@@ -114,21 +114,22 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
 
 response_handle fpga_handle_t::send(const rocc_cmd &c) const {
   // acquire lock over client side
-  int success = pthread_mutex_lock(&cmd_server->cmd_send_lock);
+  int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
   cmd_server->cmd = c;
   std::cout << "command in file is " << cmd_server->cmd << std::endl;
   // signal to server that we have a command ready
-  success && pthread_mutex_unlock(&cmd_server->server_mut);
+  error |= pthread_mutex_unlock(&cmd_server->server_mut);
   // wait for server to signal that it has read our command
-  success && pthread_mutex_lock(&cmd_server->cmd_recieve_server_resp_lock);
+  error |= pthread_mutex_lock(&cmd_server->cmd_recieve_server_resp_lock);
   // get the handle that we use to wait for response asynchronously
   uint64_t handle = cmd_server->pthread_wait_id;
   // release lock over client side
-  success && pthread_mutex_unlock(&cmd_server->cmd_send_lock);
-  if (not success) {
-    printf("something failed! surprise!");
+  error |= pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+  if (error) {
+    printf("Error in send: %s\n", strerror(errno));
     fflush(stdout);
+    exit(1);
   }
   return response_handle(c.getXd(), handle, *this);
 }
