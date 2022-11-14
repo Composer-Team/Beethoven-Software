@@ -8,11 +8,12 @@ include(CMakeDependentOption)
 include(CheckCXXCompilerFlag)
 include(GNUInstallDirs)
 
-if (NOT DEFINED ${CMAKE_BUILD_TYPE})
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
             STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
 endif ()
+message("Build type: ${CMAKE_BUILD_TYPE}")
 set(COMPOSER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/composer")
 
 add_library(composer SHARED
@@ -25,6 +26,8 @@ add_library(composer SHARED
         include/composer/response_handle.h
         include/composer/rocc_cmd.h
         include/composer/rocc_response.h include/composer/allocator_ptr.h)
+
+target_link_options(composer PUBLIC -lrt)
 
 message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
 target_include_directories(composer
