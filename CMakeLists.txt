@@ -33,6 +33,8 @@ if (APPLE)
 elseif (UNIX)
     message(Debug "Building for Linux platform")
     target_link_options(composer PUBLIC -lrt)
+else ()
+    message(FATAL_ERROR "Unsupported platform.")
 endif ()
 
 message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
