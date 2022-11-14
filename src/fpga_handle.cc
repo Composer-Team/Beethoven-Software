@@ -54,20 +54,20 @@ using namespace composer;
 
 
 fpga_handle_t::fpga_handle_t() {
-  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
+  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, S_IROTH | S_IWOTH);
   if (csfd == -1) {
-    std::cerr << "Error opening file " << cmd_server_file_name << std::endl;
+    std::cerr << "Error opening file " << cmd_server_file_name << " " << strerror(errno) << std::endl;
     exit(1);
   }
   cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), PROT_READ | PROT_WRITE, MAP_SHARED, csfd, 0);
   if (cmd_server == MAP_FAILED) {
-    std::cerr << "Failed to map in cmd_server_file" << std::endl;
+    std::cerr << "Failed to map in cmd_server_file\t" << strerror(errno) <<  std::endl;
     std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
 
   cmd_server->cmd = rocc_cmd::flush_cmd();
-  dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
+  dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, S_IWOTH | S_IROTH);
   if (dsfd < 0) {
     std::cerr << "Error opening file " << data_server_file_name << std::endl;
     exit(1);
