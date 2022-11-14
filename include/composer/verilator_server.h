@@ -14,22 +14,35 @@
 namespace composer {
   static const std::string cmd_server_file_name = "/composer_cmd_server";
   static const std::string data_server_file_name = "/composer_data_server";
-
-  struct cmd_server_file {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+  struct cmd_server_file { // NOLINT(cppcoreguidelines-pro-type-member-init)
+    // lingo: process = client, server = composer runtime
+    // lock to wake up server
     pthread_mutex_t server_mut = PTHREAD_MUTEX_INITIALIZER;
+    // lock for processes to arbitrate who's sending command
     pthread_mutex_t cmd_send_lock = PTHREAD_MUTEX_INITIALIZER;
+    // lock to notify process of command send result
     pthread_mutex_t cmd_recieve_server_resp_lock = PTHREAD_MUTEX_INITIALIZER;
+    // locks to stall processes until result is ready
     pthread_mutex_t wait_for_response[MAX_CONCURRENT_COMMANDS]{PTHREAD_MUTEX_INITIALIZER};
-
     rocc_response responses[MAX_CONCURRENT_COMMANDS];
-    pthread_mutex_t free_list_lock;
+    int processes_waiting = 0;
+    pthread_mutex_t process_waiting_count_lock; // needs pshared flag
+
+    // once we've got a result back, need to free up response slot
+    pthread_mutex_t free_list_lock; // needs pshared flag so can't initialize inline
+    // stack of free response slots
     uint16_t free_list[MAX_CONCURRENT_COMMANDS];
     uint16_t free_list_idx = 255;
-    // server return values
+    // server return values - which response to use for process
     uint64_t pthread_wait_id = 0;
     // client request
     rocc_cmd cmd;
+
+    static void init(cmd_server_file &csf);
   };
+#pragma clang diagnostic pop
 
   enum data_server_op {
     ALLOC = 0,
@@ -52,6 +65,7 @@ namespace composer {
     uint64_t op_argument;
     uint64_t op2_argument;
     uint64_t op3_argument;
+    static void init(data_server_file &dsf);
   };
 }
 

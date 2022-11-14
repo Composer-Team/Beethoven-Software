@@ -178,7 +178,6 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst, const void *host_addr) {
     printf("copying %x to %p\n", *hs, pt);
     *pt = *hs;
   }
-  return;
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_TO_FPGA;
   data_server->op_argument = dst.getFpgaAddr();
@@ -204,9 +203,8 @@ void fpga_handle_t::copy_from_fpga(void *host_addr, const remote_ptr &src) {
 //    printf("copying %x from %p\n", *pt, pt);
 //    *hs = *pt;
 //  }
-  return;
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
-  data_server->operation = data_server_op::MOVE_TO_FPGA;
+  data_server->operation = data_server_op::MOVE_FROM_FPGA;
   data_server->op_argument = (uint64_t)host_addr;
   data_server->op2_argument = src.getFpgaAddr();
   data_server->op3_argument = src.getLen();
