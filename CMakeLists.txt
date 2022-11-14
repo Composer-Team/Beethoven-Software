@@ -28,7 +28,12 @@ add_library(composer SHARED
         include/composer/rocc_cmd.h
         include/composer/rocc_response.h include/composer/allocator_ptr.h)
 
-target_link_options(composer PUBLIC -lrt)
+if (APPLE)
+    message(Debug "Building for Darwin/OSX platform")
+elseif (UNIX)
+    message(Debug "Building for Linux platform")
+    target_link_options(composer PUBLIC -lrt)
+endif ()
 
 message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
 target_include_directories(composer

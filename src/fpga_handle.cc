@@ -103,6 +103,11 @@ fpga_handle_t::~fpga_handle_t() {
 
 
 rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
+  // let response poller in server know that someone is now waiting
+  pthread_mutex_lock(&cmd_server->process_waiting_count_lock);
+  cmd_server->processes_waiting++;
+  pthread_mutex_unlock(&cmd_server->process_waiting_count_lock);
+
   pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
   // command is now ready
   auto resp = cmd_server->responses[handle];
