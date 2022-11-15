@@ -4,6 +4,7 @@
 
 #include "composer/verilator_server.h"
 #include <pthread.h>
+#include <cstring>
 
 using namespace composer;
 
