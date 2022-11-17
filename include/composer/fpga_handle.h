@@ -64,6 +64,8 @@ namespace composer {
     void copy_from_fpga(void *host_addr, const composer::remote_ptr &src);
 
     void free(composer::remote_ptr fpga_addr);
+
+    void shutdown() const;
   };
 
   extern std::vector<fpga_handle_t*> active_fpga_handles;

@@ -44,7 +44,7 @@ target_include_directories(composer
         $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
         )
 
-if (EXISTS "$ENV{COMPOSER_ROOT}/aws-fpga")
+if (EXISTS "$ENV{COMPOSER_ROOT}/aws-fpga" AND NOT "${FORCE_NO_AWS}" STREQUAL "1")
 # If we can find the Amazon AWS FPGA, enable it a
     set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -DUSE_AWS)
     include_directories($ENV{COMPOSER_ROOT}/aws-fpga/sdk/userspace/include)

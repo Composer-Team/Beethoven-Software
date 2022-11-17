@@ -240,3 +240,10 @@ rocc_response fpga_handle_t::flush() {
   auto i = send(q);
   return i.get();
 }
+
+void fpga_handle_t::shutdown() const {
+  pthread_mutex_lock(&cmd_server->cmd_send_lock);
+  pthread_mutex_unlock(&cmd_server->server_mut);
+  cmd_server->quit = true;
+  pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+}

@@ -8,6 +8,7 @@
 using namespace composer;
 
 void cmd_server_file::init(cmd_server_file &csf) {
+
   pthread_mutexattr_t attrs;
   pthread_mutexattr_init(&attrs);
   pthread_mutexattr_setpshared(&attrs, PTHREAD_PROCESS_SHARED);
@@ -26,6 +27,7 @@ void cmd_server_file::init(cmd_server_file &csf) {
 // wait_responses are all initially available
   for (int i = 0; i < MAX_CONCURRENT_COMMANDS; ++i) csf.free_list[i] = i;
   csf.free_list_idx = 255;
+  csf.quit = false;
 }
 
 void data_server_file::init(data_server_file &dsf) {

@@ -37,6 +37,7 @@ namespace composer {
     uint16_t free_list_idx = 255;
     // server return values - which response to use for process
     uint64_t pthread_wait_id = 0;
+    uint64_t quit;
     // client request
     rocc_cmd cmd;
 
