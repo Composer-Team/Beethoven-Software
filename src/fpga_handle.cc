@@ -182,10 +182,8 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst, const void *host_addr) {
   auto tup = it->second;
 //  memcpy(std::get<1>(tup), host_addr, dst.getLen());
 
-  printf("copying to fpga %p %p %x\n", std::get<1>(tup), host_addr, dst.getLen());
   int *p = (int*)std::get<1>(tup);
   for (int *pt = p, *hs = (int*)host_addr; pt < p + dst.getLen()/sizeof(int); pt++, hs++ ) {
-    printf("copying %x to %p\n", *hs, pt);
     *pt = *hs;
   }
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
