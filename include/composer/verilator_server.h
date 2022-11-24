@@ -9,11 +9,17 @@
 #include <composer/rocc_response.h>
 #include <composer/rocc_cmd.h>
 #include <string>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #define MAX_CONCURRENT_COMMANDS 256
 namespace composer {
   static const std::string cmd_server_file_name = "/composer_cmd_server";
   static const std::string data_server_file_name = "/composer_data_server";
+
+  const int file_access_flags = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+  const int file_access_prots = PROT_READ | PROT_WRITE;
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
   struct cmd_server_file { // NOLINT(cppcoreguidelines-pro-type-member-init)

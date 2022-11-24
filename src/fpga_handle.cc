@@ -54,12 +54,12 @@ using namespace composer;
 
 
 fpga_handle_t::fpga_handle_t() {
-  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, S_IROTH | S_IWOTH);
+  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR , file_access_flags);
   if (csfd == -1) {
     std::cerr << "Error opening file " << cmd_server_file_name << " " << strerror(errno) << std::endl;
     exit(1);
   }
-  cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), PROT_READ | PROT_WRITE, MAP_SHARED, csfd, 0);
+  cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), file_access_prots, MAP_SHARED, csfd, 0);
   if (cmd_server == MAP_FAILED) {
     std::cerr << "Failed to map in cmd_server_file\t" << strerror(errno) <<  std::endl;
     std::cerr << strerror(errno) << std::endl;
@@ -67,12 +67,12 @@ fpga_handle_t::fpga_handle_t() {
   }
 
   cmd_server->cmd = rocc_cmd::flush_cmd();
-  dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, S_IWOTH | S_IROTH);
+  dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, file_access_flags);
   if (dsfd < 0) {
     std::cerr << "Error opening file " << data_server_file_name << std::endl;
     exit(1);
   }
-  data_server = (data_server_file *) mmap(nullptr, sizeof(data_server_file), PROT_READ | PROT_WRITE, MAP_SHARED, dsfd, 0);
+  data_server = (data_server_file *) mmap(nullptr, sizeof(data_server_file), file_access_prots, MAP_SHARED, dsfd, 0);
   if (data_server == MAP_FAILED) {
     std::cerr << "Failed to map in data_server_file" << std::endl;
     std::cerr << strerror(errno) << std::endl;
