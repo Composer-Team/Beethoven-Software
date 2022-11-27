@@ -127,7 +127,7 @@ response_handle fpga_handle_t::send(const rocc_cmd &c) const {
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
   cmd_server->cmd = c;
-  std::cout << "command in file is " << cmd_server->cmd << std::endl;
+//  std::cout << "command in file is " << cmd_server->cmd << std::endl;
   // signal to server that we have a command ready
   error |= pthread_mutex_unlock(&cmd_server->server_mut);
   // wait for server to signal that it has read our command
