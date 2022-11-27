@@ -29,6 +29,7 @@ void cmd_server_file::init(cmd_server_file &csf) {
   for (int i = 0; i < MAX_CONCURRENT_COMMANDS; ++i) csf.free_list[i] = i;
   csf.free_list_idx = 255;
   csf.quit = false;
+  csf.processes_waiting = 0;
 }
 
 void data_server_file::init(data_server_file &dsf) {
