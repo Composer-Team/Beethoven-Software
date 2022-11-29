@@ -39,6 +39,7 @@ void data_server_file::init(data_server_file &dsf) {
 
   pthread_mutex_init(&dsf.server_mut, &attrs);
   pthread_mutex_init(&dsf.data_cmd_recieve_resp_lock, &attrs);
+  pthread_mutex_lock(&dsf.data_cmd_recieve_resp_lock);
   pthread_mutex_init(&dsf.data_cmd_send_lock, &attrs);
   memset(dsf.fname, 0, 512);
   dsf.op_argument = 0;
