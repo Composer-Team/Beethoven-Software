@@ -173,14 +173,14 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 }
 
 void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
-  auto it = device2virtual.find(dst.getFpgaAddr());
-  if (it == device2virtual.end()) {
-    std::cerr << "Error: copy_to_fpga called with invalid fpga_addr" << std::endl;
-    std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
-                 " and not a host address. Also, make sure it is the base address returned." << std::endl;
-    exit(1);
-  }
-  auto tup = it->second;
+//  auto it = device2virtual.find(dst.getFpgaAddr());
+//  if (it == device2virtual.end()) {
+//    std::cerr << "Error: copy_to_fpga called with invalid fpga_addr" << std::endl;
+//    std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
+//                 " and not a host address. Also, make sure it is the base address returned." << std::endl;
+//    exit(1);
+//  }
+//  auto tup = it->second;
 //  memcpy(std::get<1>(tup), host_addr, dst.getLen());
 
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
@@ -193,13 +193,13 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
 }
 
 void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
-  auto it = device2virtual.find(src.getFpgaAddr());
-  if (it == device2virtual.end()) {
-    std::cerr << "Error: copy_from_fpga called with invalid fpga_addr" << std::endl;
-    std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
-                 " and not a host address. Also, make sure it is the base address returned." << std::endl;
-    exit(1);
-  }
+//  auto it = device2virtual.find(src.getFpgaAddr());
+//  if (it == device2virtual.end()) {
+//    std::cerr << "Error: copy_from_fpga called with invalid fpga_addr" << std::endl;
+//    std::cerr << "\t Make sure that you're using the device addr returned from fpga_handle_t::malloc"
+//                 " and not a host address. Also, make sure it is the base address returned." << std::endl;
+//    exit(1);
+//  }
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_FROM_FPGA;
   data_server->op2_argument = src.getFpgaAddr();
@@ -219,7 +219,6 @@ void fpga_handle_t::free(remote_ptr ptr) {
   // now the server has returned the device addr (for building commands), and the file name
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 }
-
 
 rocc_response fpga_handle_t::flush() {
   auto q = rocc_cmd::flush_cmd();
