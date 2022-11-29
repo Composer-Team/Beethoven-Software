@@ -59,9 +59,9 @@ namespace composer {
 
     composer::remote_ptr malloc(size_t len);
 
-    void copy_to_fpga(const composer::remote_ptr &dst, const void *host_addr);
+    void copy_to_fpga(const composer::remote_ptr &dst);
 
-    void copy_from_fpga(void *host_addr, const composer::remote_ptr &src);
+    void copy_from_fpga(const composer::remote_ptr &src);
 
     void free(composer::remote_ptr fpga_addr);
 

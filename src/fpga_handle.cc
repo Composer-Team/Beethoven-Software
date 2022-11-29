@@ -11,11 +11,11 @@
 
 using namespace composer;
 
-std::vector<fpga_handle_t*> composer::active_fpga_handles;
+std::vector<fpga_handle_t *> composer::active_fpga_handles;
 
-fpga_handle_t* composer::current_handle_context;
+fpga_handle_t *composer::current_handle_context;
 
-void composer::set_fpga_context(fpga_handle_t* handle) {
+void composer::set_fpga_context(fpga_handle_t *handle) {
   current_handle_context = handle;
   if (std::find(active_fpga_handles.begin(), active_fpga_handles.end(), handle) == active_fpga_handles.end()) {
     std::cerr << "The provided handle appears to have not been properly constructed. Please use the provided"
@@ -54,14 +54,14 @@ using namespace composer;
 
 
 fpga_handle_t::fpga_handle_t() {
-  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR , file_access_flags);
+  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, file_access_flags);
   if (csfd == -1) {
     std::cerr << "Error opening file " << cmd_server_file_name << " " << strerror(errno) << std::endl;
     exit(1);
   }
   cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), file_access_prots, MAP_SHARED, csfd, 0);
   if (cmd_server == MAP_FAILED) {
-    std::cerr << "Failed to map in cmd_server_file\t" << strerror(errno) <<  std::endl;
+    std::cerr << "Failed to map in cmd_server_file\t" << strerror(errno) << std::endl;
     std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
@@ -154,24 +154,25 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   // now the server has returned the device addr (for building commands), and the file name
   uint64_t addr = data_server->op_argument;
-  int fd = shm_open(data_server->fname, O_RDWR, S_IWUSR | S_IRUSR);
+  int fd = shm_open(data_server->fname, O_RDWR, file_access_flags);
   if (fd < 0) {
-    std::cerr << "1) Error opening file '" << data_server->fname << "'" << std::endl;
+    std::cerr << "1) Error opening file '" << data_server->fname << "' - " << std::string(strerror(errno)) << std::endl;
     exit(1);
   }
-  void *ptr = mmap(nullptr, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void *ptr = mmap(nullptr, len, file_access_prots, MAP_SHARED, fd, 0);
   if (ptr == MAP_FAILED) {
-    std::cerr << "Failed to map in file " << data_server->fname << std::endl;
+    std::cerr << "Failed to map in file " << data_server->fname << " - " << std::string(strerror(errno)) << std::endl;
+
     exit(1);
   }
   // add device addr to private map
   device2virtual[addr] = std::make_tuple(fd, ptr, len, std::string(data_server->fname));
   // release lock over client side
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-  return remote_ptr(addr, len);
+  return remote_ptr(addr, ptr, len);
 }
 
-void fpga_handle_t::copy_to_fpga(const remote_ptr &dst, const void *host_addr) {
+void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
   auto it = device2virtual.find(dst.getFpgaAddr());
   if (it == device2virtual.end()) {
     std::cerr << "Error: copy_to_fpga called with invalid fpga_addr" << std::endl;
@@ -182,21 +183,16 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst, const void *host_addr) {
   auto tup = it->second;
 //  memcpy(std::get<1>(tup), host_addr, dst.getLen());
 
-  int *p = (int*)std::get<1>(tup);
-  for (int *pt = p, *hs = (int*)host_addr; pt < p + dst.getLen()/sizeof(int); pt++, hs++ ) {
-    *pt = *hs;
-  }
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_TO_FPGA;
   data_server->op_argument = dst.getFpgaAddr();
-  data_server->op2_argument = (uint64_t)host_addr;
   data_server->op3_argument = dst.getLen();
   pthread_mutex_unlock(&data_server->server_mut);
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 }
 
-void fpga_handle_t::copy_from_fpga(void *host_addr, const remote_ptr &src) {
+void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   auto it = device2virtual.find(src.getFpgaAddr());
   if (it == device2virtual.end()) {
     std::cerr << "Error: copy_from_fpga called with invalid fpga_addr" << std::endl;
@@ -204,16 +200,8 @@ void fpga_handle_t::copy_from_fpga(void *host_addr, const remote_ptr &src) {
                  " and not a host address. Also, make sure it is the base address returned." << std::endl;
     exit(1);
   }
-  void *srcaddr = std::get<1>(it->second);
-  memcpy(host_addr, srcaddr, src.getLen());
-//  int *p = (int*)std::get<1>(it->second);
-//  for (int *pt = p, *hs = (int*)host_addr; pt < p + src.getLen()/sizeof(int); pt++, hs++ ) {
-//    printf("copying %x from %p\n", *pt, pt);
-//    *hs = *pt;
-//  }
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_FROM_FPGA;
-  data_server->op_argument = (uint64_t)host_addr;
   data_server->op2_argument = src.getFpgaAddr();
   data_server->op3_argument = src.getLen();
   pthread_mutex_unlock(&data_server->server_mut);

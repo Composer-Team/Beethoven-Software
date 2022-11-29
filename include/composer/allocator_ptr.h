@@ -11,6 +11,7 @@ namespace composer {
     // NOTE: For security purposes we could probably pack this structure full of information that guarantees that the
     //       user is behaving
     uint64_t fpga_addr;
+    void * host_addr;
     uint32_t len;
   public:
     bool freed;
@@ -23,7 +24,13 @@ namespace composer {
       return len;
     }
 
-    explicit remote_ptr(uint64_t fpgaAddr, uint32_t len) : fpga_addr(fpgaAddr), len(len), freed(false) {}
+    [[nodiscard]] void *getHostAddr() const {
+      return host_addr;
+    }
+
+    explicit remote_ptr(uint64_t fpgaAddr, uint32_t len) : fpga_addr(fpgaAddr), len(len), freed(false), host_addr(nullptr) {}
+
+    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, uint32_t len) : fpga_addr(fpgaAddr), host_addr(hostAddr), len(len), freed(false){}
   };
 }
 
