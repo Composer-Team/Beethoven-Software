@@ -43,15 +43,14 @@ target_include_directories(composer
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
         )
-
-if (EXISTS "$ENV{COMPOSER_ROOT}/aws-fpga" AND NOT "${FORCE_NO_AWS}" STREQUAL "1")
-# If we can find the Amazon AWS FPGA, enable it a
-    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -DUSE_AWS)
-    include_directories($ENV{COMPOSER_ROOT}/aws-fpga/sdk/userspace/include)
-    message("Amazon AWS FPGA SDK detected! This installation will support the F1")
-else ()
-    message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
-endif ()
+#
+#if (EXISTS "$ENV{COMPOSER_ROOT}/aws-fpga" AND NOT "${FORCE_NO_AWS}" STREQUAL "1")
+## If we can find the Amazon AWS FPGA, enable it a
+#    include_directories($ENV{COMPOSER_ROOT}/aws-fpga/sdk/userspace/include)
+#    message("Amazon AWS FPGA SDK detected! This installation will support the F1")
+#else ()
+#    message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
+#endif ()
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/composer")
 set(EXPORT_TARGETS composer)
