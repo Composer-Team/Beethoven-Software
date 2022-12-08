@@ -221,7 +221,7 @@ namespace composer {
           pthread_mutex_unlock(&my_sb.lock);
           pthread_mutex_unlock(&my_head_lock);
         }
-        printf("sbid: %lu, bid: %lu, flags: %d\n", superblock_id, block_id, superblocks[superblock_id].flags); fflush(stdout);
+//        printf("sbid: %lu, bid: %lu, flags: %d\n", superblock_id, block_id, superblocks[superblock_id].flags); fflush(stdout);
         return remote_ptr(superblock_id * superblock_size + block_id * block_size, len);
       } else {
         // we're just going to use a huge allocation (not within a superblock)
