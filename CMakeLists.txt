@@ -7,6 +7,7 @@ include(CMakePackageConfigHelpers)
 include(CMakeDependentOption)
 include(CheckCXXCompilerFlag)
 include(GNUInstallDirs)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
