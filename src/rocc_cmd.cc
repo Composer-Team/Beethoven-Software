@@ -73,9 +73,10 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
   return buf;
 }
 
-rocc_cmd rocc_cmd::addr_cmd(uint16_t system_id, uint8_t core_id, uint8_t channel_id, channel channel_ty, const remote_ptr &ptr) {
-  return rocc_cmd(ROCC_FUNC_ADDR, system_id, ROCC_OP_ACCEL, core_id, // NOLINT(modernize-return-braced-init-list)
-                  ptr.getFpgaAddr(), ptr.getLen(), channel_id, channel_ty);
+rocc_cmd rocc_cmd::addr_cmd(ChannelAddressInfo info, const remote_ptr &ptr) {
+  assert(info.channel_address_identifier != 0xFF);
+  return rocc_cmd(ROCC_FUNC_ADDR, info.system_id, ROCC_OP_ACCEL, info.core_id, // NOLINT(modernize-return-braced-init-list)
+                  ptr.getFpgaAddr(), ptr.getLen(), info.channel_address_identifier);
 }
 
 rocc_cmd
@@ -108,9 +109,9 @@ rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t
 
 // short hand for addr command
 rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t coreId, uint64_t addr, uint64_t length,
-                   uint8_t channel_id, channel channel_ty):
-function(function), system_id(systemId), opcode(opcode), core_id(coreId), rs1_num(channel_id), rs1(length), rs2(addr),
-xs1(false), xs2(false), xd(false), rs2_num(int(channel_ty)), rd(RD::R0), is_addr_cmd(true) {}
+                   uint8_t channel_subidx):
+function(function), system_id(systemId), opcode(opcode), core_id(coreId), rs1_num(channel_subidx & 0x1F), rs1(length), rs2(addr),
+xs1(false), xs2(false), xd(false), rs2_num((channel_subidx >> 5) & 0x7), rd(RD::R0), is_addr_cmd(true) {}
 
 
 uint16_t rocc_cmd::getFunction() const {
@@ -191,3 +192,6 @@ response_handle rocc_cmd::send() const {
   }
   return ctx->send(*this);
 }
+
+ChannelAddressInfo::ChannelAddressInfo(uint8_t coreId, uint16_t systemId, uint8_t channelAddressIdentifier) : core_id(
+        coreId), system_id(systemId), channel_address_identifier(channelAddressIdentifier) {}

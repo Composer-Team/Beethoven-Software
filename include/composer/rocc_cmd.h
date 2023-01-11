@@ -25,16 +25,16 @@
 
 
 namespace composer {
-  enum channel {
-    write = 0,
-    read = 1
+  struct ChannelAddressInfo {
+    uint8_t core_id;
+    uint16_t system_id;
+    uint8_t channel_address_identifier;
+
+    ChannelAddressInfo(uint8_t coreId, uint16_t systemId, uint8_t channelAddressIdentifier);
   };
   class rocc_cmd {
     /**
-     * Generate a command to start kernel execution on the accelerator. TODO: maybe an accelerator
-     * should be able to support more than one command per functional unit. You could of course do that
-     * by commandeering another instruction field (e.g. rs1) but it would be more natural to use the
-     * function bits
+     * Generate a command to start kernel execution on the accelerator.
      * @param system_id
      * @param rs1_num
      * @param rs2_num
@@ -66,7 +66,7 @@ namespace composer {
              uint8_t xs1, uint8_t xs2, uint8_t coreId, uint64_t rs1, uint64_t rs2);
 
     rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t coreId, uint64_t addr, uint64_t length,
-             uint8_t channel_id, channel channel_ty);
+             uint8_t channel_subidx);
 
   public:
 
@@ -85,10 +85,7 @@ namespace composer {
             uint64_t rs2);
 
     static rocc_cmd addr_cmd(
-            uint16_t system_id,
-            uint8_t core_id,
-            uint8_t channel_id,
-            composer::channel channel_ty,
+            ChannelAddressInfo info,
             const composer::remote_ptr &ptr);
 
     [[nodiscard]] uint32_t *pack(const composer_pack_info &info) const;
