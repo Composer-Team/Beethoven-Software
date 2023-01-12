@@ -26,11 +26,11 @@
 
 namespace composer {
   struct ChannelAddressInfo {
-    uint8_t core_id;
-    uint16_t system_id;
+    uint16_t core_id;
+    uint8_t system_id;
     uint8_t channel_address_identifier;
 
-    ChannelAddressInfo(uint8_t coreId, uint16_t systemId, uint8_t channelAddressIdentifier);
+    ChannelAddressInfo(uint8_t systemId, uint16_t coreId, uint8_t channelAddressIdentifier);
   };
   class rocc_cmd {
     /**

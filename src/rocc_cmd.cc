@@ -61,7 +61,7 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
   // 5 bits
   buf[0] |= ((rs2_num & 0x1F) << 20);
   // 7 bits
-  uint32_t funct = (system_id << 3) | (function & 0x7);
+  uint32_t funct = ((system_id << 3) & 0x78) | (function & 0x7);
   buf[0] |= ((funct & 0x7F) << 25);
   // 7 + 5 + 1 + 1 + 1 + 5 + 5 + 7 = 32bit
 
@@ -190,5 +190,5 @@ response_handle rocc_cmd::send() const {
   return ctx->send(*this);
 }
 
-ChannelAddressInfo::ChannelAddressInfo(uint8_t coreId, uint16_t systemId, uint8_t channelAddressIdentifier) : core_id(
+ChannelAddressInfo::ChannelAddressInfo(uint8_t systemId, uint16_t coreId, uint8_t channelAddressIdentifier) : core_id(
         coreId), system_id(systemId), channel_address_identifier(channelAddressIdentifier) {}
