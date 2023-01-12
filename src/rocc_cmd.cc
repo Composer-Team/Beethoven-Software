@@ -17,6 +17,7 @@
 #include "composer/util.h"
 #include <iostream>
 #include <cstring>
+#include <cassert>
 #include "composer/fpga_handle.h"
 
 using namespace composer;
