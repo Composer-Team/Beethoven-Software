@@ -39,14 +39,8 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
   memset(buf, 0, sizeof(int32_t) * 5);
   // TODO check that there are no overflows for the provided values (not outside logical range)
   uint64_t rs1_comb;
-  if (is_addr_cmd) {
-    printf("detected addr command\n");
-    rs1_comb = (rs2_num & 1) | (mask(rs1_num, info.channelSelectionBits-1, 1)) |
-            (mask(rs1, info.transactionLengthBits, info.channelSelectionBits));
-  } else {
-    // combine core id into rs1 for delivery to core
-    rs1_comb = rs1 | long(core_id) << 56;
-  }
+  // combine core id into rs1 for delivery to core
+  rs1_comb = rs1 | long(core_id) << 56;
   buf[1] = rs1_comb >> 32;
   buf[2] = (rs1_comb & 0xFFFFFFFF);
   buf[4] = rs2 & 0xFFFFFFFF;
@@ -75,7 +69,8 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
 
 rocc_cmd rocc_cmd::addr_cmd(ChannelAddressInfo info, const remote_ptr &ptr) {
   assert(info.channel_address_identifier != 0xFF);
-  return rocc_cmd(ROCC_FUNC_ADDR, info.system_id, ROCC_OP_ACCEL, info.core_id, // NOLINT(modernize-return-braced-init-list)
+  return rocc_cmd(ROCC_FUNC_ADDR, info.system_id, ROCC_OP_ACCEL,
+                  info.core_id, // NOLINT(modernize-return-braced-init-list)
                   ptr.getFpgaAddr(), ptr.getLen(), info.channel_address_identifier);
 }
 
@@ -109,9 +104,10 @@ rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t
 
 // short hand for addr command
 rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t coreId, uint64_t addr, uint64_t length,
-                   uint8_t channel_subidx):
-function(function), system_id(systemId), opcode(opcode), core_id(coreId), rs1_num(channel_subidx & 0x1F), rs1(length), rs2(addr),
-xs1(false), xs2(false), xd(false), rs2_num((channel_subidx >> 5) & 0x7), rd(RD::R0), is_addr_cmd(true) {}
+                   uint8_t channel_subidx) :
+        function(function), system_id(systemId), opcode(opcode), core_id(coreId), rs1_num(channel_subidx & 0x1F),
+        rs1(length), rs2(addr),
+        xs1(false), xs2(false), xd(false), rs2_num((channel_subidx >> 5) & 0x7), rd(RD::R0), is_addr_cmd(true) {}
 
 
 uint16_t rocc_cmd::getFunction() const {

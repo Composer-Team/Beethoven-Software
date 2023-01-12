@@ -17,9 +17,9 @@ namespace composer {
   uint64_t mask(uint64_t num, uint8_t length, uint8_t shift);
 
   struct composer_pack_info {
-    int system_id_bits, core_id_bits, channelSelectionBits, transactionLengthBits;
+    int system_id_bits, core_id_bits;
 
-    composer_pack_info(int systemIdBits, int coreIdBits, int channelSelectionBits, int transactionLengthBits);
+    composer_pack_info(int systemIdBits, int coreIdBits);
   };
 
 }

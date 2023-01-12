@@ -29,11 +29,9 @@ uint64_t composer::calcNextAddrAligned(uint64_t prev_addr, int num_elems, int by
 }
 
 composer::composer_pack_info::composer_pack_info(
-        int systemIdBits, int coreIdBits, int channelSelectionBits, int transactionLengthBits) :
+        int systemIdBits, int coreIdBits) :
         system_id_bits(systemIdBits),
-        core_id_bits(coreIdBits),
-        channelSelectionBits(channelSelectionBits),
-        transactionLengthBits(transactionLengthBits) {}
+        core_id_bits(coreIdBits) {}
 
 uint64_t composer::mask(uint64_t num, uint8_t length, uint8_t shift) {
   uint64_t acc = 0;
