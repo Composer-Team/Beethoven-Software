@@ -9,6 +9,10 @@ include(CheckCXXCompilerFlag)
 include(GNUInstallDirs)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if ("${KRIA}" STREQUAL "1")
+    add_definitions(-DKria)
+endif ()
+
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
@@ -25,6 +29,7 @@ add_library(composer SHARED
         src/response_handle.cc
         src/rocc_response.cc
         src/verilator_server.cc
+        src/allocator_ptr.cc
         include/composer/response_handle.h
         include/composer/rocc_cmd.h
         include/composer/rocc_response.h include/composer/allocator_ptr.h)
@@ -44,14 +49,6 @@ target_include_directories(composer
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
         )
-#
-#if (EXISTS "$ENV{COMPOSER_ROOT}/aws-fpga" AND NOT "${FORCE_NO_AWS}" STREQUAL "1")
-## If we can find the Amazon AWS FPGA, enable it a
-#    include_directories($ENV{COMPOSER_ROOT}/aws-fpga/sdk/userspace/include)
-#    message("Amazon AWS FPGA SDK detected! This installation will support the F1")
-#else ()
-#    message(WARNING "The $COMPOSER_AWS_SDK_DIR environment variable was not found. This installation will NOT support the F1")
-#endif ()
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/composer")
 set(EXPORT_TARGETS composer)
