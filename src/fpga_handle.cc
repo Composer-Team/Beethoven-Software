@@ -195,6 +195,14 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
   }
 
+  // MUST lock to physical memory so it does not get swapped out and put back in some place different
+  int err = mlock(addr, kria_huge_page_sizes[fit]);
+
+  if (err == -1) {
+    munmap(addr, kria_huge_page_sizes[fit]);
+    return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
+  }
+
   return remote_ptr(vtop((intptr_t)addr), addr, kria_huge_page_sizes[fit]);
 #else
   // acquire lock over client side

@@ -40,6 +40,7 @@ namespace composer {
 
   const int ERR_ALLOC_TOO_BIG = 0x1;
   const int ERR_MMAP_FAILURE = 0x2;
+  const int ERR_MLOCK_FAILURE = 0x4;
 }
 
 #endif //COMPOSER_ALLOCATOR_PTR_H
