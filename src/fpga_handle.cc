@@ -66,8 +66,8 @@ using namespace composer;
 
 uintptr_t vtop(uintptr_t vaddr) {
   FILE *pagemap;
-  intptr_t paddr = 0;
-  int offset = (vaddr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
+  uintptr_t paddr = 0;
+  uintptr_t offset = (vaddr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
   uint64_t e;
 
   // https://www.kernel.org/doc/Documentation/vm/pagemap.txt
