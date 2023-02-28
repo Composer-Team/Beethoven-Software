@@ -196,12 +196,18 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
       fit = i;
   }
   if (fit == -1) {
+#ifndef NDEBUG
+    std::cerr << "Error no size appropriate" << std::endl;
+#endif
     return remote_ptr(0, nullptr, ERR_ALLOC_TOO_BIG);
   }
 
   void *addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
                     MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS, -1, 0);
   if (addr == nullptr) {
+#ifndef NDEBUG
+    std::cerr << "Error in mmap: " << strerror(errno) << std::endl;
+#endif
     return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
   }
 
@@ -210,6 +216,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 
   if (err == -1) {
     munmap(addr, kria_huge_page_sizes[fit]);
+#ifndef NDEBUG
+    std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
+#endif
     return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
   }
 
