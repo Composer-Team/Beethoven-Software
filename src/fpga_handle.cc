@@ -12,15 +12,15 @@
 #ifdef Kria
 
 #include <sys/mman.h>
+const unsigned kria_huge_page_sizes[] = {1 << 16, 1 << 21, 1 << 25, 1 << 30};
+const unsigned kria_huge_page_flags[] = {16 << MAP_HUGE_SHIFT, 21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
+                                         30 << MAP_HUGE_SHIFT};
+const unsigned kria_n_page_sizes = 4;
 
 #endif
 
 using namespace composer;
 
-const unsigned kria_huge_page_sizes[] = {1 << 16, 1 << 21, 1 << 25, 1 << 30};
-const unsigned kria_huge_page_flags[] = {16 << MAP_HUGE_SHIFT, 21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
-                                         30 << MAP_HUGE_SHIFT};
-const unsigned kria_n_page_sizes = 4;
 
 
 std::vector<fpga_handle_t *> composer::active_fpga_handles;
@@ -102,14 +102,14 @@ fpga_handle_t::fpga_handle_t() {
     std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
-
   cmd_server->cmd = rocc_cmd::flush_cmd();
+
+#ifndef Kria
   dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, file_access_flags);
   if (dsfd < 0) {
     std::cerr << "Error opening file " << data_server_file_name << std::endl;
     exit(1);
   }
-#ifndef Kria
   data_server = (data_server_file *) mmap(nullptr, sizeof(data_server_file), file_access_prots, MAP_SHARED, dsfd, 0);
   if (data_server == MAP_FAILED) {
     std::cerr << "Failed to map in data_server_file" << std::endl;
