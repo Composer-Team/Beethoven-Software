@@ -203,7 +203,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   }
 
   void *addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
-                    MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS, -1, 0);
+                    MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS | MAP_LOCKED, -1, 0);
   if (addr == nullptr) {
 #ifndef NDEBUG
     std::cerr << "Error in mmap: " << strerror(errno) << std::endl;
@@ -212,15 +212,15 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   }
 
   // MUST lock to physical memory so it does not get swapped out and put back in some place different
-  int err = mlock(addr, kria_huge_page_sizes[fit]);
-
-  if (err == -1) {
-    munmap(addr, kria_huge_page_sizes[fit]);
-#ifndef NDEBUG
-    std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
-#endif
-    return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
-  }
+//  int err = mlock(addr, kria_huge_page_sizes[fit]);
+//
+//  if (err == -1) {
+//    munmap(addr, kria_huge_page_sizes[fit]);
+//#ifndef NDEBUG
+//    std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
+//#endif
+//    return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
+//  }
 
   return remote_ptr(vtop((intptr_t) addr), addr, kria_huge_page_sizes[fit]);
 #else
