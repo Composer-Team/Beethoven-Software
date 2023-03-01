@@ -219,29 +219,39 @@ response_handle fpga_handle_t::send(const rocc_cmd &c) const {
 
 remote_ptr fpga_handle_t::malloc(size_t len) {
 #ifdef Kria
-  // Kria only uses local mappings via OS
-  // see if allocation fits inside size classes
-  int fit = -1;
-  for (int i = 0; i < kria_n_page_sizes && fit == -1; ++i) {
-    if (len < kria_huge_page_sizes[i])
-      fit = i;
-  }
-  if (fit == -1) {
+  void *addr;
+  size_t sz;
+  if (len <= 1 << 12) {
+    addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_LOCKED | MAP_ANONYMOUS,
+                -1, 0);
+    sz = 1 << 12;
+  } else {
+    // Kria only uses local mappings via OS
+    // see if allocation fits inside size classes
+    int fit = -1;
+    for (int i = 0; i < kria_n_page_sizes && fit == -1; ++i) {
+      if (len < kria_huge_page_sizes[i])
+        fit = i;
+    }
+    if (fit == -1) {
 #ifndef NDEBUG
-    std::cerr << "Error no size appropriate" << std::endl;
+      std::cerr << "Error no size appropriate" << std::endl;
 #endif
-    return remote_ptr(0, nullptr, ERR_ALLOC_TOO_BIG);
-  }
+      return remote_ptr(0, nullptr, ERR_ALLOC_TOO_BIG);
+    }
 
-  void *addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS | MAP_LOCKED,
-                    -1, 0);
+    addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS | MAP_LOCKED,
+                -1, 0);
+    sz = kria_huge_page_sizes[fit];
+  }
   if (addr == MAP_FAILED) {
 #ifndef NDEBUG
     std::cerr << "Error in mmap: " << strerror(errno) << std::endl;
 #endif
     return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
   }
+
 
   // MUST lock to physical memory so it does not get swapped out and put back in some place different
 //  int err = mlock(addr, kria_huge_page_sizes[fit]);
@@ -254,7 +264,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 //    return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
 //  }
 
-  return remote_ptr(vtop((intptr_t) addr), addr, kria_huge_page_sizes[fit]);
+  return remote_ptr(vtop((intptr_t) addr), addr, sz);
 #else
   // acquire lock over client side
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
