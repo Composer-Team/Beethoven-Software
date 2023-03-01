@@ -12,6 +12,7 @@
 #ifdef Kria
 
 #include <sys/mman.h>
+
 const unsigned kria_huge_page_sizes[] = {1 << 16, 1 << 21, 1 << 25, 1 << 30};
 const unsigned kria_huge_page_flags[] = {16 << MAP_HUGE_SHIFT, 21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
                                          30 << MAP_HUGE_SHIFT};
@@ -20,7 +21,6 @@ const unsigned kria_n_page_sizes = 4;
 #endif
 
 using namespace composer;
-
 
 
 std::vector<fpga_handle_t *> composer::active_fpga_handles;
@@ -64,28 +64,59 @@ using namespace composer;
 #include "cstdio"
 #include "cinttypes"
 
-uintptr_t vtop(uintptr_t vaddr) {
-  FILE *pagemap;
-  uintptr_t paddr = 0;
-  uintptr_t offset = (vaddr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
-  uint64_t e;
+const int __endian_bit = 1;
+#define is_bigendian() ( (*(char*)&__endian_bit) == 0 )
+#define PAGEMAP_ENTRY 8
+#define GET_BIT(X,Y) (X & ((uint64_t)1<<Y)) >> Y
+#define GET_PFN(X) X & 0x7FFFFFFFFFFFFF
 
-  // https://www.kernel.org/doc/Documentation/vm/pagemap.txt
-  if ((pagemap = fopen("/proc/self/pagemap", "r"))) {
-    if (lseek(fileno(pagemap), offset, SEEK_SET) == offset) {
-      if (fread(&e, sizeof(uint64_t), 1, pagemap)) {
-        if (e & (1ULL << 63)) { // page present ?
-          paddr = e & ((1ULL << 54) - 1); // pfn mask
-          paddr = paddr * sysconf(_SC_PAGESIZE);
-          // add offset within page
-          paddr = paddr | (vaddr & (sysconf(_SC_PAGESIZE) - 1));
-        }
-      }
-    }
-    fclose(pagemap);
+uint64_t vtop(unsigned long virt_addr) {
+  printf("Big endian? %d\n", is_bigendian());
+  FILE *f = fopen("/proc/self/pagemap", "rb");
+  if (!f) {
+    printf("Error! Cannot open /proc/self/pagemap");
+    return -1;
   }
 
-  return paddr;
+  //Shifting by virt-addr-offset number of bytes
+  //and multiplying by the size of an address (the size of an entry in pagemap file)
+  long file_offset = virt_addr / getpagesize() * PAGEMAP_ENTRY;
+  printf("Vaddr: 0x%lx, Page_size: %d, Entry_size: %d\n", virt_addr, getpagesize(), PAGEMAP_ENTRY);
+  printf("Reading pagemap at 0x%llx\n", (unsigned long long) file_offset);
+  int status = fseek(f, file_offset, SEEK_SET);
+  if (status) {
+    perror("Failed to do fseek!");
+    return -1;
+  }
+  errno = 0;
+  uint64_t read_val = 0;
+  unsigned char c_buf[PAGEMAP_ENTRY];
+  for (int i = 0; i < PAGEMAP_ENTRY; i++) {
+    char c = getc(f);
+    if (c == EOF) {
+      printf("\nReached end of the file\n");
+      return 0;
+    }
+    if (is_bigendian())
+      c_buf[i] = c;
+    else
+      c_buf[PAGEMAP_ENTRY - i - 1] = c;
+    printf("[%d]0x%x ", i, c);
+  }
+  for (int i = 0; i < PAGEMAP_ENTRY; i++) {
+    //printf("%d ",c_buf[i]);
+    read_val = (read_val << 8) + c_buf[i];
+  }
+  printf("\n");
+  printf("Result: 0x%llx\n", (unsigned long long) read_val);
+  //if(GET_BIT(read_val, 63))
+  uint64_t pfn;
+  if (GET_BIT(read_val, 63))
+    printf("PFN: 0x%llx\n", pfn = (unsigned long long) GET_PFN(read_val));
+  else
+    printf("Page not present\n");
+  fclose(f);
+  return pfn;
 }
 
 #endif
