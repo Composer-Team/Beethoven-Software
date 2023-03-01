@@ -235,7 +235,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 
   void *addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
                     MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS | MAP_LOCKED, -1, 0);
-  if (addr == nullptr) {
+  if (addr == MAP_FAILED) {
 #ifndef NDEBUG
     std::cerr << "Error in mmap: " << strerror(errno) << std::endl;
 #endif
