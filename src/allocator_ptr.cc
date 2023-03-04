@@ -4,10 +4,8 @@
 
 #include "composer/allocator_ptr.h"
 #include <iostream>
-#ifdef Kria
 #include <cerrno>
 #include <cstring>
-#endif
 using namespace composer;
 
 std::string remote_ptr::printError() {
