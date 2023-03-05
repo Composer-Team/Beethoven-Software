@@ -72,50 +72,68 @@ const int __endian_bit = 1;
 
 uint64_t vtop(unsigned long virt_addr) {
 //  printf("Big endian? %d\n", is_bigendian());
-  FILE *f = fopen("/proc/self/pagemap", "rb");
-  if (!f) {
-    std::cerr << "Error! Cannot open /proc/self/pagemap" << std::endl;
-    throw std::exception();
-  }
-
-  //Shifting by virt-addr-offset number of bytes
-  //and multiplying by the size of an address (the size of an entry in pagemap file)
-  unsigned long file_offset = virt_addr / getpagesize() * PAGEMAP_ENTRY;
-  printf("Vaddr: 0x%lx, Page_size: %d, Entry_size: %d\n", virt_addr, getpagesize(), PAGEMAP_ENTRY);
-  printf("Reading pagemap at 0x%llx\n", (unsigned long long) file_offset);
-  int status = fseek(f, (long)file_offset, SEEK_SET);
-  if (status) {
-    perror("Failed to do fseek!");
-    return -1;
-  }
-  errno = 0;
-  uint64_t read_val = 0;
-  unsigned char c_buf[PAGEMAP_ENTRY];
-  for (int i = 0; i < PAGEMAP_ENTRY; i++) {
-    int c = getc(f);
-    if (c == EOF) {
-      printf("\nReached end of the file\n");
-      return 0;
+//  FILE *f = fopen("/proc/self/pagemap", "rb");
+//  if (!f) {
+//    std::cerr << "Error! Cannot open /proc/self/pagemap" << std::endl;
+//    throw std::exception();
+//  }
+//
+//  //Shifting by virt-addr-offset number of bytes
+//  //and multiplying by the size of an address (the size of an entry in pagemap file)
+//  unsigned long file_offset = virt_addr / getpagesize() * PAGEMAP_ENTRY;
+//  printf("Vaddr: 0x%lx, Page_size: %d, Entry_size: %d\n", virt_addr, getpagesize(), PAGEMAP_ENTRY);
+//  printf("Reading pagemap at 0x%llx\n", (unsigned long long) file_offset);
+//  int status = fseek(f, (long)file_offset, SEEK_SET);
+//  if (status) {
+//    perror("Failed to do fseek!");
+//    return -1;
+//  }
+//  errno = 0;
+//  uint64_t read_val = 0;
+//  unsigned char c_buf[PAGEMAP_ENTRY];
+//  for (int i = 0; i < PAGEMAP_ENTRY; i++) {
+//    int c = getc(f);
+//    if (c == EOF) {
+//      printf("\nReached end of the file\n");
+//      return 0;
+//    }
+//    if (is_bigendian())
+//      c_buf[i] = (char)c;
+//    else
+//      c_buf[PAGEMAP_ENTRY - i - 1] = (char)c;
+//    printf("[%d]0x%x ", i, c);
+//  }
+//  for (unsigned char i : c_buf) {
+//    //printf("%d ",c_buf[i]);
+//    read_val = (read_val << 8) + i;
+//  }
+//
+//  if (GET_BIT(read_val, 63)){
+//    fclose(f);
+//    return GET_PFN(read_val);
+//  } else {
+//    std::cerr << "Paged not mapped in!" << std::endl;
+//    fclose(f);
+//    throw std::exception();
+//  }
+  FILE *pagemap;
+  intptr_t paddr = 0;
+  int offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
+  uint64_t e;
+  if ((pagemap = fopen("/proc/self/pagemap", "r"))) {
+    if (lseek(fileno(pagemap), offset, SEEK_SET) == offset) {
+      if (fread(&e, sizeof(uint64_t), 1, pagemap)) {
+        if (e & (1ULL << 63)) { // page present ?
+          paddr = e & ((1ULL << 54) - 1); // pfn mask
+          paddr = paddr * sysconf(_SC_PAGESIZE);
+          // add offset within page
+          paddr = paddr | (virt_addr & (sysconf(_SC_PAGESIZE) - 1));
+        }
+      }
     }
-    if (is_bigendian())
-      c_buf[i] = (char)c;
-    else
-      c_buf[PAGEMAP_ENTRY - i - 1] = (char)c;
-    printf("[%d]0x%x ", i, c);
+    fclose(pagemap);
   }
-  for (unsigned char i : c_buf) {
-    //printf("%d ",c_buf[i]);
-    read_val = (read_val << 8) + i;
-  }
-
-  if (GET_BIT(read_val, 63)){
-    fclose(f);
-    return GET_PFN(read_val);
-  } else {
-    std::cerr << "Paged not mapped in!" << std::endl;
-    fclose(f);
-    throw std::exception();
-  }
+  return paddr;
 }
 
 #endif
