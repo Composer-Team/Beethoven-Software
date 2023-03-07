@@ -21,6 +21,18 @@ endif ()
 message("Build type: ${CMAKE_BUILD_TYPE}")
 set(COMPOSER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/composer")
 
+# https://stackoverflow.com/questions/657850/cmake-how-to-use-bash-command-in-cmakelists-txt
+if ("${PRIVATE}" STREQUAL "1")
+    add_definitions(-DPRIVATE)
+    execute_process(COMMAND id -u
+            OUTPUT_VARIABLE WHOAMI_pre)
+    string(STRIP ${WHOAMI_pre} WHOAMI)
+    message("Setting Composer Identity to ${WHOAMI}")
+    add_definitions(-DCOMPOSER_IDENTITY=${WHOAMI})
+else ()
+    add_definitions(-DCOMPOSER_IDENTITY=global)
+endif ()
+
 add_library(composer SHARED
         src/rocc_cmd.cc
         src/util.cc

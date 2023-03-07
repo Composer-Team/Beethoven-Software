@@ -14,14 +14,16 @@
 
 #define MAX_CONCURRENT_COMMANDS 256
 namespace composer {
-  static const std::string cmd_server_file_name = "/composer_cmd_server";
-  static const std::string data_server_file_name = "/composer_data_server";
+
+  const extern std::string cmd_server_file_name;
+  const extern std::string data_server_file_name;
 
   const int file_access_flags = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
   const int file_access_prots = PROT_READ | PROT_WRITE;
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+
   struct cmd_server_file { // NOLINT(cppcoreguidelines-pro-type-member-init)
     // lingo: process = client, server = composer runtime
     // lock to wake up server
@@ -49,6 +51,7 @@ namespace composer {
 
     static void init(cmd_server_file &csf);
   };
+
 #pragma clang diagnostic pop
 
   enum data_server_op {
@@ -72,8 +75,10 @@ namespace composer {
     uint64_t op_argument;
     uint64_t op2_argument;
     uint64_t op3_argument;
+
     static void init(data_server_file &dsf);
   };
+
 }
 
 #endif //COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H

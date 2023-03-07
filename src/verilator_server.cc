@@ -8,6 +8,13 @@
 
 using namespace composer;
 
+// https://stackoverflow.com/questions/3419332/c-preprocessor-stringify-the-result-of-a-macro
+#define QUOTE(q) #q
+#define EXPAND_AND_QUOTE(q) QUOTE(q)
+
+const std::string composer::cmd_server_file_name = "/compo_c_" EXPAND_AND_QUOTE(COMPOSER_IDENTITY);
+const std::string composer::data_server_file_name = "/compo_d_" EXPAND_AND_QUOTE(COMPOSER_IDENTITY);
+
 void cmd_server_file::init(cmd_server_file &csf) {
 
   pthread_mutexattr_t attrs;
