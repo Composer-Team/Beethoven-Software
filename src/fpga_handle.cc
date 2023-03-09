@@ -73,7 +73,7 @@ const int __endian_bit = 1;
 uint64_t vtop(unsigned long virt_addr) {
   FILE *pagemap;
   intptr_t paddr = 0;
-  int offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
+  long offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
   uint64_t e;
   if ((pagemap = fopen("/proc/self/pagemap", "r"))) {
     if (lseek(fileno(pagemap), offset, SEEK_SET) == offset) {
@@ -196,7 +196,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   size_t sz;
   if (len <= 1 << 12) {
     sz = 1 << 12;
-    addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_LOCKED | MAP_ANONYMOUS,
+    addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS,
                 -1, 0);
   } else {
     // Kria only uses local mappings via OS
@@ -214,10 +214,11 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     }
 
     addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_ANONYMOUS | MAP_LOCKED,
+                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED,
                 -1, 0);
     sz = kria_huge_page_sizes[fit];
   }
+
   if (addr == MAP_FAILED) {
 #ifndef NDEBUG
     std::cerr << "Error in mmap: " << strerror(errno) << std::endl;
@@ -225,17 +226,10 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
   }
 
-
-  // MUST lock to physical memory so it does not get swapped out and put back in some place different
-//  int err = mlock(addr, kria_huge_page_sizes[fit]);
-//
-//  if (err == -1) {
-//    munmap(addr, kria_huge_page_sizes[fit]);
-//#ifndef NDEBUG
-//    std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
-//#endif
-//    return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
-//  }
+  if (mlock(addr, sz)) {
+    std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
+    throw std::exception();
+  }
 
   return remote_ptr(vtop((intptr_t) addr), addr, sz);
 #else
