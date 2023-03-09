@@ -167,8 +167,10 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   return resp;
 }
 
+volatile uint64_t optimization_hook;
+
 response_handle fpga_handle_t::send(const rocc_cmd &c) {
-  flush_data_to_fpga();
+  optimization_hook = flush_data_to_fpga();
   // acquire lock over client side
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
@@ -289,50 +291,58 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
 static volatile uint64_t *cbuffer = nullptr;
 
 #ifndef CACHE_SZ
-#define CACHE_SZ 1024 * 1024 * 1
+#define CACHE_SZ 1024 * 1024 * 10
 #endif
 
-void fpga_handle_t::flush_data_to_fpga() {
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+uint64_t fpga_handle_t::flush_data_to_fpga() {
+
 #ifdef Kria
-  if (!to_flush.empty()) {
-    if (cbuffer == nullptr) cbuffer = (uint64_t *) std::malloc(CACHE_SZ);
-    for (int i = 0; i < (CACHE_SZ / sizeof(uint64_t)); ++i) {
-      cbuffer[i] = cbuffer[i] + 1;
-    }
-    // TODO this can potentially have several implementations
-    //  1) Make cache lines associated with shared regions (between FPGA) uncacheable - this requires kernel mod
-    //  2) Give userland access to cache flush instructions - requires kernel mod
-    //  3) Find dma_alloc and use that interface. I think petalinux or xrt might provide it maybe...
-    //    https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842418/Linux+DMA+From+User+Space
-    to_flush.clear();
-  }
+	if (!to_flush.empty()) {
+		if (cbuffer == nullptr) cbuffer = (uint64_t *) std::malloc(CACHE_SZ);
+		for (int j = 0; j < 3; ++j) {
+		for (int i = 1; i < (CACHE_SZ / sizeof(uint64_t)); ++i) {
+			cbuffer[i] = cbuffer[i] + cbuffer[i-1];
+		}}
+		// TODO this can potentially have several implementations
+		//  1) Make cache lines associated with shared regions (between FPGA) uncacheable - this requires kernel mod
+		//  2) Give userland access to cache flush instructions - requires kernel mod
+		//  3) Find dma_alloc and use that interface. I think petalinux or xrt might provide it maybe...
+		//    https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842418/Linux+DMA+From+User+Space
+		to_flush.clear();
+		return cbuffer[(CACHE_SZ / sizeof(uint64_t)) - 1];
+	}
+
 #endif
+	return 0;
 }
+#pragma GCC pop_options
 
 void fpga_handle_t::free(remote_ptr ptr) {
 #ifdef Kria
-  munmap(ptr.getHostAddr(), ptr.getLen());
+	munmap(ptr.getHostAddr(), ptr.getLen());
 #else
-  pthread_mutex_lock(&data_server->data_cmd_send_lock);
-  data_server->op_argument = ptr.getFpgaAddr();
-  data_server->operation = FREE;
-  pthread_mutex_unlock(&data_server->server_mut);
-  // wait for server to signal that it has read our command
-  pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
-  // now the server has returned the device addr (for building commands), and the file name
-  pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+	pthread_mutex_lock(&data_server->data_cmd_send_lock);
+	data_server->op_argument = ptr.getFpgaAddr();
+	data_server->operation = FREE;
+	pthread_mutex_unlock(&data_server->server_mut);
+	// wait for server to signal that it has read our command
+	pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+	// now the server has returned the device addr (for building commands), and the file name
+	pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
 }
 
 rocc_response fpga_handle_t::flush() {
-  auto q = rocc_cmd::flush_cmd();
-  auto i = send(q);
-  return i.get();
+	auto q = rocc_cmd::flush_cmd();
+	auto i = send(q);
+	return i.get();
 }
 
 void fpga_handle_t::shutdown() const {
-  pthread_mutex_lock(&cmd_server->cmd_send_lock);
-  pthread_mutex_unlock(&cmd_server->server_mut);
-  cmd_server->quit = true;
-  pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+	pthread_mutex_lock(&cmd_server->cmd_send_lock);
+	pthread_mutex_unlock(&cmd_server->server_mut);
+	cmd_server->quit = true;
+	pthread_mutex_unlock(&cmd_server->cmd_send_lock);
 }
