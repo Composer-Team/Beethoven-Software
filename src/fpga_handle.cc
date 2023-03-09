@@ -71,51 +71,6 @@ const int __endian_bit = 1;
 #define GET_PFN(X) (X & 0x7FFFFFFFFFFFFF)
 
 uint64_t vtop(unsigned long virt_addr) {
-//  printf("Big endian? %d\n", is_bigendian());
-//  FILE *f = fopen("/proc/self/pagemap", "rb");
-//  if (!f) {
-//    std::cerr << "Error! Cannot open /proc/self/pagemap" << std::endl;
-//    throw std::exception();
-//  }
-//
-//  //Shifting by virt-addr-offset number of bytes
-//  //and multiplying by the size of an address (the size of an entry in pagemap file)
-//  unsigned long file_offset = virt_addr / getpagesize() * PAGEMAP_ENTRY;
-//  printf("Vaddr: 0x%lx, Page_size: %d, Entry_size: %d\n", virt_addr, getpagesize(), PAGEMAP_ENTRY);
-//  printf("Reading pagemap at 0x%llx\n", (unsigned long long) file_offset);
-//  int status = fseek(f, (long)file_offset, SEEK_SET);
-//  if (status) {
-//    perror("Failed to do fseek!");
-//    return -1;
-//  }
-//  errno = 0;
-//  uint64_t read_val = 0;
-//  unsigned char c_buf[PAGEMAP_ENTRY];
-//  for (int i = 0; i < PAGEMAP_ENTRY; i++) {
-//    int c = getc(f);
-//    if (c == EOF) {
-//      printf("\nReached end of the file\n");
-//      return 0;
-//    }
-//    if (is_bigendian())
-//      c_buf[i] = (char)c;
-//    else
-//      c_buf[PAGEMAP_ENTRY - i - 1] = (char)c;
-//    printf("[%d]0x%x ", i, c);
-//  }
-//  for (unsigned char i : c_buf) {
-//    //printf("%d ",c_buf[i]);
-//    read_val = (read_val << 8) + i;
-//  }
-//
-//  if (GET_BIT(read_val, 63)){
-//    fclose(f);
-//    return GET_PFN(read_val);
-//  } else {
-//    std::cerr << "Paged not mapped in!" << std::endl;
-//    fclose(f);
-//    throw std::exception();
-//  }
   FILE *pagemap;
   intptr_t paddr = 0;
   int offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
@@ -212,7 +167,8 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   return resp;
 }
 
-response_handle fpga_handle_t::send(const rocc_cmd &c) const {
+response_handle fpga_handle_t::send(const rocc_cmd &c) {
+  flush_data_to_fpga();
   // acquire lock over client side
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
@@ -321,6 +277,7 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
+  to_flush.push_back(&dst);
 }
 
 void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
@@ -333,6 +290,27 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
+}
+
+static volatile uint64_t *cbuffer = nullptr;
+
+#ifndef CACHE_SZ
+#define CACHE_SZ 1024 * 1024 * 1
+#endif
+
+void fpga_handle_t::flush_data_to_fpga() {
+  if (!to_flush.empty()) {
+    if (cbuffer == nullptr) cbuffer = (uint64_t *) std::malloc(CACHE_SZ);
+    for (int i = 0; i < (CACHE_SZ / sizeof(uint64_t)); ++i) {
+      cbuffer[i] = cbuffer[i] + 1;
+    }
+    // TODO this can potentially have several implementations
+    //  1) Make cache lines associated with shared regions (between FPGA) uncacheable - this requires kernel mod
+    //  2) Give userland access to cache flush instructions - requires kernel mod
+    //  3) Find dma_alloc and use that interface. I think petalinux or xrt might provide it maybe...
+    //    https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842418/Linux+DMA+From+User+Space
+    to_flush.clear();
+  }
 }
 
 void fpga_handle_t::free(remote_ptr ptr) {

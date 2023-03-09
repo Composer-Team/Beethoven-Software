@@ -24,6 +24,7 @@
 
 namespace composer {
   class response_handle;
+
   class rocc_cmd;
 
   class rocc_reponse;
@@ -41,6 +42,8 @@ namespace composer {
     int dsfd;
     std::map<uint64_t, std::tuple<int, void *, int, std::string> > device2virtual;
 
+    std::vector<const remote_ptr *> to_flush;
+
   public:
     /**
      * flush all in-flight commands
@@ -48,16 +51,19 @@ namespace composer {
     rocc_response flush();
 
     explicit fpga_handle_t();
+
     /**
      * @brief send a command to the FPGA
      * @return handle referring to response that the command will return. Allows for blocking on the response.
      */
 
-    [[nodiscard]] response_handle send(const rocc_cmd &c) const;
+    [[nodiscard]] response_handle send(const rocc_cmd &c);
 
     ~fpga_handle_t();
 
     composer::remote_ptr malloc(size_t len);
+
+    void flush_data_to_fpga();
 
     void copy_to_fpga(const composer::remote_ptr &dst);
 
@@ -68,9 +74,9 @@ namespace composer {
     void shutdown() const;
   };
 
-  extern std::vector<fpga_handle_t*> active_fpga_handles;
+  extern std::vector<fpga_handle_t *> active_fpga_handles;
 
-  extern fpga_handle_t* current_handle_context;
+  extern fpga_handle_t *current_handle_context;
 
   void set_fpga_context(fpga_handle_t *t);
 }
