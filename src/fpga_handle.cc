@@ -214,7 +214,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     }
 
     addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED,
+                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
                 -1, 0);
     sz = kria_huge_page_sizes[fit];
   }
