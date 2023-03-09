@@ -299,6 +299,7 @@ static volatile uint64_t *cbuffer = nullptr;
 #endif
 
 void fpga_handle_t::flush_data_to_fpga() {
+#ifdef Kria
   if (!to_flush.empty()) {
     if (cbuffer == nullptr) cbuffer = (uint64_t *) std::malloc(CACHE_SZ);
     for (int i = 0; i < (CACHE_SZ / sizeof(uint64_t)); ++i) {
@@ -311,6 +312,7 @@ void fpga_handle_t::flush_data_to_fpga() {
     //    https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842418/Linux+DMA+From+User+Space
     to_flush.clear();
   }
+#endif
 }
 
 void fpga_handle_t::free(remote_ptr ptr) {
