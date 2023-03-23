@@ -292,11 +292,11 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   // this should push any data in the write buffer but then invalidate any data in the cache
   // this represents a potentially valid interleaving so we're all good.
   asm("DMB SY");
-  char *ptr = (char*)src.getHostAddr();
-  for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
-//    asm("DC IVAC, %0" :: "r"(ptr));
-    ptr += cacheLineSz;
-  }
+//  char *ptr = (char*)src.getHostAddr();
+//  for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
+////    asm("DC IVAC, %0" :: "r"(ptr));
+//    ptr += cacheLineSz;
+//  }
 #endif
 }
 
@@ -305,13 +305,13 @@ static volatile uint64_t *cbuffer = nullptr;
 void fpga_handle_t::flush_data_to_fpga() {
 #ifdef Kria
   // flush and invalidate lines
-  for (auto region: to_flush) {
-    char* ptr = (char*)region->getHostAddr();
-    for (int i = 0; i < region->getLen() >> logCacheLineSz; ++i) {
-      ptr += cacheLineSz;
-//      asm("DC CIVAC, %0" :: "r"(ptr));
-    }
-  }
+//  for (auto region: to_flush) {
+//    char* ptr = (char*)region->getHostAddr();
+//    for (int i = 0; i < region->getLen() >> logCacheLineSz; ++i) {
+//      ptr += cacheLineSz;
+////      asm("DC CIVAC, %0" :: "r"(ptr));
+//    }
+//  }
   // ensure that write buffers are flushed
   asm("DMB NSHST");
 #endif
