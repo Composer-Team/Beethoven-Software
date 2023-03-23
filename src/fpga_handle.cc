@@ -309,7 +309,7 @@ void fpga_handle_t::flush_data_to_fpga() {
     char* ptr = (char*)region->getHostAddr();
     for (int i = 0; i < region->getLen() >> logCacheLineSz; ++i) {
       ptr += cacheLineSz;
-      asm("DC CIVAC, %0" :: "r"(ptr));
+//      asm("DC CIVAC, %0" :: "r"(ptr));
     }
   }
   // ensure that write buffers are flushed
