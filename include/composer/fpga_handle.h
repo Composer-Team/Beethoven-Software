@@ -63,7 +63,7 @@ namespace composer {
 
     composer::remote_ptr malloc(size_t len);
 
-    uint64_t flush_data_to_fpga();
+    void flush_data_to_fpga();
 
     void copy_to_fpga(const composer::remote_ptr &dst);
 
