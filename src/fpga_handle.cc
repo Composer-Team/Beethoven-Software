@@ -291,7 +291,7 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
 #else
   // this should push any data in the write buffer but then invalidate any data in the cache
   // this represents a potentially valid interleaving so we're all good.
-  asm("DMB SY");
+  asm("DMB NSHST");
   char *ptr = (char*)src.getHostAddr();
   for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
 //    asm("DC IVAC, %0" :: "r"(ptr));
