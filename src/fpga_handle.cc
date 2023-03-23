@@ -13,8 +13,8 @@
 
 #include <sys/mman.h>
 
-const unsigned kria_huge_page_sizes[] = {1 << 16, 1 << 21, 1 << 25, 1 << 30};
-const unsigned kria_huge_page_flags[] = {16 << MAP_HUGE_SHIFT, 21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
+const unsigned kria_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};
+const unsigned kria_huge_page_flags[] = {21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
                                          30 << MAP_HUGE_SHIFT};
 const unsigned kria_n_page_sizes = 4;
 
