@@ -294,7 +294,7 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   asm("DMB SY");
   char *ptr = (char*)src.getHostAddr();
   for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
-    asm("DC IVAC, %0" :: "r"(ptr));
+//    asm("DC IVAC, %0" :: "r"(ptr));
     ptr += cacheLineSz;
   }
 #endif
