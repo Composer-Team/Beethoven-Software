@@ -172,10 +172,8 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   return resp;
 }
 
-volatile uint64_t optimization_hook;
-
 response_handle fpga_handle_t::send(const rocc_cmd &c) {
-  optimization_hook = flush_data_to_fpga();
+  flush_data_to_fpga();
   // acquire lock over client side
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
@@ -317,7 +315,6 @@ void fpga_handle_t::flush_data_to_fpga() {
   // ensure that write buffers are flushed
   asm("DMB SY");
 #endif
-	return 0;
 }
 #pragma GCC pop_options
 
