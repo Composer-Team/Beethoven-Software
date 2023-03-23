@@ -64,12 +64,6 @@ using namespace composer;
 #include "cstdio"
 #include "cinttypes"
 
-const int __endian_bit = 1;
-#define is_bigendian() ( (*(char*)&__endian_bit) == 0 )
-#define PAGEMAP_ENTRY (8)
-#define GET_BIT(X,Y) ((X & ((uint64_t)1<<Y)) >> Y)
-#define GET_PFN(X) (X & 0x7FFFFFFFFFFFFF)
-
 uint64_t vtop(unsigned long virt_addr) {
   FILE *pagemap;
   intptr_t paddr = 0;
@@ -93,7 +87,18 @@ uint64_t vtop(unsigned long virt_addr) {
 
 #endif
 
+static int cacheLineSz;
+static int logCacheLineSz;
 fpga_handle_t::fpga_handle_t() {
+#ifdef Kria
+  cacheLineSz = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+  int t = cacheLineSz;
+  logCacheLineSz = 0;
+  while (t != 0) {
+    logCacheLineSz++;
+    t >>= 1;
+  }
+#endif
   csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, file_access_flags);
   if (csfd == -1) {
     std::cerr << "Error opening file " << cmd_server_file_name << " " << strerror(errno) << std::endl;
@@ -283,6 +288,15 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   pthread_mutex_unlock(&data_server->server_mut);
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+#else
+  // this should push any data in the write buffer but then invalidate any data in the cache
+  // this represents a potentially valid interleaving so we're all good.
+  asm("DMB SY");
+  char *ptr = (char*)src.getHostAddr();
+  for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
+    asm("DC IVAC, %0" :: "r"(ptr));
+    ptr += cacheLineSz;
+  }
 #endif
 }
 
@@ -292,20 +306,19 @@ static volatile uint64_t *cbuffer = nullptr;
 #define CACHE_SZ 1024 * 1024 * 1
 #endif
 
+
 void fpga_handle_t::flush_data_to_fpga() {
 #ifdef Kria
-  if (!to_flush.empty()) {
-    if (cbuffer == nullptr) cbuffer = (uint64_t *) std::malloc(CACHE_SZ);
-    for (int i = 0; i < (CACHE_SZ / sizeof(uint64_t)); ++i) {
-      cbuffer[i] = cbuffer[i] + 1;
+  // flush and invalidate lines
+  for (auto region: to_flush) {
+    char* ptr = (char*)region->getHostAddr();
+    for (int i = 0; i < region->getLen() >> logCacheLineSz; ++i) {
+      ptr += cacheLineSz;
+      asm("DC CIVAC, %0" :: "r"(ptr));
     }
-    // TODO this can potentially have several implementations
-    //  1) Make cache lines associated with shared regions (between FPGA) uncacheable - this requires kernel mod
-    //  2) Give userland access to cache flush instructions - requires kernel mod
-    //  3) Find dma_alloc and use that interface. I think petalinux or xrt might provide it maybe...
-    //    https://xilinx-wiki.atlassian.net/wiki/spaces/A/pages/18842418/Linux+DMA+From+User+Space
-    to_flush.clear();
   }
+  // ensure that write buffers are flushed
+  asm("DMB SY");
 #endif
 }
 
