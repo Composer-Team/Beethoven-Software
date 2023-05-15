@@ -21,7 +21,6 @@ void cmd_server_file::init(cmd_server_file &csf) {
   pthread_mutexattr_init(&attrs);
   pthread_mutexattr_setpshared(&attrs, PTHREAD_PROCESS_SHARED);
 
-  pthread_mutex_init(&csf.process_waiting_count_lock, &attrs);
   pthread_mutex_init(&csf.server_mut, &attrs);
   pthread_mutex_init(&csf.cmd_recieve_server_resp_lock, &attrs);
   pthread_mutex_init(&csf.cmd_send_lock, &attrs);
@@ -36,7 +35,8 @@ void cmd_server_file::init(cmd_server_file &csf) {
   for (int i = 0; i < MAX_CONCURRENT_COMMANDS; ++i) csf.free_list[i] = i;
   csf.free_list_idx = 255;
   csf.quit = false;
-  csf.processes_waiting = 0;
+
+  sem_init(&csf.processes_waiting, 0, 0);
 }
 
 void data_server_file::init(data_server_file &dsf) {

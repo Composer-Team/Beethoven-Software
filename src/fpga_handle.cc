@@ -153,12 +153,7 @@ fpga_handle_t::~fpga_handle_t() {
 
 
 rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
-  // let response poller in server know that someone is now waiting
-  int rc = pthread_mutex_lock(&cmd_server->process_waiting_count_lock);
-  cmd_server->processes_waiting++;
-  rc |= pthread_mutex_unlock(&cmd_server->process_waiting_count_lock);
-
-  rc |= pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
+  int rc = pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
   // command is now ready
   auto resp = cmd_server->responses[handle];
   // now that we've read our response, we can release the resource to be used in future responses
@@ -316,7 +311,6 @@ void fpga_handle_t::flush_data_to_fpga() {
   asm("DMB NSHST");
 #endif
 }
-#pragma GCC pop_options
 
 void fpga_handle_t::free(remote_ptr ptr) {
 #ifdef Kria

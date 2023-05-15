@@ -11,6 +11,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <semaphore.h>
 
 #define MAX_CONCURRENT_COMMANDS 256
 namespace composer {
@@ -35,8 +36,10 @@ namespace composer {
     // locks to stall processes until result is ready
     pthread_mutex_t wait_for_response[MAX_CONCURRENT_COMMANDS]{PTHREAD_MUTEX_INITIALIZER};
     rocc_response responses[MAX_CONCURRENT_COMMANDS];
-    int processes_waiting = 0;
-    pthread_mutex_t process_waiting_count_lock; // needs pshared flag
+
+    sem_t processes_waiting = {};
+//    int processes_waiting = 0;
+//    pthread_mutex_t process_waiting_count_lock; // needs pshared flag
 
     // once we've got a result back, need to free up response slot
     pthread_mutex_t free_list_lock; // needs pshared flag so can't initialize inline
