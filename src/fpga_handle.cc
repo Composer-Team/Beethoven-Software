@@ -152,6 +152,7 @@ fpga_handle_t::~fpga_handle_t() {
 }
 
 
+
 rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   int rc = pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
   // command is now ready
@@ -167,7 +168,7 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   return resp;
 }
 
-response_handle fpga_handle_t::send(const rocc_cmd &c) {
+response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
   flush_data_to_fpga();
   // acquire lock over client side
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
@@ -187,7 +188,7 @@ response_handle fpga_handle_t::send(const rocc_cmd &c) {
     fflush(stdout);
     exit(1);
   }
-  return response_handle(c.getXd(), handle, *this);
+  return response_handle<rocc_response>(c.getXd(), handle, *this);
 }
 
 remote_ptr fpga_handle_t::malloc(size_t len) {

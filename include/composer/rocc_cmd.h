@@ -25,19 +25,10 @@
 
 
 namespace composer {
-  struct ChannelAddressInfo {
-    uint16_t core_id;
-    uint8_t system_id;
-    uint8_t channel_address_identifier;
-
-    ChannelAddressInfo(uint8_t systemId, uint16_t coreId, uint8_t channelAddressIdentifier);
-  };
   class rocc_cmd {
     /**
      * Generate a command to start kernel execution on the accelerator.
      * @param system_id
-     * @param rs1_num
-     * @param rs2_num
      * @param xd
      * @param rd
      * @param xs1
@@ -50,23 +41,17 @@ namespace composer {
     uint16_t function;
     uint16_t system_id;
     uint8_t opcode;
-    uint8_t rs1_num;
-    uint8_t rs2_num;
     uint8_t xd;
-    RD rd;
+    uint8_t rd;
     uint8_t xs1;
     uint8_t xs2;
-    uint8_t core_id;
+    uint16_t core_id;
     uint64_t rs1;
     uint64_t rs2;
 
-    bool is_addr_cmd;
 
-    rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t rs1Num, uint8_t rs2Num, uint8_t xd, RD rd,
-             uint8_t xs1, uint8_t xs2, uint8_t coreId, uint64_t rs1, uint64_t rs2);
-
-    rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t coreId, uint64_t addr, uint64_t length,
-             uint8_t channel_subidx);
+    rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t xd, uint8_t rd,
+             uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2);
 
   public:
 
@@ -74,19 +59,13 @@ namespace composer {
 
     static rocc_cmd start_cmd(
             uint16_t system_id,
-            uint8_t rs1_num,
-            uint8_t rs2_num,
             bool expect_response,
-            RD rd,
+            uint8_t rd,
             uint8_t xs1,
             uint8_t xs2,
-            uint8_t core_id,
+            uint16_t core_id,
             uint64_t rs1,
             uint64_t rs2);
-
-    static rocc_cmd addr_cmd(
-            ChannelAddressInfo info,
-            const composer::remote_ptr &ptr);
 
     [[nodiscard]] uint32_t *pack(const composer_pack_info &info) const;
 
@@ -96,13 +75,9 @@ namespace composer {
 
     [[nodiscard]] uint8_t getOpcode() const;
 
-    [[nodiscard]] uint8_t getRs1Num() const;
-
-    [[nodiscard]] uint8_t getRs2Num() const;
-
     [[nodiscard]] uint8_t getXd() const;
 
-    [[nodiscard]] RD getRd() const;
+    [[nodiscard]] uint8_t getRd() const;
 
     [[nodiscard]] uint8_t getXs1() const;
 
@@ -116,7 +91,7 @@ namespace composer {
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "modernize-use-nodiscard"
-    response_handle send() const;
+    response_handle<rocc_response> send() const;
 #pragma clang diagnostic pop
   };
 }

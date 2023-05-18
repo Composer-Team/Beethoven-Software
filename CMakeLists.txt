@@ -97,3 +97,4 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/cmake/composerConfigVersion.cmake"
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/composer
         )
+

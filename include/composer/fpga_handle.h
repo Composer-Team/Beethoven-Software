@@ -23,15 +23,13 @@
 #include <composer/allocator_ptr.h>
 
 namespace composer {
-  class response_handle;
+  class response_getter;
 
   class rocc_cmd;
 
-  class rocc_reponse;
-
   struct fpga_handle_t {
   private:
-    friend response_handle;
+    friend response_getter;
 
     [[nodiscard]] rocc_response get_response_from_handle(int handle) const;
 
@@ -57,7 +55,7 @@ namespace composer {
      * @return handle referring to response that the command will return. Allows for blocking on the response.
      */
 
-    [[nodiscard]] response_handle send(const rocc_cmd &c);
+    [[nodiscard]] response_handle<rocc_response> send(const rocc_cmd &c);
 
     ~fpga_handle_t();
 

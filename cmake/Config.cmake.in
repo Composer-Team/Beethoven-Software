@@ -3,3 +3,15 @@
 include("${CMAKE_CURRENT_LIST_DIR}/composerTargets.cmake")
 
 check_required_components(composer)
+
+function(composer_build TARGET)
+    cmake_parse_arguments(COMPOSER ""
+                                   ""
+                                   "SOURCES;INCLUDE_DIRS"
+                                   ${ARGN} )
+    if (NOT COMPOSER_SOURCES)
+        message(FATAL_ERROR "No sources provided to composer_build.")
+    endif ()
+    add_executable(${TARGET} ${COMPOSER_SOURCES} $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/generated_composer_src.cc)
+    target_link_libraries(${TARGET} PUBLIC APEX::composer)
+endfunction()

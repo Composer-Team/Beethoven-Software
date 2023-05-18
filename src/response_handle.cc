@@ -8,7 +8,7 @@
 using namespace composer;
 
 
-rocc_response response_handle::get() {
+rocc_response response_getter::get() {
   if (can_wait) {
     if (has_recieved) {
       fprintf(stderr, "Attempted to wait on a return handle that has already received a response!\n");
@@ -31,3 +31,6 @@ os << "data: " << response.data << " core_id: " << response.core_id << " system_
 return os;
 }
 
+template<> rocc_response response_handle<rocc_response>::get() {
+  return rg.get();
+}
