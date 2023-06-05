@@ -3,7 +3,6 @@
 //
 
 #include "composer/allocator_ptr.h"
-#include <iostream>
 #include <cerrno>
 #include <cstring>
 using namespace composer;
