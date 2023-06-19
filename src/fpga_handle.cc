@@ -204,7 +204,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     // see if allocation fits inside size classes
     int fit = -1;
     for (int i = 0; i < kria_n_page_sizes && fit == -1; ++i) {
-      if (len < kria_huge_page_sizes[i])
+      if (len <= kria_huge_page_sizes[i])
         fit = i;
     }
     if (fit == -1) {
