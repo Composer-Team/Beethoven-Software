@@ -60,9 +60,9 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
   buf[0] |= ((funct & 0x7F) << 25);
   // 7 + 5 + 1 + 1 + 1 + 5 + 5 + 7 = 32bit
 
-  for (int i = 0; i < 5; ++i) {
-    printf("%d: %x \n", i, buf[i]);
-  }
+//  for (int i = 0; i < 5; ++i) {
+//    printf("%d: %x \n", i, buf[i]);
+//  }
 
   return buf;
 }
