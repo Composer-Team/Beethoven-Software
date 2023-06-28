@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <cstring>
 #include <vector>
+#include "composer/alloc.h"
 
 #ifdef Kria
 
@@ -89,6 +90,7 @@ uint64_t vtop(unsigned long virt_addr) {
 
 static int cacheLineSz;
 static int logCacheLineSz;
+
 fpga_handle_t::fpga_handle_t() {
 #ifdef Kria
   cacheLineSz = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
@@ -152,7 +154,6 @@ fpga_handle_t::~fpga_handle_t() {
 }
 
 
-
 rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   int rc = pthread_mutex_lock(&cmd_server->wait_for_response[handle]);
   // command is now ready
@@ -190,6 +191,8 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
   }
   return response_handle<rocc_response>(c.getXd(), handle, *this);
 }
+
+static std::vector<composer::remote_ptr> allocated_regions;
 
 remote_ptr fpga_handle_t::malloc(size_t len) {
 #ifdef Kria
@@ -231,8 +234,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
     throw std::exception();
   }
-
-  return remote_ptr(vtop((intptr_t) addr), addr, sz);
+  auto ptr = remote_ptr(vtop((intptr_t) addr), addr, sz);
+  allocated_regions.push_back(ptr);
+  return ptr;
 #else
   // acquire lock over client side
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
@@ -272,7 +276,6 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
-  to_flush.push_back(&dst);
 }
 
 void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
@@ -288,9 +291,10 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   // this should push any data in the write buffer but then invalidate any data in the cache
   // this represents a potentially valid interleaving so we're all good.
   asm("DMB SY");
+  // IVAC requires kernel mode in order to execute...
 //  char *ptr = (char*)src.getHostAddr();
 //  for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
-////    asm("DC IVAC, %0" :: "r"(ptr));
+//    asm("DC IVAC, %0" :: "r"(ptr));
 //    ptr += cacheLineSz;
 //  }
 #endif
@@ -301,13 +305,13 @@ static volatile uint64_t *cbuffer = nullptr;
 void fpga_handle_t::flush_data_to_fpga() {
 #ifdef Kria
   // flush and invalidate lines
-//  for (auto region: to_flush) {
-//    char* ptr = (char*)region->getHostAddr();
-//    for (int i = 0; i < region->getLen() >> logCacheLineSz; ++i) {
-//      ptr += cacheLineSz;
-////      asm("DC CIVAC, %0" :: "r"(ptr));
-//    }
-//  }
+  for (auto region: allocated_regions) {
+    char *ptr = (char *) region.getHostAddr();
+    for (int i = 0; i < region.getLen() >> logCacheLineSz; ++i) {
+      ptr += cacheLineSz;
+      asm("DC CIVAC, %0"::"r"(ptr));
+    }
+  }
   // ensure that write buffers are flushed
   asm("DMB NSHST");
 #endif
@@ -315,28 +319,30 @@ void fpga_handle_t::flush_data_to_fpga() {
 
 void fpga_handle_t::free(remote_ptr ptr) {
 #ifdef Kria
-	munmap(ptr.getHostAddr(), ptr.getLen());
+  // erase ptr from allocated regions vector
+
+  munmap(ptr.getHostAddr(), ptr.getLen());
 #else
-	pthread_mutex_lock(&data_server->data_cmd_send_lock);
-	data_server->op_argument = ptr.getFpgaAddr();
-	data_server->operation = FREE;
-	pthread_mutex_unlock(&data_server->server_mut);
-	// wait for server to signal that it has read our command
-	pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
-	// now the server has returned the device addr (for building commands), and the file name
-	pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+  pthread_mutex_lock(&data_server->data_cmd_send_lock);
+  data_server->op_argument = ptr.getFpgaAddr();
+  data_server->operation = FREE;
+  pthread_mutex_unlock(&data_server->server_mut);
+  // wait for server to signal that it has read our command
+  pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+  // now the server has returned the device addr (for building commands), and the file name
+  pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
 }
 
 rocc_response fpga_handle_t::flush() {
-	auto q = rocc_cmd::flush_cmd();
-	auto i = send(q);
-	return i.get();
+  auto q = rocc_cmd::flush_cmd();
+  auto i = send(q);
+  return i.get();
 }
 
 void fpga_handle_t::shutdown() const {
-	pthread_mutex_lock(&cmd_server->cmd_send_lock);
-	pthread_mutex_unlock(&cmd_server->server_mut);
-	cmd_server->quit = true;
-	pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+  pthread_mutex_lock(&cmd_server->cmd_send_lock);
+  pthread_mutex_unlock(&cmd_server->server_mut);
+  cmd_server->quit = true;
+  pthread_mutex_unlock(&cmd_server->cmd_send_lock);
 }

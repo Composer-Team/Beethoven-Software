@@ -19,7 +19,6 @@
 
 #include <cinttypes>
 #include <composer/composer_consts.h>
-#include <composer/allocator_ptr.h>
 #include <composer/util.h>
 #include <composer/response_handle.h>
 

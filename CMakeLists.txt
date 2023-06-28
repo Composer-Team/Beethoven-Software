@@ -41,10 +41,8 @@ add_library(composer SHARED
         src/response_handle.cc
         src/rocc_response.cc
         src/verilator_server.cc
-        src/allocator_ptr.cc
         include/composer/response_handle.h
-        include/composer/rocc_cmd.h
-        include/composer/rocc_response.h include/composer/allocator_ptr.h)
+        include/composer/rocc_cmd.h)
 
 if (APPLE)
     message(Debug "Building for Darwin/OSX platform")

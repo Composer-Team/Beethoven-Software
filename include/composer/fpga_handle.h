@@ -20,12 +20,13 @@
 #include <composer/verilator_server.h>
 #include <map>
 #include <vector>
-#include <composer/allocator_ptr.h>
 
 namespace composer {
   class response_getter;
 
   class rocc_cmd;
+
+  struct remote_ptr;
 
   struct fpga_handle_t {
   private:
@@ -39,8 +40,6 @@ namespace composer {
     data_server_file *data_server;
     int dsfd;
     std::map<uint64_t, std::tuple<int, void *, int, std::string> > device2virtual;
-
-    std::vector<const remote_ptr *> to_flush;
 
   public:
     /**
