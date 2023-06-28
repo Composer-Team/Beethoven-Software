@@ -7,6 +7,7 @@
 
 #include <cinttypes>
 #include <string>
+#include "fpga_handle.h"
 
 namespace composer {
   class remote_ptr {
@@ -17,6 +18,14 @@ namespace composer {
     uint32_t len;
   public:
     bool freed;
+
+    explicit remote_ptr(size_t size) {
+      auto me = current_handle_context->malloc(size);
+      fpga_addr = me.getFpgaAddr();
+      host_addr = me.getHostAddr();
+      len = me.getLen();
+      freed = false;
+    }
 
     [[nodiscard]] uint64_t getFpgaAddr() const {
       return fpga_addr;
