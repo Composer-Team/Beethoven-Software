@@ -60,6 +60,8 @@ namespace composer {
 
     explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, uint32_t len) : fpga_addr(fpgaAddr), host_addr(hostAddr), len(len), freed(false){}
 
+    explicit remote_ptr() : fpga_addr(0), host_addr(nullptr), len(0), freed(false) {}
+
     [[nodiscard]] std::string printError();
 
   };
