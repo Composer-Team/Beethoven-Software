@@ -211,12 +211,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
       if (len <= kria_huge_page_sizes[i])
         fit = i;
     }
-    if (fit == -1) {
-#ifndef NDEBUG
-      std::cerr << "Error no size appropriate" << std::endl;
-#endif
-      return remote_ptr(0, nullptr, ERR_ALLOC_TOO_BIG);
-    }
+    if (fit == -1)
+      throw std::runtime_error("Error in FPGA malloc: no huge page size available for allocation of size "
+                                + std::to_string(len) + "B");
 
     addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
@@ -224,17 +221,11 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     sz = kria_huge_page_sizes[fit];
   }
 
-  if (addr == MAP_FAILED) {
-#ifndef NDEBUG
-    std::cerr << "Error in mmap: " << strerror(errno) << std::endl;
-#endif
-    return remote_ptr(errno, nullptr, ERR_MMAP_FAILURE);
-  }
+  if (addr == MAP_FAILED)
+    throw std::runtime_error("Error in FPGA malloc. Map failed. Err msg: " + std::string(strerror(errno)));
 
-  if (mlock(addr, sz)) {
-    std::cerr << "Error in mlock: " << strerror(errno) << std::endl;
-    throw std::exception();
-  }
+  if (mlock(addr, sz))
+    throw std::runtime_error("Error in FPGA malloc. mlock failed. Err msg: " + std::string(strerror(errno)));
   auto ptr = remote_ptr(vtop((intptr_t) addr), addr, sz);
   allocated_regions.push_back(ptr);
   return ptr;
