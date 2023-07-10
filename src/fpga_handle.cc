@@ -9,6 +9,7 @@
 #include <cstring>
 #include <vector>
 #include "composer/alloc.h"
+#include <stdexcept>
 
 #ifdef Kria
 
@@ -249,14 +250,11 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   uint64_t addr = data_server->op_argument;
   int fd = shm_open(data_server->fname, O_RDWR, file_access_flags);
   if (fd < 0) {
-    std::cerr << "1) Error opening file '" << data_server->fname << "' - " << std::string(strerror(errno)) << std::endl;
-    exit(1);
+    throw std::runtime_error("Failed to open file " + std::string(data_server->fname) + " - " + std::string(strerror(errno)));
   }
   void *ptr = mmap(nullptr, len, file_access_prots, MAP_SHARED, fd, 0);
   if (ptr == MAP_FAILED) {
-    std::cerr << "Failed to map in file " << data_server->fname << " - " << std::string(strerror(errno)) << std::endl;
-
-    exit(1);
+    throw std::runtime_error("Failed to map in file " + std::string(data_server->fname) + " - " + std::string(strerror(errno)));
   }
   // add device addr to private map
   device2virtual[addr] = std::make_tuple(fd, ptr, len, std::string(data_server->fname));
