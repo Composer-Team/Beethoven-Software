@@ -309,7 +309,7 @@ void fpga_handle_t::flush_data_to_fpga() {
 void fpga_handle_t::free(remote_ptr ptr) {
 #ifdef Kria
   // erase ptr from allocated regions vector
-
+  allocated_regions.erase(std::remove(allocated_regions.begin(), allocated_regions.end(), ptr), allocated_regions.end());
   munmap(ptr.getHostAddr(), ptr.getLen());
 #else
   pthread_mutex_lock(&data_server->data_cmd_send_lock);

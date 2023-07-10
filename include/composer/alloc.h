@@ -64,6 +64,9 @@ namespace composer {
 
     [[nodiscard]] std::string printError();
 
+    bool operator == (const remote_ptr &other) const {
+      return fpga_addr == other.fpga_addr && len == other.len;
+    }
   };
 
   const int ERR_ALLOC_TOO_BIG = 0x1;
