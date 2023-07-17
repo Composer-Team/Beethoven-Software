@@ -369,7 +369,9 @@ namespace composer {
       if ((flags & BLOCK_ALLOC) && (flags & BASE_ALLOCATION)) {
         fprintf(stderr, "WARNING - incoherent flags in superblocks in composer allocator\n");
       }
+#ifdef VERBOSE
       printf("free info: %d %d %d\n", bi.superblock_id, bi.block_id, flags);
+#endif
       if (flags & BLOCK_ALLOC) {
         // small allocation
         pthread_mutex_lock(&sb.lock);
