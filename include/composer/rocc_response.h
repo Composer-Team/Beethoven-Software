@@ -15,6 +15,7 @@ namespace composer {
     uint8_t system_id;
     uint8_t rd;
     rocc_response(const uint32_t *buffer, const composer_pack_info &pack_info);
+    rocc_response() = default;
   };
 
 }

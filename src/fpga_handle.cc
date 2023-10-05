@@ -323,11 +323,14 @@ void fpga_handle_t::free(remote_ptr ptr) {
 #endif
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-result"
 rocc_response fpga_handle_t::flush() {
   auto q = rocc_cmd::flush_cmd();
-  auto i = send(q);
-  return i.get();
+  send(q);
+  return {};
 }
+#pragma clang diagnostic pop
 
 void fpga_handle_t::shutdown() const {
   pthread_mutex_lock(&cmd_server->cmd_send_lock);
