@@ -32,5 +32,8 @@ return os;
 }
 
 template<> rocc_response response_handle<rocc_response>::get() {
+#ifdef KRIA
+  asm volatile ("" ::: "memory")
+#endif
   return rg.get();
 }

@@ -31,7 +31,7 @@ namespace composer {
     // NOTE: For security purposes we could probably pack this structure full of information that guarantees that the
     //       user is behaving
     uint64_t fpga_addr;
-    void * host_addr;
+    volatile void * host_addr;
     uint32_t len;
   public:
     bool freed;
@@ -52,7 +52,7 @@ namespace composer {
       return len;
     }
 
-    [[nodiscard]] void *getHostAddr() const {
+    [[nodiscard]] volatile void *getHostAddr() const {
       return host_addr;
     }
 

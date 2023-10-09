@@ -265,6 +265,7 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
+  asm volatile("DMB SY":::"memory");
 }
 
 void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
@@ -279,7 +280,7 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
 #else
   // this should push any data in the write buffer but then invalidate any data in the cache
   // this represents a potentially valid interleaving so we're all good.
-  asm("DMB SY");
+//   asm volatile("DMB SY":::"memory");
   // IVAC requires kernel mode in order to execute...
 //  char *ptr = (char*)src.getHostAddr();
 //  for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
@@ -298,11 +299,12 @@ void fpga_handle_t::flush_data_to_fpga() {
     char *ptr = (char *) region.getHostAddr();
     for (int i = 0; i < region.getLen() >> logCacheLineSz; ++i) {
       ptr += cacheLineSz;
-      asm("DC CIVAC, %0"::"r"(ptr));
+      asm volatile("DC CIVAC, %0"::"r"(ptr):"memory");
     }
   }
   // ensure that write buffers are flushed
-  asm("DMB NSHST");
+  asm volatile("DMB NSHST":::"memory");
+  asm volatile("DMB SY":::"memory");
 #endif
 }
 
@@ -310,7 +312,7 @@ void fpga_handle_t::free(remote_ptr ptr) {
 #ifdef Kria
   // erase ptr from allocated regions vector
   allocated_regions.erase(std::remove(allocated_regions.begin(), allocated_regions.end(), ptr), allocated_regions.end());
-  munmap(ptr.getHostAddr(), ptr.getLen());
+  munmap(const_cast<void*>(ptr.getHostAddr()), ptr.getLen());
 #else
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->op_argument = ptr.getFpgaAddr();
