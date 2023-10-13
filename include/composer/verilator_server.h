@@ -38,8 +38,6 @@ namespace composer {
     rocc_response responses[MAX_CONCURRENT_COMMANDS];
 
     sem_t processes_waiting = {};
-//    int processes_waiting = 0;
-//    pthread_mutex_t process_waiting_count_lock; // needs pshared flag
 
     // once we've got a result back, need to free up response slot
     pthread_mutex_t free_list_lock; // needs pshared flag so can't initialize inline
@@ -50,7 +48,7 @@ namespace composer {
     uint64_t pthread_wait_id = 0;
     uint64_t quit;
     // client request
-    rocc_cmd cmd;
+    composer::rocc_cmd cmd;
 
     static void init(cmd_server_file &csf);
   };
@@ -61,23 +59,27 @@ namespace composer {
     ALLOC = 0,
     FREE = 1,
     MOVE_FROM_FPGA = 2,
-    MOVE_TO_FPGA = 3
+    MOVE_TO_FPGA = 3,
+    ADD_TO_COHERENCE_MANAGER = 4,
+    INVALIDATE_REGION = 5,
+    CLEAN_INVALIDATE_REGION = 6,
+    RELEASE_COHERENCE_BARRIER = 7,
   };
 
   struct data_server_file {
-    pthread_mutex_t server_mut;
+    pthread_mutex_t server_mut{};
     pthread_mutex_t data_cmd_send_lock = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_t data_cmd_recieve_resp_lock = PTHREAD_MUTEX_INITIALIZER;
     // server return values
-    char fname[512];
+    char fname[512]{};
+    int16_t resp_id;
     // client request
-    data_server_op operation;
-
+    data_server_op operation = ALLOC;
     // when allocation, pass in the length argument here and return value is FPGA addr + fname
     // when free, pass in free address here and there is no return valued
-    uint64_t op_argument;
-    uint64_t op2_argument;
-    uint64_t op3_argument;
+    uint64_t op_argument{};
+    uint64_t op2_argument{};
+    uint64_t op3_argument{};
 
     static void init(data_server_file &dsf);
   };

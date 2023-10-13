@@ -21,10 +21,13 @@
 #include <composer/composer_consts.h>
 #include <composer/util.h>
 #include <composer/response_handle.h>
-
+#include <composer/alloc.h>
 
 namespace composer {
+  class fpga_handle_t;
+
   class rocc_cmd {
+    friend fpga_handle_t;
     /**
      * Generate a command to start kernel execution on the accelerator.
      * @param system_id
@@ -48,9 +51,11 @@ namespace composer {
     uint64_t rs1;
     uint64_t rs2;
 
+    std::vector<composer::remote_ptr> memory_clobbers;
 
     rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t xd, uint8_t rd,
-             uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2);
+             uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2,
+             const std::vector<remote_ptr>& memory_clobbers = {});
 
   public:
 
@@ -64,7 +69,8 @@ namespace composer {
             uint8_t xs2,
             uint16_t core_id,
             uint64_t rs1,
-            uint64_t rs2);
+            uint64_t rs2,
+            const std::vector<remote_ptr> &memory_clobbers = {});
 
     [[nodiscard]] uint32_t *pack(const composer_pack_info &info) const;
 
@@ -88,10 +94,7 @@ namespace composer {
 
     [[nodiscard]] uint64_t getRs2() const;
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "modernize-use-nodiscard"
-    response_handle<rocc_response> send() const;
-#pragma clang diagnostic pop
+    [[maybe_unused, nodiscard]] response_handle<rocc_response> send() const;
   };
 }
 

@@ -32,5 +32,15 @@ return os;
 }
 
 template<> rocc_response response_handle<rocc_response>::get() {
-  return rg.get();
+  auto resp = rg.get();
+  // memory segments on discrete targets need to get copied back if they are allocated to indicate that the FPGA writes
+#ifndef Kria
+  for (const remote_ptr &op : this->ops) {
+    if (op.allocation_type == READWRITE || op.allocation_type == WRITE) {
+      current_handle_context->copy_from_fpga(op);
+    }
+  }
+#endif
+
+  return resp;
 }

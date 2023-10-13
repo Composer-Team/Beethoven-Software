@@ -36,7 +36,6 @@ endif ()
 add_library(composer SHARED
         src/rocc_cmd.cc
         src/util.cc
-        src/alloc.cc
         src/fpga_handle.cc
         src/response_handle.cc
         src/rocc_response.cc

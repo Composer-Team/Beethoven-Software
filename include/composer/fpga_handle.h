@@ -58,23 +58,21 @@ namespace composer {
 
     ~fpga_handle_t();
 
-    composer::remote_ptr malloc(size_t len);
+    composer::remote_ptr malloc(size_t len, [[maybe_unused]] shared_fpga_region_ty region_ty = READWRITE);
 
-    void flush_data_to_fpga();
+    [[maybe_unused]] void copy_to_fpga(const composer::remote_ptr &dst);
 
-    void copy_to_fpga(const composer::remote_ptr &dst);
+    [[maybe_unused]] void copy_from_fpga(const composer::remote_ptr &src);
 
-    void copy_from_fpga(const composer::remote_ptr &src);
+    [[maybe_unused]] void free(composer::remote_ptr fpga_addr);
 
-    void free(composer::remote_ptr fpga_addr);
-
-    void shutdown() const;
+    [[maybe_unused]] void shutdown() const;
   };
 
   extern std::vector<fpga_handle_t *> active_fpga_handles;
 
   extern fpga_handle_t *current_handle_context;
 
-  void set_fpga_context(fpga_handle_t *t);
+  [[maybe_unused]] void set_fpga_context(fpga_handle_t *t);
 }
 #endif

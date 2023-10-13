@@ -18,6 +18,7 @@
 #include <iostream>
 #include <cstring>
 #include <cassert>
+#include <utility>
 #include "composer/fpga_handle.h"
 
 using namespace composer;
@@ -70,26 +71,27 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
 rocc_cmd
 rocc_cmd::start_cmd(uint16_t system_id, bool expect_response, uint8_t rd, uint8_t xs1,
                     uint8_t xs2,
-                    uint16_t core_id, uint64_t rs1, uint64_t rs2) {
+                    uint16_t core_id, uint64_t rs1, uint64_t rs2, const std::vector<remote_ptr> &memory_clobbers) {
   return {ROCC_FUNC_START, system_id, ROCC_OP_ACCEL,
           expect_response, rd, xs1, xs2,
-          core_id, rs1, rs2};
+          core_id, rs1, rs2, memory_clobbers};
 }
 
 rocc_cmd
 rocc_cmd::flush_cmd() {
-  return {0, 0, ROCC_OP_FLUSH, 0, 0, 0, 0, 0, 0, 0};
+  return {0, 0, ROCC_OP_FLUSH, 0, 0, 0, 0, 0, 0, 0, {}};
 }
 
 // for start commands
 rocc_cmd::rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t xd,
-                   uint8_t rd, uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2) :
+                   uint8_t rd, uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2,
+                   const std::vector<remote_ptr>& memory_clobbers) :
         function(function), system_id(systemId),
         opcode(opcode),
         xd(xd), rd(rd),
         xs1(xs1), xs2(xs2),
         core_id(coreId),
-        rs1(rs1), rs2(rs2) {}
+        rs1(rs1), rs2(rs2), memory_clobbers(memory_clobbers) {}
 
 uint16_t rocc_cmd::getFunction() const {
   return function;

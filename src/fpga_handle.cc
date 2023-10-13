@@ -14,6 +14,8 @@
 #ifdef Kria
 
 #include <sys/mman.h>
+#include <pthread.h>
+
 
 const unsigned kria_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};
 const unsigned kria_huge_page_flags[] = {21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
@@ -29,7 +31,7 @@ std::vector<fpga_handle_t *> composer::active_fpga_handles;
 
 fpga_handle_t *composer::current_handle_context;
 
-void composer::set_fpga_context(fpga_handle_t *handle) {
+[[maybe_unused]] void composer::set_fpga_context(fpga_handle_t *handle) {
   current_handle_context = handle;
   if (std::find(active_fpga_handles.begin(), active_fpga_handles.end(), handle) == active_fpga_handles.end()) {
     std::cerr << "The provided handle appears to have not been properly constructed. Please use the provided"
@@ -55,7 +57,9 @@ void composer::set_fpga_context(fpga_handle_t *handle) {
 #include "composer/verilator_server.h"
 #include "composer/response_handle.h"
 #include <unistd.h>
+#ifndef Kria
 #include <pthread.h>
+#endif
 
 #include <fcntl.h>
 
@@ -68,11 +72,11 @@ using namespace composer;
 
 uint64_t vtop(unsigned long virt_addr) {
   FILE *pagemap;
-  intptr_t paddr = 0;
-  long offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
+  uint64_t paddr = 0;
+  uint64_t offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
   uint64_t e;
   if ((pagemap = fopen("/proc/self/pagemap", "r"))) {
-    if (lseek(fileno(pagemap), offset, SEEK_SET) == offset) {
+    if (lseek(fileno(pagemap), (long)offset, SEEK_SET) == offset) {
       if (fread(&e, sizeof(uint64_t), 1, pagemap)) {
         if (e & (1ULL << 63)) { // page present ?
           paddr = e & ((1ULL << 54) - 1); // pfn mask
@@ -171,7 +175,49 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
 }
 
 response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
-  flush_data_to_fpga();
+#ifdef Kria
+  bool clobbered = false;
+#endif
+  for (const remote_ptr &a : c.memory_clobbers) {
+    /**
+     * Kria:
+     * Coherence for fpga read buffers is handled automatically by HPC IO coherence
+     *   However, for RW buffers, we need to register them with the hardware coherence manager and cohere
+     *   them when applicable
+     * For discrete boards:
+     * No coherence necessary right now... Just move the data over where appropriate
+     */
+#ifdef Kria
+    // check if the clobber has been allocated yet
+    if (a.allocation_type == READWRITE || a.allocation_type == WRITE) {
+      clobbered = true;
+      pthread_mutex_lock(&data_server->data_cmd_send_lock);
+      data_server->op_argument = a.allocation_id;
+      // invalidate only is _probably_ wrong - but I might also be wrong about that. Unclear if there's any
+      // performance benefit anyways
+//      data_server->operation = (a.allocation_type == READWRITE) ? CLEAN_INVALIDATE_REGION : INVALIDATE_REGION;
+      data_server->operation = CLEAN_INVALIDATE_REGION;
+      pthread_mutex_unlock(&data_server->server_mut);
+      pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+      pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+    }
+#else
+    if (a.allocation_type == READWRITE || a.allocation_type == READ)
+      copy_to_fpga(a);
+#endif
+  }
+
+#ifdef Kria
+  // If memory coherence operations were emitted, then we wait for them to complete with this operation
+  // before sending in a command
+  if (clobbered) {
+    pthread_mutex_lock(&data_server->data_cmd_send_lock);
+    data_server->operation = RELEASE_COHERENCE_BARRIER;
+    pthread_mutex_unlock(&data_server->server_mut);
+    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+  }
+#endif
   // acquire lock over client side
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
@@ -190,18 +236,29 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
     fflush(stdout);
     exit(1);
   }
-  return response_handle<rocc_response>(c.getXd(), handle, *this);
+  return response_handle<rocc_response>(c.getXd(), handle, *this, c.memory_clobbers);
 }
 
-static std::vector<composer::remote_ptr> allocated_regions;
-
-remote_ptr fpga_handle_t::malloc(size_t len) {
+remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region_ty region_ty) {
 #ifdef Kria
   void *addr;
   size_t sz;
+  int prots;
+  switch (region_ty) {
+    case shared_fpga_region_ty::READWRITE:
+      prots = PROT_READ | PROT_WRITE;
+      break;
+    case shared_fpga_region_ty::READ:
+      prots = PROT_WRITE; // The FPGA reads and the CPU writes
+      break;
+    case shared_fpga_region_ty::FPGAONLY:
+      prots = PROT_NONE;
+      break;
+  }
+
   if (len <= 1 << 12) {
     sz = 1 << 12;
-    addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS,
+    addr = mmap(nullptr, sz, prots, MAP_PRIVATE | MAP_ANONYMOUS,
                 -1, 0);
   } else {
     // Kria only uses local mappings via OS
@@ -214,8 +271,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     if (fit == -1)
       throw std::runtime_error("Error in FPGA malloc: no huge page size available for allocation of size "
                                 + std::to_string(len) + "B");
-
-    addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
+    addr = mmap(nullptr, kria_huge_page_sizes[fit], prots,
                 MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
                 -1, 0);
     sz = kria_huge_page_sizes[fit];
@@ -227,7 +283,17 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   if (mlock(addr, sz))
     throw std::runtime_error("Error in FPGA malloc. mlock failed. Err msg: " + std::string(strerror(errno)));
   auto ptr = remote_ptr(vtop((intptr_t) addr), addr, sz);
-  allocated_regions.push_back(ptr);
+  if (region_ty == READWRITE) {
+    // register the region with the hardware coherence manager
+    pthread_mutex_lock(&data_server->data_cmd_send_lock);
+    data_server->op_argument = ptr.fpga_addr;
+    data_server->op2_argument = ptr.len;
+    data_server->operation = ADD_TO_COHERENCE_MANAGER;
+    pthread_mutex_unlock(&data_server->server_mut);
+    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+    ptr.allocation_id = data_server->resp_id;
+    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+  }
   return ptr;
 #else
   // acquire lock over client side
@@ -239,6 +305,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   // now the server has returned the device addr (for building commands), and the file name
   uint64_t addr = data_server->op_argument;
+
   int fd = shm_open(data_server->fname, O_RDWR, file_access_flags);
   if (fd < 0) {
     throw std::runtime_error("Failed to open file " + std::string(data_server->fname) + " - " + std::string(strerror(errno)));
@@ -251,11 +318,11 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   device2virtual[addr] = std::make_tuple(fd, ptr, len, std::string(data_server->fname));
   // release lock over client side
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-  return remote_ptr(addr, ptr, len);
+  return remote_ptr(addr, ptr, len, region_ty);
 #endif
 }
 
-void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
+[[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
 #ifndef Kria
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_TO_FPGA;
@@ -267,7 +334,7 @@ void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
 #endif
 }
 
-void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
+[[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
 #ifndef Kria
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_FROM_FPGA;
@@ -276,40 +343,12 @@ void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
   pthread_mutex_unlock(&data_server->server_mut);
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-#else
-  // this should push any data in the write buffer but then invalidate any data in the cache
-  // this represents a potentially valid interleaving so we're all good.
-  asm("DMB SY");
-  // IVAC requires kernel mode in order to execute...
-//  char *ptr = (char*)src.getHostAddr();
-//  for (int i = 0; i < src.getLen() >> logCacheLineSz; ++i) {
-//    asm("DC IVAC, %0" :: "r"(ptr));
-//    ptr += cacheLineSz;
-//  }
 #endif
 }
 
-static volatile uint64_t *cbuffer = nullptr;
-
-void fpga_handle_t::flush_data_to_fpga() {
-#ifdef Kria
-  // flush and invalidate lines
-  for (auto region: allocated_regions) {
-    char *ptr = (char *) region.getHostAddr();
-    for (int i = 0; i < region.getLen() >> logCacheLineSz; ++i) {
-      ptr += cacheLineSz;
-      asm("DC CIVAC, %0"::"r"(ptr));
-    }
-  }
-  // ensure that write buffers are flushed
-  asm("DMB NSHST");
-#endif
-}
-
-void fpga_handle_t::free(remote_ptr ptr) {
+[[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
 #ifdef Kria
   // erase ptr from allocated regions vector
-  allocated_regions.erase(std::remove(allocated_regions.begin(), allocated_regions.end(), ptr), allocated_regions.end());
   munmap(ptr.getHostAddr(), ptr.getLen());
 #else
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
@@ -325,14 +364,14 @@ void fpga_handle_t::free(remote_ptr ptr) {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-result"
-rocc_response fpga_handle_t::flush() {
+[[maybe_unused]] rocc_response fpga_handle_t::flush() {
   auto q = rocc_cmd::flush_cmd();
   send(q);
   return {};
 }
 #pragma clang diagnostic pop
 
-void fpga_handle_t::shutdown() const {
+[[maybe_unused]] void fpga_handle_t::shutdown() const {
   pthread_mutex_lock(&cmd_server->cmd_send_lock);
   pthread_mutex_unlock(&cmd_server->server_mut);
   cmd_server->quit = true;
