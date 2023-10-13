@@ -160,5 +160,6 @@ response_handle<rocc_response> rocc_cmd::send() const {
         break;
     }
   }
+  asm volatile ("" ::: "memory");
   return ctx->send(*this);
 }
