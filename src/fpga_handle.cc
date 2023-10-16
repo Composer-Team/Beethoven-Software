@@ -106,6 +106,7 @@ fpga_handle_t::fpga_handle_t() {
     t >>= 1;
   }
 #endif
+  // map in command server
   csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, file_access_flags);
   if (csfd == -1) {
     std::cerr << "Error opening file " << cmd_server_file_name << " " << strerror(errno) << std::endl;
@@ -119,7 +120,7 @@ fpga_handle_t::fpga_handle_t() {
   }
   cmd_server->cmd = rocc_cmd::flush_cmd();
 
-#ifndef Kria
+  // map in data server
   dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, file_access_flags);
   if (dsfd < 0) {
     std::cerr << "Error opening file " << data_server_file_name << std::endl;
@@ -131,7 +132,6 @@ fpga_handle_t::fpga_handle_t() {
     std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
-#endif
   active_fpga_handles.push_back(this);
 }
 
