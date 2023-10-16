@@ -49,7 +49,7 @@ namespace composer {
 
     uint64_t fpga_addr;
     void *host_addr;
-    uint32_t len;
+    size_t len;
     int16_t allocation_id = -1;
   public:
     shared_fpga_region_ty allocation_type;
@@ -58,7 +58,7 @@ namespace composer {
       return fpga_addr;
     }
 
-    [[nodiscard]] uint32_t getLen() const {
+    [[nodiscard]] size_t getLen() const {
       return len;
     }
 
@@ -66,10 +66,10 @@ namespace composer {
       return host_addr;
     }
 
-    explicit remote_ptr(uint64_t fpgaAddr, uint32_t len, shared_fpga_region_ty ownership = FPGAONLY) :
+    explicit remote_ptr(uint64_t fpgaAddr, size_t len, shared_fpga_region_ty ownership) :
             fpga_addr(fpgaAddr), len(len), host_addr(nullptr), allocation_type(ownership) {}
 
-    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, uint32_t len, shared_fpga_region_ty ownership = FPGAONLY)
+    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, size_t len, shared_fpga_region_ty ownership)
             : fpga_addr(fpgaAddr), host_addr(hostAddr), len(len), allocation_type(ownership) {}
 
     explicit remote_ptr() : fpga_addr(0), host_addr(nullptr), len(0), allocation_type(FPGAONLY) {}

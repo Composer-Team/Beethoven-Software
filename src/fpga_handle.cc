@@ -283,7 +283,7 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
 
   if (mlock(addr, sz))
     throw std::runtime_error("Error in FPGA malloc. mlock failed. Err msg: " + std::string(strerror(errno)));
-  auto ptr = remote_ptr(vtop((intptr_t) addr), addr, sz);
+  auto ptr = remote_ptr(vtop((intptr_t) addr), addr, len, region_ty);
   if (region_ty == READWRITE) {
     // register the region with the hardware coherence manager
     pthread_mutex_lock(&data_server->data_cmd_send_lock);
