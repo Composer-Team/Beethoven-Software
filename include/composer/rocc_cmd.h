@@ -51,11 +51,9 @@ namespace composer {
     uint64_t rs1;
     uint64_t rs2;
 
-    std::vector<composer::remote_ptr> memory_clobbers;
 
     rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t xd, uint8_t rd,
-             uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2,
-             const std::vector<remote_ptr> &memory_clobbers = {});
+             uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2);
 
     rocc_cmd(const rocc_cmd &other) = default;
 
@@ -71,8 +69,7 @@ namespace composer {
             uint8_t xs2,
             uint16_t core_id,
             uint64_t rs1,
-            uint64_t rs2,
-            const std::vector<remote_ptr> &memory_clobbers = {});
+            uint64_t rs2);
 
     [[nodiscard]] uint32_t *pack(const composer_pack_info &info) const;
 
@@ -96,7 +93,8 @@ namespace composer {
 
     [[nodiscard]] uint64_t getRs2() const;
 
-    [[maybe_unused, nodiscard]] response_handle<rocc_response> send() const;
+    [[maybe_unused, nodiscard]] response_handle<rocc_response> send(
+            const std::vector<composer::remote_ptr> &memory_operands = {}) const;
   };
 }
 

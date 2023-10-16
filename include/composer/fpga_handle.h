@@ -54,7 +54,8 @@ namespace composer {
      * @return handle referring to response that the command will return. Allows for blocking on the response.
      */
 
-    [[nodiscard]] response_handle<rocc_response> send(const rocc_cmd &c);
+    [[nodiscard]] response_handle<rocc_response> send(const rocc_cmd &c,
+                                                      const std::vector<composer::remote_ptr> &memory_operands);
 
     ~fpga_handle_t();
 

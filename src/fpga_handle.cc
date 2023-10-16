@@ -174,11 +174,12 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   return resp;
 }
 
-response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
+response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c,
+                                                   const std::vector<remote_ptr> &memory_clobbers) {
 #ifdef Kria
   bool clobbered = false;
 #endif
-  for (const remote_ptr &a : c.memory_clobbers) {
+  for (const remote_ptr &a : memory_clobbers) {
     /**
      * Kria:
      * Coherence for fpga read buffers is handled automatically by HPC IO coherence
@@ -236,7 +237,7 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
     fflush(stdout);
     exit(1);
   }
-  return response_handle<rocc_response>(c.getXd(), handle, *this, c.memory_clobbers);
+  return response_handle<rocc_response>(c.getXd(), handle, *this, memory_clobbers);
 }
 
 remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region_ty region_ty) {
@@ -366,7 +367,8 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
 #pragma clang diagnostic ignored "-Wunused-result"
 [[maybe_unused]] rocc_response fpga_handle_t::flush() {
   auto q = rocc_cmd::flush_cmd();
-  send(q);
+  // NOLINT
+  send(q, {});
   return {};
 }
 #pragma clang diagnostic pop
