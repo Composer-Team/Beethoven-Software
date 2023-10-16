@@ -42,7 +42,9 @@ namespace composer {
   private:
     response_getter rg;
     std::vector<remote_ptr> ops;
-    response_handle(response_handle &other) = default;
+
+    template <class U>
+    explicit response_handle(response_handle<U> &other) : rg(other.rg), ops(other.ops) {}
 
   public:
     explicit response_handle(bool cw, uint64_t id, const fpga_handle_t &h, const std::vector<remote_ptr> &mem_ops) :
