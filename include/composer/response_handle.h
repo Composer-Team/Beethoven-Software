@@ -42,15 +42,21 @@ namespace composer {
   private:
     response_getter rg;
     std::vector<remote_ptr> ops;
-    explicit response_handle(response_getter &other, const std::vector<remote_ptr> &mem_ops) : rg(other) {}
+    response_handle(response_handle &other) = default;
 
   public:
-    explicit response_handle(bool cw, uint64_t id, const fpga_handle_t &h, const std::vector<remote_ptr> &mem_ops = {}) :
-            rg(cw, id, h), ops(mem_ops) {}
+    explicit response_handle(bool cw, uint64_t id, const fpga_handle_t &h, const std::vector<remote_ptr> &mem_ops) :
+            rg(cw, id, h) {
+      // only push back operations that need coherence later on after command completion
+      for (const auto &mo: mem_ops) {
+        if (mo.allocation_type == READWRITE || mo.allocation_type == WRITE)
+          ops.push_back(mo);
+      }
+    }
 
     template<typename s>
     response_handle<s> to() {
-      return response_handle<s>(rg, ops);
+      return response_handle<s>(*this);
     }
 
     t get();
