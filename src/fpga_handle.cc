@@ -195,7 +195,7 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c,
       pthread_mutex_lock(&data_server->data_cmd_send_lock);
       data_server->op_argument = a.allocation_id;
       // invalidate only is _probably_ wrong - but I might also be wrong about that. Unclear if there's any
-      // performance benefit anyways
+      // performance benefit anyway
 //      data_server->operation = (a.allocation_type == READWRITE) ? CLEAN_INVALIDATE_REGION : INVALIDATE_REGION;
       data_server->operation = CLEAN_INVALIDATE_REGION;
       pthread_mutex_unlock(&data_server->server_mut);
@@ -244,22 +244,9 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
 #ifdef Kria
   void *addr;
   size_t sz;
-  int prots;
-  switch (region_ty) {
-    case shared_fpga_region_ty::READWRITE:
-      prots = PROT_READ | PROT_WRITE;
-      break;
-    case shared_fpga_region_ty::READ:
-      prots = PROT_WRITE; // The FPGA reads and the CPU writes
-      break;
-    case shared_fpga_region_ty::FPGAONLY:
-      prots = PROT_NONE;
-      break;
-  }
-
   if (len <= 1 << 12) {
     sz = 1 << 12;
-    addr = mmap(nullptr, sz, prots, MAP_PRIVATE | MAP_ANONYMOUS,
+    addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS,
                 -1, 0);
   } else {
     // Kria only uses local mappings via OS
@@ -272,7 +259,7 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
     if (fit == -1)
       throw std::runtime_error("Error in FPGA malloc: no huge page size available for allocation of size "
                                 + std::to_string(len) + "B");
-    addr = mmap(nullptr, kria_huge_page_sizes[fit], prots,
+    addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
                 -1, 0);
     sz = kria_huge_page_sizes[fit];

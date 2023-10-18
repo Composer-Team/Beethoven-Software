@@ -55,9 +55,9 @@ namespace composer {
     rocc_cmd(uint16_t function, uint16_t systemId, uint8_t opcode, uint8_t xd, uint8_t rd,
              uint8_t xs1, uint8_t xs2, uint16_t coreId, uint64_t rs1, uint64_t rs2);
 
-    rocc_cmd(const rocc_cmd &other) = default;
 
   public:
+    rocc_cmd(const rocc_cmd &other) = default;
 
     static rocc_cmd flush_cmd();
 
