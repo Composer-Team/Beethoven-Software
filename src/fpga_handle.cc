@@ -190,18 +190,18 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c,
      */
 #ifdef Kria
     // check if the clobber has been allocated yet
-    if (a.allocation_type == READWRITE || a.allocation_type == WRITE) {
-      clobbered = true;
-      pthread_mutex_lock(&data_server->data_cmd_send_lock);
-      data_server->op_argument = a.allocation_id;
-      // invalidate only is _probably_ wrong - but I might also be wrong about that. Unclear if there's any
-      // performance benefit anyway
-//      data_server->operation = (a.allocation_type == READWRITE) ? CLEAN_INVALIDATE_REGION : INVALIDATE_REGION;
-      data_server->operation = CLEAN_INVALIDATE_REGION;
-      pthread_mutex_unlock(&data_server->server_mut);
-      pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
-      pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-    }
+//    if (a.allocation_type == READWRITE || a.allocation_type == WRITE) {
+//      clobbered = true;
+//      pthread_mutex_lock(&data_server->data_cmd_send_lock);
+//      data_server->op_argument = a.allocation_id;
+//      // invalidate only is _probably_ wrong - but I might also be wrong about that. Unclear if there's any
+//      // performance benefit anyway
+////      data_server->operation = (a.allocation_type == READWRITE) ? CLEAN_INVALIDATE_REGION : INVALIDATE_REGION;
+//      data_server->operation = CLEAN_INVALIDATE_REGION;
+//      pthread_mutex_unlock(&data_server->server_mut);
+//      pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+//      pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+//    }
 #else
     if (a.allocation_type == READWRITE || a.allocation_type == READ)
       copy_to_fpga(a);
