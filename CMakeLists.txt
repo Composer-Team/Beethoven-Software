@@ -1,5 +1,5 @@
 project(composer)
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.28)
 set(version 1.0.6)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
@@ -57,6 +57,7 @@ target_include_directories(composer
         PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
+        $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/
         )
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/composer")
