@@ -366,3 +366,62 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
   cmd_server->quit = true;
   pthread_mutex_unlock(&cmd_server->cmd_send_lock);
 }
+
+[[maybe_unused]] void fpga_handle_t::request_startup() {
+  // first, check that there isn't already a ComposerRuntime process running
+  // if there is, then we don't need to do anything
+
+  // use ps utility to see if process is running
+  // if it is, then we don't need to do anything
+
+  // this is rough but maybe it can work alright
+  system("killall ComposerRuntime");
+
+  // try to build and startup the composer runtime FOR SIMULATION ONLY
+  // record current working directory
+  char cwd[1024];
+  getcwd(cwd, sizeof(cwd));
+  // change to composer runtime directory
+  // get $COMPOSER_ROOT environment variable
+  char *composer_root = getenv("COMPOSER_ROOT");
+  // change to composer_root/Composer-Hardware/vsim/generated-src
+  chdir(composer_root);
+  chdir("Composer-Runtime");
+  // make a build directory if one does not exist
+  mkdir("build", 0777);
+  // change to build directory
+  chdir("build");
+  // run cmake
+  system("cmake .. -DTARGET=sim -DCMAKE_BUILD_TYPE=Debug");
+  // run make
+  system("make -j");
+  // fork exec the executable that was just built (./ComposerRuntime)
+  // output system out to log file in the same directory (Composer.log)
+  // then change back to original directory
+  // fork and exec
+  printf("FORKING\n");
+  pid_t pid = fork();
+  if (pid == 0) {
+    // child
+    // redirect stdout and stderr to log file
+    int fd = open("Composer.log", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    dup2(fd, 1);
+    dup2(fd, 2);
+    close(fd);
+    // exec
+    execl("./ComposerRuntime", "./ComposerRuntime", nullptr);
+    // if we get here, exec failed
+    std::cerr << "Failed to exec ComposerRuntime" << std::endl;
+    exit(1);
+  } else if (pid < 0) {
+    // fork failed
+    std::cerr << "Failed to fork ComposerRuntime" << std::endl;
+    exit(1);
+  } else {
+    // parent
+    // change back to original directory
+    chdir(cwd);
+  }
+  sleep(1);
+  printf("Returning\n");
+}

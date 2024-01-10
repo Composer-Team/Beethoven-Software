@@ -67,6 +67,8 @@ namespace composer {
 
     [[maybe_unused]] void free(composer::remote_ptr fpga_addr);
 
+    [[maybe_unused]] static void request_startup() ;
+
     [[maybe_unused]] void shutdown() const;
   };
 
