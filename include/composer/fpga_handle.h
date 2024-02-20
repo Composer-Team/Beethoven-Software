@@ -17,9 +17,13 @@
 #define FPGA_HANDLE_H
 
 #include <composer/rocc_response.h>
+#include <composer/response_handle.h>
+
+#ifndef BAREMETAL
 #include <composer/verilator_server.h>
 #include <map>
 #include <vector>
+#endif
 
 namespace composer {
   class response_getter;
@@ -31,12 +35,12 @@ namespace composer {
   struct fpga_handle_t {
   private:
     friend response_getter;
+#ifndef BAREMETAL
 
     [[nodiscard]] rocc_response get_response_from_handle(int handle) const;
 
     [[nodiscard]] std::optional<rocc_response> try_get_response_from_handle(int handle) const;
 
-#ifndef BAREMETAL
   private:
     cmd_server_file *cmd_server;
     int csfd;
@@ -60,7 +64,6 @@ namespace composer {
 
 #ifndef BAREMETAL
     composer::remote_ptr malloc(size_t len);
-#endif
 
     [[maybe_unused]] void copy_to_fpga(const composer::remote_ptr &dst);
 
@@ -71,12 +74,15 @@ namespace composer {
     [[maybe_unused]] static void request_startup();
 
     [[maybe_unused]] void shutdown() const;
+#endif
   };
 
+#ifndef BAREMETAL
   extern std::vector<fpga_handle_t *> active_fpga_handles;
 
   extern fpga_handle_t *current_handle_context;
 
   [[maybe_unused]] void set_fpga_context(fpga_handle_t *t);
+#endif
 }
 #endif

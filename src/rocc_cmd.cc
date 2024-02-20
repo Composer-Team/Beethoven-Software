@@ -15,56 +15,62 @@
 #include "composer/rocc_cmd.h"
 #include "composer/alloc.h"
 #include "composer/util.h"
-#include <iostream>
+#ifndef BAREMETAL
 #include <cstring>
+#include <iostream>
 #include <cassert>
+#else
+#include <composer_allocator_declaration.h>
+#endif
 #include "composer/fpga_handle.h"
 
 using namespace composer;
 
-composer::rocc_cmd::st rocc_cmd::pack(const composer_pack_info &info) const {
-  st buf;
+void rocc_cmd::pack(const composer_pack_info &info, uint32_t *ar, uint8_t rd_override) const {
 
 #define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }
 
+  uint8_t rrd;
+  if (rd_override == 255) {
+    rrd = rd;
+  } else rrd = rd_override;
+#ifndef BAREMETAL
   CHECK(function, 3)
   CHECK(system_id, 4)
   CHECK(core_id, 10)
   CHECK(int(rd), 5)
   CHECK(xs1, 1)
   CHECK(xs2, 1)
+#endif
 
 
-  memset(buf.ar, 0, sizeof(int32_t) * 5);
+#ifndef BAREMETAL
+  memset(ar, 0, sizeof(int32_t) * 5);
+#endif
+
   // TODO check that there are no overflows for the provided values (not outside logical range)
-  buf.ar[1] = rs1 >> 32;
-  buf.ar[2] = rs1 & 0xFFFFFFFF;
-  buf.ar[3] = rs2 >> 32;
-  buf.ar[4] = rs2 & 0xFFFFFFFF;
+  ar[1] = rs1 >> 32;
+  ar[2] = rs1 & 0xFFFFFFFF;
+  ar[3] = rs2 >> 32;
+  ar[4] = rs2 & 0xFFFFFFFF;
   // 7 bits
-  buf.ar[0] |= opcode & 0x7F;
+  ar[0] = opcode & 0x7F;
   // 5 bits
-  buf.ar[0] |= (((uint8_t) rd & 0x1F) << 7);
+  ar[0] |= (((uint8_t) rd & 0x1F) << 7);
   // 1 bits
-  buf.ar[0] |= ((xs2 & 0x1) << 12);
+  ar[0] |= ((xs2 & 0x1) << 12);
   // 1 bits
-  buf.ar[0] |= ((xs1 & 0x1) << 13);
+  ar[0] |= ((xs1 & 0x1) << 13);
   // 1 bit
-  buf.ar[0] |= ((xd & 0x1) << 14);
+  ar[0] |= ((xd & 0x1) << 14);
   // 5 bits
-  buf.ar[0] |= ((core_id & 0x1F) << 15);
+  ar[0] |= ((core_id & 0x1F) << 15);
   // 5 bits
-  buf.ar[0] |= (((core_id & 0x3E0) >> 5) << 20);
+  ar[0] |= (((core_id & 0x3E0) >> 5) << 20);
   // 7 bits
   uint32_t funct = ((system_id << 3) & 0x78) | (function & 0x7);
-  buf.ar[0] |= ((funct & 0x7F) << 25);
+  ar[0] |= ((funct & 0x7F) << 25);
   // 7 + 5 + 1 + 1 + 1 + 5 + 5 + 7 = 32bit
-
-//  for (int i = 0; i < 5; ++i) {
-//    printf("%d: %x \n", i, buf[i]);
-//  }
-
-  return {buf};
 }
 
 rocc_cmd
@@ -126,6 +132,7 @@ uint64_t rocc_cmd::getRs2() const {
   return rs2;
 }
 
+#ifndef BAREMETAL
 std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd) {
   os << "function: " << cmd.getFunction() << " system_id: " << cmd.getSystemId() << " opcode: " << cmd.getOpcode()
      << " xd: " << cmd.getXd() << " rd: " << cmd.getRd()
@@ -134,8 +141,15 @@ std::ostream &operator<<(std::ostream &os, const rocc_cmd &cmd) {
      << cmd.getRs2();
   return os;
 }
+#endif
 
-response_handle<rocc_response> rocc_cmd::send(const std::vector<composer::remote_ptr> &memory_operands) const {
+#ifdef BAREMETAL
+extern int actives;
+extern int valid_resps;
+extern rocc_response resps[sizeof(int)*8];
+#endif
+response_handle<rocc_response> rocc_cmd::send() const {
+#ifndef BAREMETAL
   auto ctx = current_handle_context;
   if (ctx == nullptr) {
     switch (active_fpga_handles.size()) {
@@ -153,7 +167,28 @@ response_handle<rocc_response> rocc_cmd::send(const std::vector<composer::remote
         break;
     }
   }
-  asm volatile ("" ::: "memory");
+  asm volatile ("":: : "memory");
   assert(ctx != nullptr);
   return ctx->send(*this);
+#else
+  uint8_t id = 255;
+  uint32_t cmd[5];
+  if (xd) {
+    // if no ids are available, wait for one to show up by calling "get"
+    while ((id = __builtin_ffs(~(actives) | (~valid_resps))) == (sizeof(int) * 8)) {
+      response_getter(-1).get();
+    }
+    actives |= (1 << (id - 1));
+  }
+#define MMIO_BASE ((intptr_t)ComposerMMIOOffset)
+  pack(pack_cfg, cmd, id);
+    for (const uint32_t &i: cmd) {
+    while (!peek_addr(MMIO_BASE + CMD_READY)) {}
+    poke_addr(MMIO_BASE + CMD_BITS, i);
+    poke_addr(MMIO_BASE + CMD_VALID, 1);
+  }
+  return response_handle<rocc_response>(id);
+
+#endif
+
 }

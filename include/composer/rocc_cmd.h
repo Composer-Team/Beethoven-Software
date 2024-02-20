@@ -27,9 +27,6 @@ namespace composer {
   class fpga_handle_t;
 
   class rocc_cmd {
-    struct st {
-      uint32_t ar[5];
-    };
     friend fpga_handle_t;
     /**
      * Generate a command to start kernel execution on the accelerator.
@@ -73,7 +70,7 @@ namespace composer {
             uint64_t rs2,
             uint16_t function_id);
 
-    [[nodiscard]] st pack(const composer_pack_info &info) const;
+    void pack(const composer_pack_info &info, uint32_t *ar, uint8_t rd_override=255) const;
 
     [[nodiscard]] uint16_t getFunction() const;
 
@@ -95,11 +92,12 @@ namespace composer {
 
     [[nodiscard]] uint64_t getRs2() const;
 
-    [[maybe_unused, nodiscard]] response_handle<rocc_response> send(
-            const std::vector<composer::remote_ptr> &memory_operands = {}) const;
+    [[maybe_unused, nodiscard]] response_handle<rocc_response> send() const;
   };
 }
 
+#ifndef BAREMETAL
 std::ostream &operator<<(std::ostream &os, const composer::rocc_cmd &cmd);
+#endif
 
 #endif //ROCC_H

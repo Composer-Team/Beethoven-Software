@@ -40,6 +40,9 @@ if (DEFINED BAREMETAL)
     include_directories($ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/)
     add_library(composer STATIC
             src/baremetal.cc
+            src/rocc_cmd.cc
+            src/util.cc
+            $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/generated_composer_src.cc
             include/composer/response_handle.h
             include/composer/rocc_cmd.h)
 else ()

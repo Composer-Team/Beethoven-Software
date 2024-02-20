@@ -22,4 +22,16 @@ namespace composer {
     composer_pack_info(int systemIdBits, int coreIdBits);
   };
 
+#ifdef BAREMETAL
+  template <typename t=uint32_t>
+  inline void poke_addr(intptr_t ptr, t r) {
+    *(reinterpret_cast<t*>(ptr)) = r;
+  }
+
+  template <typename t=uint32_t>
+  inline t peek_addr(intptr_t ptr) {
+    return *(reinterpret_cast<t*>(ptr));
+  }
+#endif
+
 }

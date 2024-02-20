@@ -7,12 +7,14 @@
 #define COMPOSER_RESPONSE_HANDLE_H
 
 #include <cinttypes>
-#include <composer/rocc_response.h>
+#ifndef BAREMETAL
 #include <iostream>
 #include <functional>
-#include <composer/alloc.h>
 #include <optional>
+#endif
 
+#include <composer/rocc_response.h>
+#include <composer/alloc.h>
 
 namespace composer {
 
@@ -24,20 +26,23 @@ namespace composer {
     bool can_wait;
     bool has_recieved = false;
     const fpga_handle_t *h;
-#endif
     int id;
-  public:
-    explicit response_getter(bool cw, int id, const fpga_handle_t &h) : id(id)
-#ifndef BAREMETAL
-                              , can_wait(cw), h(&h)
+#else
+    uint8_t id;
 #endif
-    { };
+  public:
+#ifndef BAREMETAL
+    explicit response_getter(bool cw, int id, const fpga_handle_t &h) : id(id), can_wait(cw), h(&h) {};
+#else
+
+    explicit response_getter(uint8_t id) : id(id) {};
+#endif
+
 
     // copy constructor invalidates source
-    response_getter(response_getter &mv) {
+    response_getter(const response_getter &mv) {
 #ifndef BAREMETAL
       can_wait = mv.can_wait;
-      mv.can_wait = false;
       has_recieved = mv.has_recieved;
       h = mv.h;
 #endif
@@ -46,7 +51,9 @@ namespace composer {
 
     rocc_response get();
 
+#ifndef BAREMETAL
     std::optional<rocc_response> try_get();
+#endif
   };
 
   template<typename t>
@@ -58,11 +65,19 @@ namespace composer {
     response_getter rg;
 
     template<class U>
-    explicit response_handle(response_handle<U> &other) : rg(other.rg) {}
+    explicit response_handle(const response_handle<U> &other) : rg(other.rg) {}
 
   public:
+#ifdef BAREMETAL
+
+    explicit response_handle(uint8_t id) : rg(response_getter(id)) {}
+
+#else
     explicit response_handle(bool cw, int id, const fpga_handle_t &h) :
             rg(cw, id, h) {}
+#endif
+
+    response_handle() = default;
 
     template<typename s>
     response_handle<s> to() {
@@ -71,16 +86,23 @@ namespace composer {
 
     t get();
 
+#ifndef BAREMETAL
     std::optional<t> try_get();
+#endif
   };
 
   template<>
   rocc_response response_handle<rocc_response>::get();
 
+#ifndef BAREMETAL
   template<>
   std::optional<rocc_response> response_handle<rocc_response>::try_get();
+#endif
+
 }
 
+#ifndef BAREMETAL
 std::ostream &operator<<(std::ostream &os, const composer::rocc_response &response);
+#endif
 
 #endif //COMPOSER_RESPONSE_HANDLE_H
