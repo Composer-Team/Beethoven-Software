@@ -27,6 +27,9 @@ namespace composer {
   class fpga_handle_t;
 
   class rocc_cmd {
+    struct st {
+      uint32_t ar[5];
+    };
     friend fpga_handle_t;
     /**
      * Generate a command to start kernel execution on the accelerator.
@@ -59,8 +62,6 @@ namespace composer {
   public:
     rocc_cmd(const rocc_cmd &other) = default;
 
-    static rocc_cmd flush_cmd();
-
     static rocc_cmd start_cmd(
             uint16_t system_id,
             bool expect_response,
@@ -69,9 +70,10 @@ namespace composer {
             uint8_t xs2,
             uint16_t core_id,
             uint64_t rs1,
-            uint64_t rs2);
+            uint64_t rs2,
+            uint16_t function_id);
 
-    [[nodiscard]] uint32_t *pack(const composer_pack_info &info) const;
+    [[nodiscard]] st pack(const composer_pack_info &info) const;
 
     [[nodiscard]] uint16_t getFunction() const;
 

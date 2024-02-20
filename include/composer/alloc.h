@@ -29,22 +29,8 @@ namespace composer {
 
   class fpga_handle_t;
 
-  enum shared_fpga_region_ty {
-    /**
-     * An FPGA buffer can be allocated and used in a couple different ways. These types are named to pertain
-     * with how the FPGA itself interacts with the regions.
-     * READ - The CPU writes data and the FPGA reads the data
-     * READWRITE - The CPU and FPGA may both read and write to the segment. However, the segment is only
-     *             guaranteed to exhibit low-granularity coherency: the FPGA will see all writes made by the CPU
-     *             at all times, but the CPU will only see writes from the FPGA so long as the segment does **NOT**
-     *             exist in the CPU cache during the entire execution of the FPGA kernel. The execution is defined
-     *             as the point from when the command is sent, until a response handle is retrieved by .get().
-     * FPGAONLY - The CPU never accesses the buffer and the FPGA operates on the memory in any desired way.
-     */
-    READ, READWRITE, FPGAONLY, WRITE
-  };
-
   class remote_ptr {
+    // TODO make these shared pointers
     friend fpga_handle_t;
 
     uint64_t fpga_addr;
@@ -52,8 +38,6 @@ namespace composer {
     size_t len;
     int16_t allocation_id = -1;
   public:
-    shared_fpga_region_ty allocation_type;
-
     [[nodiscard]] uint64_t getFpgaAddr() const {
       return fpga_addr;
     }
@@ -66,13 +50,13 @@ namespace composer {
       return host_addr;
     }
 
-    explicit remote_ptr(uint64_t fpgaAddr, size_t len, shared_fpga_region_ty ownership) :
-            fpga_addr(fpgaAddr), len(len), host_addr(nullptr), allocation_type(ownership) {}
+    explicit remote_ptr(uint64_t fpgaAddr, size_t len) :
+            fpga_addr(fpgaAddr), len(len), host_addr(nullptr) {}
 
-    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, size_t len, shared_fpga_region_ty ownership)
-            : fpga_addr(fpgaAddr), host_addr(hostAddr), len(len), allocation_type(ownership) {}
+    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, size_t len)
+            : fpga_addr(fpgaAddr), host_addr(hostAddr), len(len) {}
 
-    explicit remote_ptr() : fpga_addr(0), host_addr(nullptr), len(0), allocation_type(FPGAONLY) {}
+    explicit remote_ptr() : fpga_addr(0), host_addr(nullptr), len(0) {}
 
     bool operator==(const remote_ptr &other) const {
       return fpga_addr == other.fpga_addr && len == other.len;
@@ -81,6 +65,26 @@ namespace composer {
     template <typename t>
     explicit operator t() const {
       return static_cast<t>(host_addr);
+    }
+
+    remote_ptr(const remote_ptr &other) = default;
+
+    remote_ptr operator +(int q) const {
+      remote_ptr other;
+      other = *this;
+      other.fpga_addr += q;
+      other.len -= q;
+      other.host_addr = (char*)(other.host_addr) + q;
+      return other;
+    }
+
+    remote_ptr operator -(int q) const {
+      remote_ptr other;
+      other = *this;
+      other.fpga_addr -= q;
+      other.len += q;
+      other.host_addr = (char*)(other.host_addr) - q;
+      return other;
     }
   };
 }

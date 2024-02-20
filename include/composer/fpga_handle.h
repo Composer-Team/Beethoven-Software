@@ -34,18 +34,18 @@ namespace composer {
 
     [[nodiscard]] rocc_response get_response_from_handle(int handle) const;
 
+    [[nodiscard]] std::optional<rocc_response> try_get_response_from_handle(int handle) const;
+
+#ifndef BAREMETAL
   private:
     cmd_server_file *cmd_server;
     int csfd;
     data_server_file *data_server;
     int dsfd;
     std::map<uint64_t, std::tuple<int, void *, int, std::string> > device2virtual;
+#endif
 
   public:
-    /**
-     * flush all in-flight commands
-     */
-    rocc_response flush();
 
     explicit fpga_handle_t();
 
@@ -54,12 +54,13 @@ namespace composer {
      * @return handle referring to response that the command will return. Allows for blocking on the response.
      */
 
-    [[nodiscard]] response_handle<rocc_response> send(const rocc_cmd &c,
-                                                      const std::vector<composer::remote_ptr> &memory_operands);
+    [[nodiscard]] response_handle<rocc_response> send(const rocc_cmd &c);
 
     ~fpga_handle_t();
 
-    composer::remote_ptr malloc(size_t len, [[maybe_unused]] shared_fpga_region_ty region_ty = READWRITE);
+#ifndef BAREMETAL
+    composer::remote_ptr malloc(size_t len);
+#endif
 
     [[maybe_unused]] void copy_to_fpga(const composer::remote_ptr &dst);
 
@@ -67,7 +68,7 @@ namespace composer {
 
     [[maybe_unused]] void free(composer::remote_ptr fpga_addr);
 
-    [[maybe_unused]] static void request_startup() ;
+    [[maybe_unused]] static void request_startup();
 
     [[maybe_unused]] void shutdown() const;
   };

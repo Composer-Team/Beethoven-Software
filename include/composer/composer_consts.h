@@ -4,9 +4,6 @@
 #define ROCC_OP_ACCEL 0x7b
 #define ROCC_OP_FLUSH 0xb
 
-#define ROCC_FUNC_ADDR 0
-#define ROCC_FUNC_START 1
-
 #define BITS_PER_CACHE_LINE 1024
 
 #define BITS_PER_BYTE 8

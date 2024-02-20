@@ -118,7 +118,8 @@ fpga_handle_t::fpga_handle_t() {
     std::cerr << strerror(errno) << std::endl;
     exit(1);
   }
-  cmd_server->cmd = rocc_cmd::flush_cmd();
+
+  cmd_server->quit = false;
 
   // map in data server
   dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, file_access_flags);
@@ -174,51 +175,24 @@ rocc_response fpga_handle_t::get_response_from_handle(int handle) const {
   return resp;
 }
 
-response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c,
-                                                   const std::vector<remote_ptr> &memory_clobbers) {
-#ifdef Kria
-  bool clobbered = false;
-#endif
-  for (const remote_ptr &a : memory_clobbers) {
-    /**
-     * Kria:
-     * Coherence for fpga read buffers is handled automatically by HPC IO coherence
-     *   However, for RW buffers, we need to register them with the hardware coherence manager and cohere
-     *   them when applicable
-     * For discrete boards:
-     * No coherence necessary right now... Just move the data over where appropriate
-     */
-#ifdef Kria
-    // check if the clobber has been allocated yet
-//    if (a.allocation_type == READWRITE || a.allocation_type == WRITE) {
-//      clobbered = true;
-//      pthread_mutex_lock(&data_server->data_cmd_send_lock);
-//      data_server->op_argument = a.allocation_id;
-//      // invalidate only is _probably_ wrong - but I might also be wrong about that. Unclear if there's any
-//      // performance benefit anyway
-////      data_server->operation = (a.allocation_type == READWRITE) ? CLEAN_INVALIDATE_REGION : INVALIDATE_REGION;
-//      data_server->operation = CLEAN_INVALIDATE_REGION;
-//      pthread_mutex_unlock(&data_server->server_mut);
-//      pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
-//      pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-//    }
-#else
-    if (a.allocation_type == READWRITE || a.allocation_type == READ)
-      copy_to_fpga(a);
-#endif
+std::optional<rocc_response> fpga_handle_t::try_get_response_from_handle(int handle) const {
+  int rc = pthread_mutex_trylock(&cmd_server->wait_for_response[handle]);
+  if (rc) return {};
+  // command is now ready
+  auto resp = cmd_server->responses[handle];
+  // now that we've read our response, we can release the resource to be used in future responses
+  rc |= pthread_mutex_lock(&cmd_server->free_list_lock);
+  cmd_server->free_list[++cmd_server->free_list_idx] = handle;
+  rc |= pthread_mutex_unlock(&cmd_server->free_list_lock);
+  if (rc) {
+    printf("Error in fpga_handle.cc:get_response_from_handle\t%s\n", strerror(errno));
+    exit(rc);
   }
+  return resp;
+}
 
-#ifdef Kria
-  // If memory coherence operations were emitted, then we wait for them to complete with this operation
-  // before sending in a command
-  if (clobbered) {
-    pthread_mutex_lock(&data_server->data_cmd_send_lock);
-    data_server->operation = RELEASE_COHERENCE_BARRIER;
-    pthread_mutex_unlock(&data_server->server_mut);
-    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
-    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-  }
-#endif
+
+response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
   // acquire lock over client side
   int error = pthread_mutex_lock(&cmd_server->cmd_send_lock);
   // communicate data to shared space
@@ -232,15 +206,17 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c,
   uint64_t handle = cmd_server->pthread_wait_id;
   // release lock over client side
   error |= pthread_mutex_unlock(&cmd_server->cmd_send_lock);
+
+  cmd_server->quit = false;
   if (error) {
     printf("Error in send: %s\n", strerror(errno));
     fflush(stdout);
     exit(1);
   }
-  return response_handle<rocc_response>(c.getXd(), handle, *this, memory_clobbers);
+  return response_handle<rocc_response>(c.getXd(), handle, *this);
 }
 
-remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region_ty region_ty) {
+remote_ptr fpga_handle_t::malloc(size_t len) {
 #ifdef Kria
   void *addr;
   size_t sz;
@@ -306,7 +282,7 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
   device2virtual[addr] = std::make_tuple(fd, ptr, len, std::string(data_server->fname));
   // release lock over client side
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-  return remote_ptr(addr, ptr, len, region_ty);
+  return remote_ptr(addr, ptr, len);
 #endif
 }
 
@@ -349,16 +325,6 @@ remote_ptr fpga_handle_t::malloc(size_t len, [[maybe_unused]] shared_fpga_region
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
 #endif
 }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-result"
-[[maybe_unused]] rocc_response fpga_handle_t::flush() {
-  auto q = rocc_cmd::flush_cmd();
-  // NOLINT
-  send(q, {});
-  return {};
-}
-#pragma clang diagnostic pop
 
 [[maybe_unused]] void fpga_handle_t::shutdown() const {
   pthread_mutex_lock(&cmd_server->cmd_send_lock);

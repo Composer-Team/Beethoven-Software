@@ -11,50 +11,58 @@
 #include <iostream>
 #include <functional>
 #include <composer/alloc.h>
+#include <optional>
+
 
 namespace composer {
 
   class fpga_handle_t;
 
   class response_getter {
-    bool can_wait, has_recieved = false;
-    uint64_t id;
+    // don't have room (or time) for this in baremetal. just handle it right
+#ifndef BAREMETAL
+    bool can_wait;
+    bool has_recieved = false;
     const fpga_handle_t *h;
+#endif
+    int id;
   public:
-    explicit response_getter(bool cw, int id, const fpga_handle_t &h) : id(id), can_wait(cw), h(&h) {}
+    explicit response_getter(bool cw, int id, const fpga_handle_t &h) : id(id)
+#ifndef BAREMETAL
+                              , can_wait(cw), h(&h)
+#endif
+    { };
 
     // copy constructor invalidates source
     response_getter(response_getter &mv) {
+#ifndef BAREMETAL
       can_wait = mv.can_wait;
       mv.can_wait = false;
       has_recieved = mv.has_recieved;
-      id = mv.id;
       h = mv.h;
+#endif
+      id = mv.id;
     }
 
     rocc_response get();
+
+    std::optional<rocc_response> try_get();
   };
 
   template<typename t>
   class response_handle {
-    template<class U> friend class response_handle;
+    template<class U> friend
+    class response_handle;
 
   private:
     response_getter rg;
-    std::vector<remote_ptr> ops;
 
-    template <class U>
-    explicit response_handle(response_handle<U> &other) : rg(other.rg), ops(other.ops) {}
+    template<class U>
+    explicit response_handle(response_handle<U> &other) : rg(other.rg) {}
 
   public:
-    explicit response_handle(bool cw, uint64_t id, const fpga_handle_t &h, const std::vector<remote_ptr> &mem_ops) :
-            rg(cw, id, h) {
-      // only push back operations that need coherence later on after command completion
-      for (const auto &mo: mem_ops) {
-        if (mo.allocation_type == READWRITE || mo.allocation_type == WRITE)
-          ops.push_back(mo);
-      }
-    }
+    explicit response_handle(bool cw, int id, const fpga_handle_t &h) :
+            rg(cw, id, h) {}
 
     template<typename s>
     response_handle<s> to() {
@@ -62,10 +70,15 @@ namespace composer {
     }
 
     t get();
+
+    std::optional<t> try_get();
   };
 
   template<>
   rocc_response response_handle<rocc_response>::get();
+
+  template<>
+  std::optional<rocc_response> response_handle<rocc_response>::try_get();
 }
 
 std::ostream &operator<<(std::ostream &os, const composer::rocc_response &response);

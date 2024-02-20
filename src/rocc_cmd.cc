@@ -18,13 +18,12 @@
 #include <iostream>
 #include <cstring>
 #include <cassert>
-#include <utility>
 #include "composer/fpga_handle.h"
 
 using namespace composer;
 
-uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
-  auto buf = new uint32_t[5];
+composer::rocc_cmd::st rocc_cmd::pack(const composer_pack_info &info) const {
+  st buf;
 
 #define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }
 
@@ -36,50 +35,45 @@ uint32_t *rocc_cmd::pack(const composer_pack_info &info) const {
   CHECK(xs2, 1)
 
 
-  memset(buf, 0, sizeof(int32_t) * 5);
+  memset(buf.ar, 0, sizeof(int32_t) * 5);
   // TODO check that there are no overflows for the provided values (not outside logical range)
-  buf[1] = rs1 >> 32;
-  buf[2] = rs1 & 0xFFFFFFFF;
-  buf[3] = rs2 >> 32;
-  buf[4] = rs2 & 0xFFFFFFFF;
+  buf.ar[1] = rs1 >> 32;
+  buf.ar[2] = rs1 & 0xFFFFFFFF;
+  buf.ar[3] = rs2 >> 32;
+  buf.ar[4] = rs2 & 0xFFFFFFFF;
   // 7 bits
-  buf[0] |= opcode & 0x7F;
+  buf.ar[0] |= opcode & 0x7F;
   // 5 bits
-  buf[0] |= (((uint8_t) rd & 0x1F) << 7);
+  buf.ar[0] |= (((uint8_t) rd & 0x1F) << 7);
   // 1 bits
-  buf[0] |= ((xs2 & 0x1) << 12);
+  buf.ar[0] |= ((xs2 & 0x1) << 12);
   // 1 bits
-  buf[0] |= ((xs1 & 0x1) << 13);
+  buf.ar[0] |= ((xs1 & 0x1) << 13);
   // 1 bit
-  buf[0] |= ((xd & 0x1) << 14);
+  buf.ar[0] |= ((xd & 0x1) << 14);
   // 5 bits
-  buf[0] |= ((core_id & 0x1F) << 15);
+  buf.ar[0] |= ((core_id & 0x1F) << 15);
   // 5 bits
-  buf[0] |= (((core_id & 0x3E0) >> 5) << 20);
+  buf.ar[0] |= (((core_id & 0x3E0) >> 5) << 20);
   // 7 bits
   uint32_t funct = ((system_id << 3) & 0x78) | (function & 0x7);
-  buf[0] |= ((funct & 0x7F) << 25);
+  buf.ar[0] |= ((funct & 0x7F) << 25);
   // 7 + 5 + 1 + 1 + 1 + 5 + 5 + 7 = 32bit
 
 //  for (int i = 0; i < 5; ++i) {
 //    printf("%d: %x \n", i, buf[i]);
 //  }
 
-  return buf;
+  return {buf};
 }
 
 rocc_cmd
 rocc_cmd::start_cmd(uint16_t system_id, bool expect_response, uint8_t rd, uint8_t xs1,
                     uint8_t xs2,
-                    uint16_t core_id, uint64_t rs1, uint64_t rs2) {
-  return {ROCC_FUNC_START, system_id, ROCC_OP_ACCEL,
+                    uint16_t core_id, uint64_t rs1, uint64_t rs2, uint16_t function_id) {
+  return {function_id, system_id, ROCC_OP_ACCEL,
           expect_response, rd, xs1, xs2,
           core_id, rs1, rs2};
-}
-
-rocc_cmd
-rocc_cmd::flush_cmd() {
-  return {0, 0, ROCC_OP_FLUSH, 0, 0, 0, 0, 0, 0, 0};
 }
 
 // for start commands
@@ -160,5 +154,6 @@ response_handle<rocc_response> rocc_cmd::send(const std::vector<composer::remote
     }
   }
   asm volatile ("" ::: "memory");
-  return ctx->send(*this, memory_operands);
+  assert(ctx != nullptr);
+  return ctx->send(*this);
 }

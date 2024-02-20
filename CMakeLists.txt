@@ -18,6 +18,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
             STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
 endif ()
+
 message("Build type: ${CMAKE_BUILD_TYPE}")
 set(COMPOSER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/composer")
 
@@ -33,15 +34,25 @@ else ()
     add_definitions(-DCOMPOSER_IDENTITY=global)
 endif ()
 
-add_library(composer SHARED
-        src/rocc_cmd.cc
-        src/util.cc
-        src/fpga_handle.cc
-        src/response_handle.cc
-        src/rocc_response.cc
-        src/verilator_server.cc
-        include/composer/response_handle.h
-        include/composer/rocc_cmd.h)
+
+if (DEFINED BAREMETAL)
+    add_compile_definitions(BAREMETAL)
+    include_directories($ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/)
+    add_library(composer STATIC
+            src/baremetal.cc
+            include/composer/response_handle.h
+            include/composer/rocc_cmd.h)
+else ()
+    add_library(composer SHARED
+            src/rocc_cmd.cc
+            src/util.cc
+            src/fpga_handle.cc
+            src/response_handle.cc
+            src/rocc_response.cc
+            src/verilator_server.cc
+            include/composer/response_handle.h
+            include/composer/rocc_cmd.h)
+endif ()
 
 if (APPLE)
     message(Debug "Building for Darwin/OSX platform")
@@ -58,7 +69,7 @@ target_include_directories(composer
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
         $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/
-        )
+)
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/composer")
 set(EXPORT_TARGETS composer)
@@ -94,5 +105,5 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/cmake/composerConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/cmake/composerConfigVersion.cmake"
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/composer
-        )
+)
 
