@@ -5,6 +5,7 @@
 #ifndef COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
 #define COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
 
+#ifndef BAREMETAL
 
 #include <composer/rocc_response.h>
 #include <composer/rocc_cmd.h>
@@ -86,5 +87,7 @@ namespace composer {
   };
 
 }
+
+#endif
 
 #endif //COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H

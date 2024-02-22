@@ -17,6 +17,8 @@
 #define COMPOSER_ALLOC_H
 
 #include <cinttypes>
+#include <cstddef>
+#ifndef BAREMETAL
 #include <array>
 #include <tuple>
 #include <set>
@@ -24,6 +26,7 @@
 #include <pthread.h>
 #include <iostream>
 #include <algorithm>
+#endif
 
 namespace composer {
 

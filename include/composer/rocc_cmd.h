@@ -92,7 +92,7 @@ namespace composer {
 
     [[nodiscard]] uint64_t getRs2() const;
 
-    [[maybe_unused, nodiscard]] response_handle<rocc_response> send() const;
+    [[maybe_unused]] response_handle<rocc_response> send() const; // NOLINT(*-use-nodiscard)
   };
 }
 

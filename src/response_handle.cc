@@ -43,18 +43,10 @@ std::optional<rocc_response> response_getter::try_get() {
   }
 }
 
-
-
 std::ostream &operator<<(std::ostream &os, const composer::rocc_response &response) {
 os << "data: " << response.data << " core_id: " << response.core_id << " system_id: " << response.system_id
 << " rd: " << response.rd;
 return os;
-}
-
-template<> rocc_response response_handle<rocc_response>::get() {
-  auto resp = rg.get();
-  // memory segments on discrete targets need to get copied back if they are allocated to indicate that the FPGA writes
-  return resp;
 }
 
 template<> std::optional<rocc_response> response_handle<rocc_response>::try_get() {

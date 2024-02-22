@@ -3,13 +3,15 @@
 //
 
 #include "composer/fpga_handle.h"
+#ifndef BAREMETAL
 #include <iostream>
 #include <algorithm>
 #include <cerrno>
-#include <cstring>
 #include <vector>
-#include "composer/alloc.h"
 #include <stdexcept>
+#endif
+#include <cstring>
+#include "composer/alloc.h"
 
 #ifdef Kria
 

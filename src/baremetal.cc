@@ -3,10 +3,6 @@
 //
 
 
-/**
- * @brief send a command to the FPGA
- * @return handle referring to response that the command will return. Allows for blocking on the response.
- */
 #include "composer/fpga_handle.h"
 #include "composer/rocc_cmd.h"
 #include "composer/rocc_response.h"
@@ -24,6 +20,13 @@ rocc_response resps[sizeof(int)*8];
 composer::fpga_handle_t::~fpga_handle_t() {}
 
 composer::fpga_handle_t::fpga_handle_t() {}
+
+template<> rocc_response response_handle<rocc_response>::get() {
+  auto resp = rg.get();
+  // memory segments on discrete targets need to get copied back if they are allocated to indicate that the FPGA writes
+  return resp;
+}
+
 
 response_handle<rocc_response> composer::fpga_handle_t::send(const composer::rocc_cmd &c) {
   return c.send();
