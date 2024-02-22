@@ -1,5 +1,5 @@
 project(composer)
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3)
 set(version 1.0.6)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
