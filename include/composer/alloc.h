@@ -18,6 +18,9 @@
 
 #include <cinttypes>
 #include <cstddef>
+#include <memory>
+#include <mutex>
+
 #ifndef BAREMETAL
 #include <array>
 #include <tuple>
@@ -33,14 +36,27 @@ namespace composer {
   class fpga_handle_t;
 
   class remote_ptr {
-    // TODO make these shared pointers
     friend fpga_handle_t;
 
     uint64_t fpga_addr;
     void *host_addr;
     size_t len;
-    int16_t allocation_id = -1;
-  public:
+
+    std::mutex *mutex = nullptr;
+    uint16_t *count = nullptr;
+
+    remote_ptr(const uint64_t &faddr, void *haddr,
+               const size_t &l, uint16_t *c,
+               std::mutex *m)  noexcept :
+            fpga_addr(faddr),
+            host_addr(haddr),
+            len(l),
+            count(c),
+            mutex(m) {
+      std::lock_guard<std::mutex> lock(*mutex);
+      (*count)++;
+    }
+      public:
     [[nodiscard]] uint64_t getFpgaAddr() const {
       return fpga_addr;
     }
@@ -53,41 +69,63 @@ namespace composer {
       return host_addr;
     }
 
-    explicit remote_ptr(uint64_t fpgaAddr, size_t len) :
-            fpga_addr(fpgaAddr), len(len), host_addr(nullptr) {}
+//    explicit remote_ptr(uint64_t fpgaAddr, size_t len) :
+//            fpga_addr(fpgaAddr), len(len), host_addr(nullptr) {}
 
-    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, size_t len)
-            : fpga_addr(fpgaAddr), host_addr(hostAddr), len(len) {}
+    explicit remote_ptr(uint64_t fpgaAddr, void *hostAddr, size_t len):
+            fpga_addr(fpgaAddr),
+            host_addr(hostAddr),
+            len(len) {
+      mutex = new std::mutex();
+      count = new uint16_t(1);
+    }
 
-    explicit remote_ptr() : fpga_addr(0), host_addr(nullptr), len(0) {}
+    explicit remote_ptr() :
+            fpga_addr(0),
+            host_addr(nullptr),
+            len(0),
+            mutex(nullptr),
+            count(nullptr) {}
 
     bool operator==(const remote_ptr &other) const {
       return fpga_addr == other.fpga_addr && len == other.len;
     }
 
-    template <typename t>
+    template<typename t>
     explicit operator t() const {
       return static_cast<t>(host_addr);
     }
 
-    remote_ptr(const remote_ptr &other) = default;
+    remote_ptr(const remote_ptr & other)  noexcept :
+            fpga_addr(other.fpga_addr),
+            host_addr(other.host_addr),
+            len(other.len),
+            count(other.count),
+            mutex(other.mutex) {
+      std::lock_guard<std::mutex> lock(*mutex);
+      (*count)++;
+    };
 
-    remote_ptr operator +(int q) const {
-      remote_ptr other;
-      other = *this;
-      other.fpga_addr += q;
-      other.len -= q;
-      other.host_addr = (char*)(other.host_addr) + q;
-      return other;
+    remote_ptr(remote_ptr && other) noexcept :
+            fpga_addr(other.fpga_addr),
+            host_addr(other.host_addr),
+            len(other.len),
+            count(other.count),
+            mutex(other.mutex) {
+    };
+
+    remote_ptr& operator=(remote_ptr &&) noexcept;
+
+    remote_ptr& operator=(const remote_ptr& other) noexcept;
+
+    ~remote_ptr();
+
+    remote_ptr operator+(int q) const {
+      return remote_ptr(this->fpga_addr + q, (char *) (this->host_addr) + q, this->len - q, this->count, this->mutex);
     }
 
-    remote_ptr operator -(int q) const {
-      remote_ptr other;
-      other = *this;
-      other.fpga_addr -= q;
-      other.len += q;
-      other.host_addr = (char*)(other.host_addr) - q;
-      return other;
+    remote_ptr operator-(int q) const {
+      return remote_ptr(this->fpga_addr - q, (char *) (this->host_addr) - q, this->len + q, this->count, this->mutex);
     }
   };
 }

@@ -41,6 +41,7 @@ if (DEFINED BAREMETAL)
     add_library(composer STATIC
             src/baremetal.cc
             src/rocc_cmd.cc
+            src/alloc.cc
             src/util.cc
             $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/generated_composer_src.cc
             include/composer/response_handle.h
@@ -50,6 +51,7 @@ else ()
             src/rocc_cmd.cc
             src/util.cc
             src/fpga_handle.cc
+            src/alloc.cc
             src/response_handle.cc
             src/rocc_response.cc
             src/verilator_server.cc
