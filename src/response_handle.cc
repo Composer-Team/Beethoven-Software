@@ -52,3 +52,8 @@ return os;
 template<> std::optional<rocc_response> response_handle<rocc_response>::try_get() {
   return rg.try_get();
 }
+
+
+template<> rocc_response response_handle<rocc_response>::get() {
+  return rg.get();
+}
