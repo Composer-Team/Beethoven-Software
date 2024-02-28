@@ -112,3 +112,6 @@ install(FILES
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/composer
 )
 
+add_executable(merge_sort src/tests/merge_sort.cc)
+target_link_libraries(merge_sort composer)
+
