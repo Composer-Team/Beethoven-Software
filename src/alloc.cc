@@ -3,6 +3,8 @@
 //
 #include "composer/alloc.h"
 #include <sys/mman.h>
+#include <cerrno>
+#include <cstring>
 
 composer::remote_ptr::~remote_ptr() {
   if (mutex) {
@@ -11,7 +13,7 @@ composer::remote_ptr::~remote_ptr() {
       delete count;
       delete mutex;
       if(munmap((char *) host_addr - offset, len + offset)) {
-        printf("munmap failed: %s\n", strerror(errno));
+        printf("munmap failed: %llx %ld %ld %s\n", host_addr, offset, len, strerror(errno));
         exit(1);
       }
     } else {
@@ -42,7 +44,7 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
         delete mutex;
         if (host_addr)
           if(munmap((char *) host_addr - offset, len + offset)) {
-            printf("munmap failed: %s\n", strerror(errno));
+            printf("munmap failed: %llx %ld %ld %s\n", host_addr, offset, len, strerror(errno));
             exit(1);
           }
       } else {

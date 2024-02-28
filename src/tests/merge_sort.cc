@@ -48,20 +48,21 @@ remote_ptr merge_sort(const remote_ptr &arr_ptr, int size) {
 }
 
 int main() {
+  int n_elements = 1024;
   // generate random array
   std::random_device rd;
   std::uniform_int_distribution<int> dist(0, 100);
   auto seed = rd();
   std::default_random_engine eng(seed);
-  auto arr_handle = handle.malloc(10 * sizeof(int));
+  auto arr_handle = handle.malloc(n_elements * sizeof(int));
   int *arr = (int*)arr_handle.getHostAddr();
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < n_elements; i++) {
     arr[i] = dist(eng);
   }
   // sort array
-  auto sorted_handle = merge_sort(arr_handle, 10);
+  auto sorted_handle = merge_sort(arr_handle, n_elements);
   int *sorted = (int*)sorted_handle.getHostAddr();
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < n_elements; i++) {
     std::cout << sorted[i] << " ";
   }
 }
