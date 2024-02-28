@@ -10,8 +10,10 @@ composer::remote_ptr::~remote_ptr() {
     if (--(*count) == 0) {
       delete count;
       delete mutex;
-      if (host_addr)
-        munmap((char *) host_addr - offset, len + offset);
+      if(munmap((char *) host_addr - offset, len + offset)) {
+        printf("munmap failed: %s\n", strerror(errno));
+        exit(1);
+      }
     } else {
       mutex->unlock();
     }
@@ -39,7 +41,10 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
         delete count;
         delete mutex;
         if (host_addr)
-          munmap((char *) host_addr - offset, len + offset);
+          if(munmap((char *) host_addr - offset, len + offset)) {
+            printf("munmap failed: %s\n", strerror(errno));
+            exit(1);
+          }
       } else {
         mutex->unlock();
       }
