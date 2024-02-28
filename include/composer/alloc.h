@@ -41,13 +41,14 @@ namespace composer {
     uint64_t fpga_addr;
     void *host_addr;
     size_t len;
+    ptrdiff_t offset = 0;
 
     std::mutex *mutex = nullptr;
     uint16_t *count = nullptr;
 
     remote_ptr(const uint64_t &faddr, void *haddr,
                const size_t &l, uint16_t *c,
-               std::mutex *m)  noexcept :
+               std::mutex *m, ptrdiff_t off)  noexcept :
             fpga_addr(faddr),
             host_addr(haddr),
             len(l),
@@ -125,11 +126,11 @@ namespace composer {
     ~remote_ptr();
 
     remote_ptr operator+(int q) const {
-      return remote_ptr(this->fpga_addr + q, (char *) (this->host_addr) + q, this->len - q, this->count, this->mutex);
+      return remote_ptr(this->fpga_addr + q, (char *) (this->host_addr) + q, this->len - q, this->count, this->mutex, offset+q);
     }
 
     remote_ptr operator-(int q) const {
-      return remote_ptr(this->fpga_addr - q, (char *) (this->host_addr) - q, this->len + q, this->count, this->mutex);
+      return remote_ptr(this->fpga_addr - q, (char *) (this->host_addr) - q, this->len + q, this->count, this->mutex, offset-q);
     }
   };
 }

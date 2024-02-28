@@ -11,7 +11,7 @@ composer::remote_ptr::~remote_ptr() {
       delete count;
       delete mutex;
       if (host_addr)
-        munmap(host_addr, len);
+        munmap((char*)host_addr-offset, len);
     }
   }
 }
