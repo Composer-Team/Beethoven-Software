@@ -30,6 +30,7 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
     len = other.len;
     count = other.count;
     mutex = other.mutex;
+    offset = other.offset;
     if (mutex) {
       std::lock_guard<std::mutex> l2(*mutex);
       (*count)++;
@@ -56,6 +57,7 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
     len = other.len;
     count = other.count;
     mutex = other.mutex;
+    offset = other.offset;
     if (mutex) {
       std::lock_guard<std::mutex> l2(*mutex);
       (*count)++;
@@ -70,6 +72,7 @@ composer::remote_ptr& composer::remote_ptr::operator=(composer::remote_ptr && ot
   this->host_addr = other.host_addr;
   this->fpga_addr = other.fpga_addr;
   this->len = other.len;
+  this->offset = other.offset;
   other.mutex = nullptr;
   other.count = nullptr;
   return *this;
