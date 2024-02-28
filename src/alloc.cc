@@ -24,8 +24,10 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
     len = other.len;
     count = other.count;
     mutex = other.mutex;
-    std::lock_guard<std::mutex> l2(*mutex);
-    (*count)++;
+    if (mutex) {
+      std::lock_guard<std::mutex> l2(*mutex);
+      (*count)++;
+    }
     return *this;
   }
   if (this != &other) {
@@ -41,8 +43,10 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
     len = other.len;
     count = other.count;
     mutex = other.mutex;
-    std::lock_guard<std::mutex> l2(*mutex);
-    (*count)++;
+    if (mutex) {
+      std::lock_guard<std::mutex> l2(*mutex);
+      (*count)++;
+    }
   }
   return *this;
 }

@@ -53,8 +53,10 @@ namespace composer {
             len(l),
             count(c),
             mutex(m) {
-      std::lock_guard<std::mutex> lock(*mutex);
-      (*count)++;
+      if (mutex) {
+        std::lock_guard<std::mutex> lock(*mutex);
+        (*count)++;
+      }
     }
       public:
     [[nodiscard]] uint64_t getFpgaAddr() const {
@@ -102,8 +104,10 @@ namespace composer {
             len(other.len),
             count(other.count),
             mutex(other.mutex) {
-      std::lock_guard<std::mutex> lock(*mutex);
-      (*count)++;
+      if (mutex) {
+        std::lock_guard<std::mutex> lock(*mutex);
+        (*count)++;
+      }
     };
 
     remote_ptr(remote_ptr && other) noexcept :
