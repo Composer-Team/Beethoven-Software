@@ -11,7 +11,7 @@ composer::remote_ptr::~remote_ptr() {
       delete count;
       delete mutex;
       if (host_addr)
-        munmap((char*)host_addr-offset, len);
+        munmap((char*)host_addr-offset, len+offset);
     }
   }
 }
@@ -36,7 +36,7 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
       delete count;
       delete mutex;
       if (host_addr)
-        munmap((char*)host_addr-offset, len);
+        munmap((char*)host_addr-offset, len+offset);
     }
     fpga_addr = other.fpga_addr;
     host_addr = other.host_addr;
