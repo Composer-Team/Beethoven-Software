@@ -5,15 +5,17 @@
 #include <sys/mman.h>
 
 composer::remote_ptr::~remote_ptr() {
+  if (mutex) {
     mutex->lock();
     if (--(*count) == 0) {
       delete count;
       delete mutex;
       if (host_addr)
-        munmap((char*)host_addr-offset, len+offset);
+        munmap((char *) host_addr - offset, len + offset);
     } else {
       mutex->unlock();
     }
+  }
 }
 
 composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_ptr &other) noexcept {
@@ -31,14 +33,16 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
     return *this;
   }
   if (this != &other) {
-    mutex->lock();
-    if (--(*count) == 0) {
-      delete count;
-      delete mutex;
-      if (host_addr)
-        munmap((char*)host_addr-offset, len+offset);
-    } else {
-      mutex->unlock();
+    if (mutex) {
+      mutex->lock();
+      if (--(*count) == 0) {
+        delete count;
+        delete mutex;
+        if (host_addr)
+          munmap((char *) host_addr - offset, len + offset);
+      } else {
+        mutex->unlock();
+      }
     }
     fpga_addr = other.fpga_addr;
     host_addr = other.host_addr;
