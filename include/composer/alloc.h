@@ -41,7 +41,7 @@ namespace composer {
     uint64_t fpga_addr;
     void *host_addr;
     size_t len;
-    ptrdiff_t offset = 0;
+    ptrdiff_t offset;
 
     std::mutex *mutex = nullptr;
     uint16_t *count = nullptr;
@@ -53,7 +53,8 @@ namespace composer {
             host_addr(haddr),
             len(l),
             count(c),
-            mutex(m) {
+            mutex(m),
+            offset(off) {
       if (mutex) {
         std::lock_guard<std::mutex> lock(*mutex);
         (*count)++;
@@ -79,6 +80,7 @@ namespace composer {
             fpga_addr(fpgaAddr),
             host_addr(hostAddr),
             len(len) {
+      offset = 0;
       mutex = new std::mutex();
       count = new uint16_t(1);
     }
@@ -88,7 +90,8 @@ namespace composer {
             host_addr(nullptr),
             len(0),
             mutex(nullptr),
-            count(nullptr) {}
+            count(nullptr),
+            offset(0) {}
 
     bool operator==(const remote_ptr &other) const {
       return fpga_addr == other.fpga_addr && len == other.len;
@@ -104,7 +107,8 @@ namespace composer {
             host_addr(other.host_addr),
             len(other.len),
             count(other.count),
-            mutex(other.mutex) {
+            mutex(other.mutex),
+            offset(other.offset) {
       if (mutex) {
         std::lock_guard<std::mutex> lock(*mutex);
         (*count)++;
@@ -116,7 +120,8 @@ namespace composer {
             host_addr(other.host_addr),
             len(other.len),
             count(other.count),
-            mutex(other.mutex) {
+            mutex(other.mutex),
+            offset(other.offset){
     };
 
     remote_ptr& operator=(remote_ptr &&) noexcept;
