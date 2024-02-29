@@ -246,9 +246,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   if (addr == MAP_FAILED)
     throw std::runtime_error("Error in FPGA malloc. Map failed. Err msg: " + std::string(strerror(errno)));
 
-  if (mlock(addr, kria_huge_page_sizes[fit]))
+  if (mlock(addr, sz))
     throw std::runtime_error("Error in FPGA malloc. mlock failed. Err msg: " + std::string(strerror(errno)));
-  return remote_ptr(vtop((intptr_t) addr), addr, kria_huge_page_sizes[fit]);
+  return remote_ptr(vtop((intptr_t) addr), addr, sz);
 #else
   // acquire lock over client side
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
