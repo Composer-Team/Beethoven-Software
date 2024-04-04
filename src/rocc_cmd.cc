@@ -56,7 +56,7 @@ void rocc_cmd::pack(const composer_pack_info &info, uint32_t *ar, uint8_t rd_ove
   // 7 bits
   ar[0] = opcode & 0x7F;
   // 5 bits
-  ar[0] |= (((uint8_t) rd & 0x1F) << 7);
+  ar[0] |= (((uint8_t) rrd & 0x1F) << 7);
   // 1 bits
   ar[0] |= ((xs2 & 0x1) << 12);
   // 1 bits

@@ -11,3 +11,4 @@ rocc_response::rocc_response(const uint32_t *buffer, const composer_pack_info &p
   this->core_id = (buffer[2] >> (5 + pack_info.system_id_bits)) & ((1 << pack_info.core_id_bits) - 1);
   this->data = (uint64_t)(buffer[0]) | ((uint64_t)buffer[1] << 32);
 }
+

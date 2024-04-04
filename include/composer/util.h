@@ -24,12 +24,13 @@ namespace composer {
 
 #ifdef BAREMETAL
   template <typename t=uint32_t>
-  inline void poke_addr(intptr_t ptr, t r) {
+  void poke_addr(intptr_t ptr, t r) {
     *(reinterpret_cast<volatile t*>(ptr)) = r;
+    return;
   }
 
   template <typename t=uint32_t>
-  inline t peek_addr(intptr_t ptr) {
+  t peek_addr(intptr_t ptr) {
     return *(reinterpret_cast<volatile t*>(ptr));
   }
 #endif

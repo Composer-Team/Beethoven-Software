@@ -2,11 +2,14 @@
 // Created by Christopher Kjellqvist on 2/28/24.
 //
 #include "composer/alloc.h"
+#ifndef BAREMETAL
 #include <sys/mman.h>
 #include <cerrno>
 #include <cstring>
+#endif
 
 composer::remote_ptr::~remote_ptr() {
+#ifndef BAREMETAL
   if (mutex) {
     mutex->lock();
     if (--(*count) == 0) {
@@ -20,9 +23,11 @@ composer::remote_ptr::~remote_ptr() {
       mutex->unlock();
     }
   }
+#endif
 }
 
 composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_ptr &other) noexcept {
+#ifndef BAREMETAL
   if (this->mutex == nullptr && this != &other) {
     // assigning to default constructor
     fpga_addr = other.fpga_addr;
@@ -52,8 +57,10 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
         mutex->unlock();
       }
     }
+#endif
     fpga_addr = other.fpga_addr;
     host_addr = other.host_addr;
+#ifndef BAREMETAL
     len = other.len;
     count = other.count;
     mutex = other.mutex;
@@ -63,9 +70,11 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
       (*count)++;
     }
   }
+#endif
   return *this;
 }
 
+#ifndef BAREMETAL
 composer::remote_ptr& composer::remote_ptr::operator=(composer::remote_ptr && other) noexcept {
   this->mutex = other.mutex;
   this->count = other.count;
@@ -77,3 +86,4 @@ composer::remote_ptr& composer::remote_ptr::operator=(composer::remote_ptr && ot
   other.count = nullptr;
   return *this;
 }
+#endif

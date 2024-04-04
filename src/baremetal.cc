@@ -13,8 +13,8 @@ using namespace composer;
 
 #define MMIO_BASE ((intptr_t)ComposerMMIOOffset)
 
-int actives = 0;
-int valid_resps = 0;
+uint32_t actives = 0;
+uint32_t valid_resps = 0;
 rocc_response resps[sizeof(int)*8];
 
 composer::fpga_handle_t::~fpga_handle_t() {}
@@ -32,28 +32,35 @@ response_handle<rocc_response> composer::fpga_handle_t::send(const composer::roc
   return c.send();
 }
 
+extern "C" {
+extern void print_str(const char *s);
+extern void print_32bHex(uint32_t q);
+}
+
 rocc_response response_getter::get() { // NOLINT(*-no-recursion)
-  if (!(valid_resps & (1 << id))) {
-    int mask = ~(1 << id);
-    valid_resps &= mask;
-    actives &= mask;
+  uint32_t resp_flag = 1 << id;
+  if ((valid_resps & resp_flag) == resp_flag) {
+    valid_resps ^= resp_flag;
+    actives ^= resp_flag;
     return resps[id];
   }
   // no fancy error handling or correctness checks here.
   while (peek_addr(MMIO_BASE + RESP_VALID) == 0) {}
-  uint32_t buf[2];
+  uint32_t buf[3];
   buf[0] = peek_addr(MMIO_BASE + RESP_BITS);
   poke_addr(MMIO_BASE + RESP_READY, 1);
   buf[1] = peek_addr(MMIO_BASE + RESP_BITS);
   poke_addr(MMIO_BASE + RESP_READY, 1);
+  buf[2] = peek_addr(MMIO_BASE + RESP_BITS);
+  poke_addr(MMIO_BASE + RESP_READY, 1);
 
   auto r = rocc_response(buf, pack_cfg);
   if (id == r.rd) {
-    valid_resps &= ~(1 << id);
+    actives ^= resp_flag;
     return r;
   } else {
     resps[r.rd] = r;
-    valid_resps |= (1 << r.rd);
+    valid_resps |= resp_flag;
     return get();
   }
 }

@@ -62,10 +62,10 @@ namespace composer {
     FREE = 1,
     MOVE_FROM_FPGA = 2,
     MOVE_TO_FPGA = 3,
-    ADD_TO_COHERENCE_MANAGER = 4,
-    INVALIDATE_REGION = 5,
-    CLEAN_INVALIDATE_REGION = 6,
-    RELEASE_COHERENCE_BARRIER = 7,
+//    ADD_TO_COHERENCE_MANAGER = 4,
+//    INVALIDATE_REGION = 5,
+//    CLEAN_INVALIDATE_REGION = 6,
+//    RELEASE_COHERENCE_BARRIER = 7,
   };
 
   struct data_server_file {
