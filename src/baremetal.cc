@@ -3,23 +3,23 @@
 //
 
 
-#include "composer/fpga_handle.h"
-#include "composer/rocc_cmd.h"
-#include "composer/rocc_response.h"
+#include "beethoven/fpga_handle.h"
+#include "beethoven/rocc_cmd.h"
+#include "beethoven/rocc_response.h"
 
-#include <composer_allocator_declaration.h>
+#include <beethoven_allocator_declaration.h>
 
-using namespace composer;
+using namespace beethoven;
 
-#define MMIO_BASE ((intptr_t)ComposerMMIOOffset)
+#define MMIO_BASE ((intptr_t)BeethovenMMIOOffset)
 
 uint32_t actives = 0;
 uint32_t valid_resps = 0;
 rocc_response resps[sizeof(int)*8];
 
-composer::fpga_handle_t::~fpga_handle_t() {}
+beethoven::fpga_handle_t::~fpga_handle_t() {}
 
-composer::fpga_handle_t::fpga_handle_t() {}
+beethoven::fpga_handle_t::fpga_handle_t() {}
 
 template<> rocc_response response_handle<rocc_response>::get() {
   auto resp = rg.get();
@@ -28,7 +28,7 @@ template<> rocc_response response_handle<rocc_response>::get() {
 }
 
 
-response_handle<rocc_response> composer::fpga_handle_t::send(const composer::rocc_cmd &c) {
+response_handle<rocc_response> beethoven::fpga_handle_t::send(const beethoven::rocc_cmd &c) {
   return c.send();
 }
 

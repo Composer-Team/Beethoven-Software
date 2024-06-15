@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef COMPOSER_ALLOC_H
-#define COMPOSER_ALLOC_H
+#ifndef BEETHOVEN_ALLOC_H
+#define BEETHOVEN_ALLOC_H
 
 #include <cinttypes>
 #include <cstddef>
@@ -31,7 +31,7 @@
 #include <algorithm>
 #endif
 
-namespace composer {
+namespace beethoven {
 
   class fpga_handle_t;
 
@@ -143,6 +143,18 @@ namespace composer {
 #endif
     };
 
+#ifndef BAREMETAL
+    explicit remote_ptr(const intptr_t &faddr) noexcept:
+            fpga_addr(faddr),
+            host_addr(nullptr),
+            len(0),
+            count(nullptr),
+            mutex(nullptr),
+            offset(0)
+    {
+    }
+#endif
+
     // don't need move constructor for baremetal
 #ifndef BAREMETAL
     remote_ptr(remote_ptr && other) noexcept :
@@ -187,4 +199,4 @@ namespace composer {
   };
 }
 
-#endif //COMPOSER_ALLOC_H
+#endif //BEETHOVEN_ALLOC_H

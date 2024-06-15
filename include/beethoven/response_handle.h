@@ -3,8 +3,8 @@
 //
 
 
-#ifndef COMPOSER_RESPONSE_HANDLE_H
-#define COMPOSER_RESPONSE_HANDLE_H
+#ifndef BEETHOVEN_RESPONSE_HANDLE_H
+#define BEETHOVEN_RESPONSE_HANDLE_H
 
 #include <cinttypes>
 #ifndef BAREMETAL
@@ -13,10 +13,10 @@
 #include <optional>
 #endif
 
-#include <composer/rocc_response.h>
-#include <composer/alloc.h>
+#include <beethoven/rocc_response.h>
+#include <beethoven/alloc.h>
 
-namespace composer {
+namespace beethoven {
 
   class fpga_handle_t;
 
@@ -102,7 +102,7 @@ namespace composer {
 }
 
 #ifndef BAREMETAL
-std::ostream &operator<<(std::ostream &os, const composer::rocc_response &response);
+std::ostream &operator<<(std::ostream &os, const beethoven::rocc_response &response);
 #endif
 
-#endif //COMPOSER_RESPONSE_HANDLE_H
+#endif //BEETHOVEN_RESPONSE_HANDLE_H

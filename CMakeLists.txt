@@ -1,4 +1,4 @@
-project(composer)
+project(beethoven)
 cmake_minimum_required(VERSION 3.0)
 set(version 1.0.6)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -20,7 +20,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
 endif ()
 
 message("Build type: ${CMAKE_BUILD_TYPE}")
-set(COMPOSER_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/composer")
+set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
 
 # https://stackoverflow.com/questions/657850/cmake-how-to-use-bash-command-in-cmakelists-txt
 if ("${PRIVATE}" STREQUAL "1")
@@ -28,26 +28,26 @@ if ("${PRIVATE}" STREQUAL "1")
     execute_process(COMMAND id -u
             OUTPUT_VARIABLE WHOAMI_pre)
     string(STRIP ${WHOAMI_pre} WHOAMI)
-    message("Setting Composer Identity to ${WHOAMI}")
-    add_definitions(-DCOMPOSER_IDENTITY=${WHOAMI})
+    message("Setting Beethoven Identity to ${WHOAMI}")
+    add_definitions(-DBEETHOVEN_IDENTITY=${WHOAMI})
 else ()
-    add_definitions(-DCOMPOSER_IDENTITY=global)
+    add_definitions(-DBEETHOVEN_IDENTITY=global)
 endif ()
 
 
 if (DEFINED BAREMETAL)
     add_compile_definitions(BAREMETAL)
-    include_directories($ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/)
-    add_library(composer STATIC
+    include_directories($ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/)
+    add_library(beethoven STATIC
             src/baremetal.cc
             src/rocc_cmd.cc
             src/alloc.cc
             src/util.cc
-            $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/generated_composer_src.cc
-            include/composer/response_handle.h
-            include/composer/rocc_cmd.h)
+            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc
+            include/beethoven/response_handle.h
+            include/beethoven/rocc_cmd.h)
 else ()
-    add_library(composer SHARED
+    add_library(beethoven SHARED
             src/rocc_cmd.cc
             src/util.cc
             src/fpga_handle.cc
@@ -55,63 +55,65 @@ else ()
             src/response_handle.cc
             src/rocc_response.cc
             src/verilator_server.cc
-            include/composer/response_handle.h
-            include/composer/rocc_cmd.h)
+            include/beethoven/response_handle.h
+            include/beethoven/rocc_cmd.h)
 endif ()
 
 if (APPLE)
     message(Debug "Building for Darwin/OSX platform")
 elseif (UNIX)
     message(Debug "Building for Linux platform")
-    target_link_libraries(composer PUBLIC rt pthread)
+    target_link_libraries(beethoven PUBLIC rt pthread)
 else ()
     message(FATAL_ERROR "Unsupported platform.")
 endif ()
 
-message("install interface is ${COMPOSER_INSTALL_INCLUDEDIR}")
-target_include_directories(composer
+message("install interface is ${BEETHOVEN_INSTALL_INCLUDEDIR}")
+target_include_directories(beethoven
         PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${COMPOSER_INSTALL_INCLUDEDIR}/>
-        $ENV{COMPOSER_ROOT}/Composer-Hardware/vsim/generated-src/
+        $<INSTALL_INTERFACE:${BEETHOVEN_INSTALL_INCLUDEDIR}/>
+        $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/
 )
 
-set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/composer")
-set(EXPORT_TARGETS composer)
+set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
+set(EXPORT_TARGETS beethoven)
 configure_package_config_file(
         "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in"
-        "${PROJECT_BINARY_DIR}/cmake/composerConfig.cmake"
+        "${PROJECT_BINARY_DIR}/cmake/beethovenConfig.cmake"
         INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
-        PATH_VARS COMPOSER_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
+        PATH_VARS BEETHOVEN_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
 )
 
 write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/composerConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
         VERSION "${version}"
         COMPATIBILITY AnyNewerVersion
 )
 
-install(TARGETS composer
-        EXPORT composerTargets
+install(TARGETS beethoven
+        EXPORT beethovenTargets
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
-        DESTINATION "${COMPOSER_INSTALL_INCLUDEDIR}"
+        DESTINATION "${BEETHOVEN_INSTALL_INCLUDEDIR}"
         FILES_MATCHING PATTERN "*.h")
 
-install(EXPORT composerTargets
+install(EXPORT beethovenTargets
         DESTINATION "${CONFIG_EXPORT_DIR}"
         NAMESPACE APEX::)
 
 
 install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/composerConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/composerConfigVersion.cmake"
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/composer
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/beethoven
 )
 
 add_executable(merge_sort src/tests/merge_sort.cc)
-target_link_libraries(merge_sort composer)
+target_link_libraries(merge_sort beethoven)
+add_executable(alloc_sizes src/tests/alloc_sizes.cc)
+target_link_libraries(alloc_sizes beethoven)
 

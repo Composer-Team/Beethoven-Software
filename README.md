@@ -1,6 +1,6 @@
-# Composer-Software
+# Beethoven-Software
 
-This repository contains the necessary software to interact with a Composer design over the AWS F1 FPGA Framework.
+This repository contains the necessary software to interact with a Beethoven design over the AWS F1 FPGA Framework.
 
 ### Dependencies
 To my understanding, this should be pretty cross-platform and work with most UNIX systems.
@@ -11,9 +11,9 @@ CMake will warn you if it can't find the SDK.
 
 [//]: # ([Amazon F1 SDK]&#40;https://github.com/aws/aws-fpga&#41; - this is a dependency from the)
 
-[//]: # ([Composer Hardware]&#40;https://github.com/ChrisKjellqvist/Composer-Hardware&#41; repository. Under normal circumstances, the)
+[//]: # ([Beethoven Hardware]&#40;https://github.com/ChrisKjellqvist/Beethoven-Hardware&#41; repository. Under normal circumstances, the)
 
-[//]: # (Composer-Hardware directory will contain the SDK, which can be used instead of installation in another directory. For)
+[//]: # (Beethoven-Hardware directory will contain the SDK, which can be used instead of installation in another directory. For)
 
 [//]: # (everything here to work properly, `SDK_DIR` needs to be defined, which is typically set when running `sdk_setup.sh` from)
 
@@ -36,22 +36,22 @@ polluting them.
 ### Using in your project
 
 The project is currently set up to support CMake-based projects. I suppose you could use Makefile or whatever, but you'll
-just have to make sure to help your compiler find the include path and use the `-lcomposer` flag during link time.
+just have to make sure to help your compiler find the include path and use the `-lbeethoven` flag during link time.
 
 ```cmake
 # your CMake project
 #...
-find_package(composer REQUIRED)
-target_link_libraries(<your_target> PUBLIC APEX::composer)
+find_package(beethoven REQUIRED)
+target_link_libraries(<your_target> PUBLIC APEX::beethoven)
 #...
 ```
 
-That's all it should take and you'll have access to the `rocc.h`, `fpga_handle.h`, `fpga_transfer`, and `composer_util.h`
+That's all it should take and you'll have access to the `rocc.h`, `fpga_handle.h`, `fpga_transfer`, and `beethoven_util.h`
 headers.
 d
 # Interface Basics
 
-The composer software library uses 3 main types to communicate with an accelerator:
+The beethoven software library uses 3 main types to communicate with an accelerator:
 
 - `rocc_cmd` - RoCC command to be delivered to the accelerator
 - `rocc_response` - Response from the accelerator corresponding to a `rocc_cmd`
@@ -63,7 +63,7 @@ The composer software library uses 3 main types to communicate with an accelerat
 #include <fpga_handle.h>
 ```
 This is an interface for the FPGA with two specializations: `fpga_handle_sim_t` and `fpga_handle_real_t`.
-`fpga_handle_sim_t` correponds to a VSIM/Verilator simulation of the composer and `fpga_handle_real_t` corresponds to a an actual
+`fpga_handle_sim_t` correponds to a VSIM/Verilator simulation of the beethoven and `fpga_handle_real_t` corresponds to a an actual
 FPGA running on an Amazon F1 instance.
 They both share the following interface.
 
@@ -104,18 +104,18 @@ fpga_handle_real_t my_handle;
 my_handle.flush()
 ```
 
-## RoCC Composer Instructions: `rocc_cmd`
+## RoCC Beethoven Instructions: `rocc_cmd`
 
 The RoCC Instruction format is shown below.
 [Credit](https://inst.eecs.berkeley.edu/~cs250/fa13/handouts/lab3-sumaccel.pdf) to Ben Keller for this figure.
 
 ![](resources/rocc_format.png)
 
-Commands for the composer use this format for the instruction base and sends an additional 2 64-bit payloads. The 7
-function bits are slightly mis-used in Composer. The top 4 bits are the system_id corresponding to which type of
-composer core is being used. The actual function that you want the composer core to perform is the bottom 3 bits.
+Commands for the beethoven use this format for the instruction base and sends an additional 2 64-bit payloads. The 7
+function bits are slightly mis-used in Beethoven. The top 4 bits are the system_id corresponding to which type of
+beethoven core is being used. The actual function that you want the beethoven core to perform is the bottom 3 bits.
 
-Currently, the composer supports 3 different functions that use a different combination of opcode and function bits.
+Currently, the beethoven supports 3 different functions that use a different combination of opcode and function bits.
 To ensure that these bits are set correctly, the end-user is unable to set these bits directly and the exposed interface
 sets these according to the function called. The functions are `rocc::flush_cmd()`, `rocc::start_cmd(...)`, and
 `rocc::addr_cmd(...)`.
@@ -141,9 +141,9 @@ rocc_cmd start_cmd(uint16_t system_id, // 4 bits
 ```
 
 The `start_cmd` interface allows a user to begin a kernel execution inside a functional unit. The only fields here
-that have a special purpose on the Composer system are `system_id`, `core_id`, and `rd`. `system_id` obviously
+that have a special purpose on the Beethoven system are `system_id`, `core_id`, and `rd`. `system_id` obviously
 determines what group of cores that a command is routed to. `core_id` as well determines which core the command is
-routed to within the system. Composer also has a few "special-purpose" registers that can be accessed by properly
+routed to within the system. Beethoven also has a few "special-purpose" registers that can be accessed by properly
 setting the `rd` field.
 
 Before we deep-dive into `rd`, a quick node on the `expect_response` field. 
@@ -152,11 +152,11 @@ Otherwise, no reponse will be sent back over the AXIL interface.
 If you specify `expect_response=0` and wait for a response, you'll stall and never return. 
 **Note to self**: this really shouldn't happen. Waiting for a command to return that was specified to not return should throw an exception (or have a timout).
 
-Notice that the destination register is type `RD`. To emphasize the use of special-purpose Composer registers, we
+Notice that the destination register is type `RD`. To emphasize the use of special-purpose Beethoven registers, we
 use `enum RD`. There are 32 registers, but register 16 through 22 (inclusive) are special purpose registers for
 accumulating AXI-4 memory bus statistics. If a non-special register is provided for `rd`, then the return value as part
-of `rocc_response` will be the value returned from the Composer core during execution. If `rd` is a special register,
-then the value stored within the special composer register will be returned.
+of `rocc_response` will be the value returned from the Beethoven core during execution. If `rd` is a special register,
+then the value stored within the special beethoven register will be returned.
 
 ```c++
 enum RD {
@@ -212,14 +212,14 @@ The [AXI Spec](https://developer.arm.com/documentation/102202/0300/Channel-signa
 - AR - Read address port
 - R - Read response port
 
-Composer counts the number of responses for each one of these ports for debugging purposes (presumably). Composer also
+Beethoven counts the number of responses for each one of these ports for debugging purposes (presumably). Beethoven also
 collects the number of cycles spent waiting for read responses(21) and for write responses(22)
 
 ### `addr_cmd(...)`
 
-The composer simplifies the memory interface by exposing a simpler memory interface than DDR to the programmer.
-Currently, the only memory interface supported naturally in the Composer interface is contiguous accesses. 
-Code exists to support sparse (random) reads/writes but it is not properly integrated into the Composer
+The beethoven simplifies the memory interface by exposing a simpler memory interface than DDR to the programmer.
+Currently, the only memory interface supported naturally in the Beethoven interface is contiguous accesses. 
+Code exists to support sparse (random) reads/writes but it is not properly integrated into the Beethoven
 interface yet.
 
 To use the contiguous read interface, the cpu provides a starting address for each channel, and then the hardware module
@@ -255,7 +255,7 @@ struct rocc_response {
 ```
 
 Whenever a instruction successfully completes, the accelerator responds with a `rocc_response`. It contains a 56-bit
-return value, the id of the composer system that performed the instruction, the id of the core within the system that
+return value, the id of the beethoven system that performed the instruction, the id of the core within the system that
 completed it, and the destination register that came from the instruction.
 
 **Note to self**: the length of the return value should be improved/clarified in the future...
@@ -268,5 +268,5 @@ mkdir build && cd build
 cmake .. && make
 ./<your_program>
 ```
-Make sure to run this code AFTER the composer system has booted up.
+Make sure to run this code AFTER the beethoven system has booted up.
 Otherwise, the file descriptors that the library will be looking for will not be set up and you'll crash!

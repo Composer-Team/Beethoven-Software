@@ -2,20 +2,20 @@
 // Created by Chris Kjellqvist on 9/27/22.
 //
 
-#ifndef COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
-#define COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
+#ifndef BEETHOVEN_VERILATOR_BEETHOVEN_VERILATOR_SERVER_H
+#define BEETHOVEN_VERILATOR_BEETHOVEN_VERILATOR_SERVER_H
 
 #ifndef BAREMETAL
 
-#include <composer/rocc_response.h>
-#include <composer/rocc_cmd.h>
+#include <beethoven/rocc_response.h>
+#include <beethoven/rocc_cmd.h>
 #include <string>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <semaphore.h>
 
 #define MAX_CONCURRENT_COMMANDS 256
-namespace composer {
+namespace beethoven {
 
   const extern std::string cmd_server_file_name;
   const extern std::string data_server_file_name;
@@ -27,7 +27,7 @@ namespace composer {
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 
   struct cmd_server_file { // NOLINT(cppcoreguidelines-pro-type-member-init)
-    // lingo: process = client, server = composer runtime
+    // lingo: process = client, server = beethoven runtime
     // lock to wake up server
     pthread_mutex_t server_mut = PTHREAD_MUTEX_INITIALIZER;
     // lock for processes to arbitrate who's sending command
@@ -50,7 +50,7 @@ namespace composer {
     uint64_t quit;
 
     // client request
-    composer::rocc_cmd cmd;
+    beethoven::rocc_cmd cmd;
 
     static void init(cmd_server_file &csf);
   };
@@ -90,4 +90,4 @@ namespace composer {
 
 #endif
 
-#endif //COMPOSER_VERILATOR_COMPOSER_VERILATOR_SERVER_H
+#endif //BEETHOVEN_VERILATOR_BEETHOVEN_VERILATOR_SERVER_H

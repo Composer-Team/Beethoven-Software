@@ -2,18 +2,18 @@
 // Created by Chris Kjellqvist on 11/14/22.
 //
 
-#include "composer/verilator_server.h"
+#include "beethoven/verilator_server.h"
 #include <pthread.h>
 #include <cstring>
 
-using namespace composer;
+using namespace beethoven;
 
 // https://stackoverflow.com/questions/3419332/c-preprocessor-stringify-the-result-of-a-macro
 #define QUOTE(q) #q
 #define EXPAND_AND_QUOTE(q) QUOTE(q)
 
-const std::string composer::cmd_server_file_name = "/compo_c_" EXPAND_AND_QUOTE(COMPOSER_IDENTITY);
-const std::string composer::data_server_file_name = "/compo_d_" EXPAND_AND_QUOTE(COMPOSER_IDENTITY);
+const std::string beethoven::cmd_server_file_name = "/compo_c_" EXPAND_AND_QUOTE(BEETHOVEN_IDENTITY);
+const std::string beethoven::data_server_file_name = "/compo_d_" EXPAND_AND_QUOTE(BEETHOVEN_IDENTITY);
 
 void cmd_server_file::init(cmd_server_file &csf) {
 

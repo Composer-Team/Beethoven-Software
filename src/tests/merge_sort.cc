@@ -5,10 +5,10 @@
 // use smart pointers to do a basic merge sort
 
 #include <iostream>
-#include "composer/fpga_handle.h"
+#include "beethoven/fpga_handle.h"
 #include <random>
 
-using namespace composer;
+using namespace beethoven;
 
 fpga_handle_t handle;
 

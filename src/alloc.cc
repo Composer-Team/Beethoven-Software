@@ -1,14 +1,14 @@
 //
 // Created by Christopher Kjellqvist on 2/28/24.
 //
-#include "composer/alloc.h"
+#include "beethoven/alloc.h"
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #include <cerrno>
 #include <cstring>
 #endif
 
-composer::remote_ptr::~remote_ptr() {
+beethoven::remote_ptr::~remote_ptr() {
 #ifndef BAREMETAL
   if (mutex) {
     mutex->lock();
@@ -26,7 +26,7 @@ composer::remote_ptr::~remote_ptr() {
 #endif
 }
 
-composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_ptr &other) noexcept {
+beethoven::remote_ptr & beethoven::remote_ptr::operator=(const beethoven::remote_ptr &other) noexcept {
 #ifndef BAREMETAL
   if (this->mutex == nullptr && this != &other) {
     // assigning to default constructor
@@ -75,7 +75,7 @@ composer::remote_ptr & composer::remote_ptr::operator=(const composer::remote_pt
 }
 
 #ifndef BAREMETAL
-composer::remote_ptr& composer::remote_ptr::operator=(composer::remote_ptr && other) noexcept {
+beethoven::remote_ptr& beethoven::remote_ptr::operator=(beethoven::remote_ptr && other) noexcept {
   this->mutex = other.mutex;
   this->count = other.count;
   this->host_addr = other.host_addr;

@@ -1,11 +1,11 @@
 //
 // Created by Chris Kjellqvist on 10/19/22.
 //
-#include "composer/response_handle.h"
-#include "composer/rocc_cmd.h"
-#include "composer/fpga_handle.h"
+#include "beethoven/response_handle.h"
+#include "beethoven/rocc_cmd.h"
+#include "beethoven/fpga_handle.h"
 
-using namespace composer;
+using namespace beethoven;
 
 
 rocc_response response_getter::get() {
@@ -43,7 +43,7 @@ std::optional<rocc_response> response_getter::try_get() {
   }
 }
 
-std::ostream &operator<<(std::ostream &os, const composer::rocc_response &response) {
+std::ostream &operator<<(std::ostream &os, const beethoven::rocc_response &response) {
 os << "data: " << response.data << " core_id: " << response.core_id << " system_id: " << response.system_id
 << " rd: " << response.rd;
 return os;

@@ -12,21 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "composer/rocc_cmd.h"
-#include "composer/alloc.h"
-#include "composer/util.h"
+#include "beethoven/rocc_cmd.h"
+#include "beethoven/alloc.h"
+#include "beethoven/util.h"
 #ifndef BAREMETAL
 #include <cstring>
 #include <iostream>
 #include <cassert>
 #else
-#include <composer_allocator_declaration.h>
+#include <beethoven_allocator_declaration.h>
 #endif
-#include "composer/fpga_handle.h"
+#include "beethoven/fpga_handle.h"
 
-using namespace composer;
+using namespace beethoven;
 
-void rocc_cmd::pack(const composer_pack_info &info, uint32_t *ar, uint8_t rd_override) const {
+void rocc_cmd::pack(const beethoven_pack_info &info, uint32_t *ar, uint8_t rd_override) const {
 
 #define CHECK(v, bits) if ((v) >= (1L << (bits))) {std::cerr << #v " out of range (" << (v) << std::endl; exit(1); }
 
@@ -180,7 +180,7 @@ response_handle<rocc_response> rocc_cmd::send() const {
     }
     actives |= (1 << (id - 1));
   }
-#define MMIO_BASE ((intptr_t)ComposerMMIOOffset)
+#define MMIO_BASE ((intptr_t)BeethovenMMIOOffset)
   pack(pack_cfg, cmd, id);
     for (const uint32_t &i: cmd) {
     while (!peek_addr(MMIO_BASE + CMD_READY)) {}

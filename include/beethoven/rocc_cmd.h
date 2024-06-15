@@ -18,12 +18,12 @@
 #define ROCC_H
 
 #include <cinttypes>
-#include <composer/composer_consts.h>
-#include <composer/util.h>
-#include <composer/response_handle.h>
-#include <composer/alloc.h>
+#include <beethoven/beethoven_consts.h>
+#include <beethoven/util.h>
+#include <beethoven/response_handle.h>
+#include <beethoven/alloc.h>
 
-namespace composer {
+namespace beethoven {
   class fpga_handle_t;
 
   class rocc_cmd {
@@ -70,7 +70,7 @@ namespace composer {
             uint64_t rs2,
             uint16_t function_id);
 
-    void pack(const composer_pack_info &info, uint32_t *ar, uint8_t rd_override=255) const;
+    void pack(const beethoven_pack_info &info, uint32_t *ar, uint8_t rd_override=255) const;
 
     [[nodiscard]] uint16_t getFunction() const;
 
@@ -97,7 +97,7 @@ namespace composer {
 }
 
 #ifndef BAREMETAL
-std::ostream &operator<<(std::ostream &os, const composer::rocc_cmd &cmd);
+std::ostream &operator<<(std::ostream &os, const beethoven::rocc_cmd &cmd);
 #endif
 
 #endif //ROCC_H

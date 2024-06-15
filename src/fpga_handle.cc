@@ -2,7 +2,7 @@
 // Created by Chris Kjellqvist on 10/19/22.
 //
 
-#include "composer/fpga_handle.h"
+#include "beethoven/fpga_handle.h"
 #ifndef BAREMETAL
 #include <iostream>
 #include <algorithm>
@@ -11,7 +11,7 @@
 #include <stdexcept>
 #endif
 #include <cstring>
-#include "composer/alloc.h"
+#include "beethoven/alloc.h"
 
 #ifdef Kria
 
@@ -26,14 +26,14 @@ const unsigned kria_n_page_sizes = 4;
 
 #endif
 
-using namespace composer;
+using namespace beethoven;
 
 
-std::vector<fpga_handle_t *> composer::active_fpga_handles;
+std::vector<fpga_handle_t *> beethoven::active_fpga_handles;
 
-fpga_handle_t *composer::current_handle_context;
+fpga_handle_t *beethoven::current_handle_context;
 
-[[maybe_unused]] void composer::set_fpga_context(fpga_handle_t *handle) {
+[[maybe_unused]] void beethoven::set_fpga_context(fpga_handle_t *handle) {
   current_handle_context = handle;
   if (std::find(active_fpga_handles.begin(), active_fpga_handles.end(), handle) == active_fpga_handles.end()) {
     std::cerr << "The provided handle appears to have not been properly constructed. Please use the provided"
@@ -56,8 +56,8 @@ fpga_handle_t *composer::current_handle_context;
  * limitations under the License.
  */
 
-#include "composer/verilator_server.h"
-#include "composer/response_handle.h"
+#include "beethoven/verilator_server.h"
+#include "beethoven/response_handle.h"
 #include <unistd.h>
 #ifndef Kria
 #include <pthread.h>
@@ -65,7 +65,7 @@ fpga_handle_t *composer::current_handle_context;
 
 #include <fcntl.h>
 
-using namespace composer;
+using namespace beethoven;
 
 #ifdef Kria
 // https://stackoverflow.com/questions/2440385/how-to-find-the-physical-address-of-a-variable-from-user-space-in-linux
@@ -324,25 +324,25 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 }
 
 [[maybe_unused]] void fpga_handle_t::request_startup() {
-  // first, check that there isn't already a ComposerRuntime process running
+  // first, check that there isn't already a BeethovenRuntime process running
   // if there is, then we don't need to do anything
 
   // use ps utility to see if process is running
   // if it is, then we don't need to do anything
 
   // this is rough but maybe it can work alright
-  system("killall ComposerRuntime");
+  system("killall BeethovenRuntime");
 
-  // try to build and startup the composer runtime FOR SIMULATION ONLY
+  // try to build and startup the beethoven runtime FOR SIMULATION ONLY
   // record current working directory
   char cwd[1024];
   getcwd(cwd, sizeof(cwd));
-  // change to composer runtime directory
-  // get $COMPOSER_ROOT environment variable
-  char *composer_root = getenv("COMPOSER_ROOT");
-  // change to composer_root/Composer-Hardware/vsim/generated-src
-  chdir(composer_root);
-  chdir("Composer-Runtime");
+  // change to beethoven runtime directory
+  // get $BEETHOVEN_ROOT environment variable
+  char *beethoven_root = getenv("BEETHOVEN_ROOT");
+  // change to beethoven_root/Beethoven-Hardware/vsim/generated-src
+  chdir(beethoven_root);
+  chdir("Beethoven-Runtime");
   // make a build directory if one does not exist
   mkdir("build", 0777);
   // change to build directory
@@ -351,8 +351,8 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   system("cmake .. -DTARGET=sim -DCMAKE_BUILD_TYPE=Debug");
   // run make
   system("make -j");
-  // fork exec the executable that was just built (./ComposerRuntime)
-  // output system out to log file in the same directory (Composer.log)
+  // fork exec the executable that was just built (./BeethovenRuntime)
+  // output system out to log file in the same directory (Beethoven.log)
   // then change back to original directory
   // fork and exec
   printf("FORKING\n");
@@ -360,18 +360,18 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   if (pid == 0) {
     // child
     // redirect stdout and stderr to log file
-    int fd = open("Composer.log", O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    int fd = open("Beethoven.log", O_WRONLY | O_CREAT | O_TRUNC, 0777);
     dup2(fd, 1);
     dup2(fd, 2);
     close(fd);
     // exec
-    execl("./ComposerRuntime", "./ComposerRuntime", nullptr);
+    execl("./BeethovenRuntime", "./BeethovenRuntime", nullptr);
     // if we get here, exec failed
-    std::cerr << "Failed to exec ComposerRuntime" << std::endl;
+    std::cerr << "Failed to exec BeethovenRuntime" << std::endl;
     exit(1);
   } else if (pid < 0) {
     // fork failed
-    std::cerr << "Failed to fork ComposerRuntime" << std::endl;
+    std::cerr << "Failed to fork BeethovenRuntime" << std::endl;
     exit(1);
   } else {
     // parent

@@ -16,16 +16,16 @@
 #ifndef FPGA_HANDLE_H
 #define FPGA_HANDLE_H
 
-#include <composer/rocc_response.h>
-#include <composer/response_handle.h>
+#include <beethoven/rocc_response.h>
+#include <beethoven/response_handle.h>
 
 #ifndef BAREMETAL
-#include <composer/verilator_server.h>
+#include <beethoven/verilator_server.h>
 #include <map>
 #include <vector>
 #endif
 
-namespace composer {
+namespace beethoven {
   class response_getter;
 
   class rocc_cmd;
@@ -63,13 +63,13 @@ namespace composer {
     ~fpga_handle_t();
 
 #ifndef BAREMETAL
-    composer::remote_ptr malloc(size_t len);
+    beethoven::remote_ptr malloc(size_t len);
 
-    [[maybe_unused]] void copy_to_fpga(const composer::remote_ptr &dst);
+    [[maybe_unused]] void copy_to_fpga(const beethoven::remote_ptr &dst);
 
-    [[maybe_unused]] void copy_from_fpga(const composer::remote_ptr &src);
+    [[maybe_unused]] void copy_from_fpga(const beethoven::remote_ptr &src);
 
-    [[maybe_unused]] void free(composer::remote_ptr fpga_addr);
+    [[maybe_unused]] void free(beethoven::remote_ptr fpga_addr);
 
     [[maybe_unused]] static void request_startup();
 
