@@ -109,9 +109,10 @@ fpga_handle_t::fpga_handle_t() {
   }
 #endif
   // map in command server
-  csfd = shm_open(cmd_server_file_name.c_str(), O_RDWR, file_access_flags);
+  auto cmd_fname = cmd_server_file_name();
+  csfd = shm_open(cmd_fname.c_str(), O_RDWR, file_access_flags);
   if (csfd == -1) {
-    std::cerr << "Error opening file " << cmd_server_file_name << " " << strerror(errno) << std::endl;
+    std::cerr << "Error opening file " << cmd_fname << " " << strerror(errno) << std::endl;
     exit(1);
   }
   cmd_server = (cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), file_access_prots, MAP_SHARED, csfd, 0);
@@ -124,9 +125,10 @@ fpga_handle_t::fpga_handle_t() {
   cmd_server->quit = false;
 
   // map in data server
-  dsfd = shm_open(data_server_file_name.c_str(), O_RDWR, file_access_flags);
+  auto dataserver_fname = data_server_file_name();
+  dsfd = shm_open(dataserver_fname.c_str(), O_RDWR, file_access_flags);
   if (dsfd < 0) {
-    std::cerr << "Error opening file " << data_server_file_name << std::endl;
+    std::cerr << "Error opening file " << dataserver_fname << std::endl;
     exit(1);
   }
   data_server = (data_server_file *) mmap(nullptr, sizeof(data_server_file), file_access_prots, MAP_SHARED, dsfd, 0);
@@ -205,7 +207,7 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
   // wait for server to signal that it has read our command
   error |= pthread_mutex_lock(&cmd_server->cmd_recieve_server_resp_lock);
   // get the handle that we use to wait for response asynchronously
-  uint64_t handle = cmd_server->pthread_wait_id;
+  int handle = cmd_server->pthread_wait_id;
   // release lock over client side
   error |= pthread_mutex_unlock(&cmd_server->cmd_send_lock);
 

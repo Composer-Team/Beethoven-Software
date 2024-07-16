@@ -63,13 +63,13 @@ namespace beethoven {
     ~fpga_handle_t();
 
 #ifndef BAREMETAL
-    beethoven::remote_ptr malloc(size_t len);
+    remote_ptr malloc(size_t len);
 
-    [[maybe_unused]] void copy_to_fpga(const beethoven::remote_ptr &dst);
+    [[maybe_unused]] void copy_to_fpga(const remote_ptr &dst);
 
-    [[maybe_unused]] void copy_from_fpga(const beethoven::remote_ptr &src);
+    [[maybe_unused]] void copy_from_fpga(const remote_ptr &src);
 
-    [[maybe_unused]] void free(beethoven::remote_ptr fpga_addr);
+    [[maybe_unused]] void free(remote_ptr fpga_addr);
 
     [[maybe_unused]] static void request_startup();
 

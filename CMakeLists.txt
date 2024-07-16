@@ -22,19 +22,6 @@ endif ()
 message("Build type: ${CMAKE_BUILD_TYPE}")
 set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
 
-# https://stackoverflow.com/questions/657850/cmake-how-to-use-bash-command-in-cmakelists-txt
-if ("${PRIVATE}" STREQUAL "1")
-    add_definitions(-DPRIVATE)
-    execute_process(COMMAND id -u
-            OUTPUT_VARIABLE WHOAMI_pre)
-    string(STRIP ${WHOAMI_pre} WHOAMI)
-    message("Setting Beethoven Identity to ${WHOAMI}")
-    add_definitions(-DBEETHOVEN_IDENTITY=${WHOAMI})
-else ()
-    add_definitions(-DBEETHOVEN_IDENTITY=global)
-endif ()
-
-
 if (DEFINED BAREMETAL)
     add_compile_definitions(BAREMETAL)
     include_directories($ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/)

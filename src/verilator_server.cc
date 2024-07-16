@@ -5,15 +5,44 @@
 #include "beethoven/verilator_server.h"
 #include <pthread.h>
 #include <cstring>
+#include <unistd.h>
 
 using namespace beethoven;
 
-// https://stackoverflow.com/questions/3419332/c-preprocessor-stringify-the-result-of-a-macro
-#define QUOTE(q) #q
-#define EXPAND_AND_QUOTE(q) QUOTE(q)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type"
+std::string whoami() {
+  // call to get the identity of the current process
+  // get stdout of whoami
+  // return the string
+  int pid = fork();
+  if (pid == 0) {
+    // child
+    int fd = open("/tmp/whoami", O_CREAT | O_RDWR, 0666);
+    dup2(fd, 1);
+    close(fd);
+    execlp("whoami", "whoami", nullptr);
+  } else {
+    // parent
+    waitpid(pid, nullptr, 0);
+    int fd = open("/tmp/whoami", O_RDONLY);
+    char buf[1024];
+    memset(buf, 0, 1024);
+    read(fd, buf, 1024);
+    close(fd);
+    return std::string(buf);
+  }
+}
+#pragma clang diagnostic pop
 
-const std::string beethoven::cmd_server_file_name = "/compo_c_" EXPAND_AND_QUOTE(BEETHOVEN_IDENTITY);
-const std::string beethoven::data_server_file_name = "/compo_d_" EXPAND_AND_QUOTE(BEETHOVEN_IDENTITY);
+static const std::string USER_NAME = whoami();
+
+std::string beethoven::cmd_server_file_name() {
+   return "/compo_c_" + USER_NAME;
+}
+std::string beethoven::data_server_file_name() {
+   return "/compo_d_" + USER_NAME;
+}
 
 void cmd_server_file::init(cmd_server_file &csf) {
 

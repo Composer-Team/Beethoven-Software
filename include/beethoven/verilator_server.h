@@ -17,8 +17,8 @@
 #define MAX_CONCURRENT_COMMANDS 256
 namespace beethoven {
 
-  const extern std::string cmd_server_file_name;
-  const extern std::string data_server_file_name;
+  std::string cmd_server_file_name();
+  std::string data_server_file_name();
 
   const int file_access_flags = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
   const int file_access_prots = PROT_READ | PROT_WRITE;
@@ -46,7 +46,7 @@ namespace beethoven {
     uint16_t free_list[MAX_CONCURRENT_COMMANDS];
     uint16_t free_list_idx = 255;
     // server return values - which response to use for process
-    uint64_t pthread_wait_id = 0;
+    int pthread_wait_id = 0;
     uint64_t quit;
 
     // client request
@@ -74,7 +74,7 @@ namespace beethoven {
     pthread_mutex_t data_cmd_recieve_resp_lock = PTHREAD_MUTEX_INITIALIZER;
     // server return values
     char fname[512]{};
-    int16_t resp_id;
+    int16_t resp_id = 0;
     // client request
     data_server_op operation = ALLOC;
     // when allocation, pass in the length argument here and return value is FPGA addr + fname
