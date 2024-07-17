@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <cstring>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 using namespace beethoven;
 
