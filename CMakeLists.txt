@@ -60,7 +60,6 @@ target_include_directories(beethoven
         PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${BEETHOVEN_INSTALL_INCLUDEDIR}/>
-        $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/
 )
 
 set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
