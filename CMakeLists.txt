@@ -22,40 +22,51 @@ set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
 
 if ("${PLATFORM}" STREQUAL "discrete")
     add_definitions(-DDiscrete)
+    set(BUILD_SHARED ON)
 elseif ("${PLATFORM}" STREQUAL "kria")
     add_definitions(-DKria)
+    set(BUILD_SHARED ON)
 elseif ("${PLATFORM}" STREQUAL "baremetal")
     add_definitions(-DBAREMETAL)
+    set(BUILD_SHARED OFF)
 else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
 endif ()
 
-
-add_library(beethoven SHARED
-        src/rocc_cmd.cc
-        src/util.cc
-        src/alloc.cc
-        src/rocc_response.cc
-        include/beethoven/response_handle.h
-        include/beethoven/rocc_cmd.h
-        include/beethoven/allocator/device_allocator.h)
+if (BUILD_SHARED)
+    message("BUILDING SHARED LIBRARY")
+    add_library(beethoven SHARED
+            src/rocc_cmd.cc
+            src/util.cc
+            src/alloc.cc
+            src/rocc_response.cc
+            include/beethoven/response_handle.h
+            include/beethoven/rocc_cmd.h
+            include/beethoven/allocator/device_allocator.h)
+else()
+    message("BUILDING STATIC LIBRARY")
+    add_library(beethoven STATIC
+            src/rocc_cmd.cc
+            src/util.cc
+            src/alloc.cc
+            src/rocc_response.cc
+            include/beethoven/response_handle.h
+            include/beethoven/rocc_cmd.h
+            include/beethoven/allocator/device_allocator.h)
+endif()
 
 if ("${PLATFORM}" STREQUAL "discrete")
-    add_definitions(-DDiscrete)
     target_sources(beethoven PRIVATE
             src/fpga_handle_impl/fpga_handle_discrete.cc
             src/response_handle.cc
             src/verilator_server.cc)
 elseif ("${PLATFORM}" STREQUAL "kria")
-    add_definitions(-DKria)
     target_sources(beethoven PRIVATE
             src/fpga_handle_impl/fpga_handle_kria.cc
             src/response_handle.cc
             src/verilator_server.cc
     )
 elseif ("${PLATFORM}" STREQUAL "baremetal")
-    add_definitions(-DBaremetal)
-
     target_sources(beethoven PRIVATE
             src/fpga_handle_impl/fpga_handle_baremetal.cc
             $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc
