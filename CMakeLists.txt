@@ -1,24 +1,26 @@
 project(beethoven)
 cmake_minimum_required(VERSION 3.0)
 set(version 1.0.6)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_CXX_STANDARD 17)
-include(CMakePackageConfigHelpers)
-include(CMakeDependentOption)
-include(CheckCXXCompilerFlag)
-include(GNUInstallDirs)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
-            STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
-endif ()
 
 option(PLATFORM "Platform to build for")
 
 message("Build type: ${CMAKE_BUILD_TYPE}")
-set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
+
+if (NOT "${PLATFORM}" STREQUAL "baremetal")
+    set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    include(CMakePackageConfigHelpers)
+    include(CMakeDependentOption)
+    include(CheckCXXCompilerFlag)
+    include(GNUInstallDirs)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
+                STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
+    endif ()
+endif ()
 
 if ("${PLATFORM}" STREQUAL "discrete")
     add_definitions(-DDiscrete)
@@ -34,7 +36,6 @@ else ()
 endif ()
 
 if (BUILD_SHARED)
-    message("BUILDING SHARED LIBRARY")
     add_library(beethoven SHARED
             src/rocc_cmd.cc
             src/util.cc
@@ -43,8 +44,7 @@ if (BUILD_SHARED)
             include/beethoven/response_handle.h
             include/beethoven/rocc_cmd.h
             include/beethoven/allocator/device_allocator.h)
-else()
-    message("BUILDING STATIC LIBRARY")
+else ()
     add_library(beethoven STATIC
             src/rocc_cmd.cc
             src/util.cc
@@ -53,7 +53,7 @@ else()
             include/beethoven/response_handle.h
             include/beethoven/rocc_cmd.h
             include/beethoven/allocator/device_allocator.h)
-endif()
+endif ()
 
 if ("${PLATFORM}" STREQUAL "discrete")
     target_sources(beethoven PRIVATE
@@ -67,7 +67,8 @@ elseif ("${PLATFORM}" STREQUAL "kria")
             src/verilator_server.cc
     )
 elseif ("${PLATFORM}" STREQUAL "baremetal")
-    target_sources(beethoven PRIVATE
+    target_sources(beethoven
+            PRIVATE
             src/fpga_handle_impl/fpga_handle_baremetal.cc
             $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc
     )
@@ -75,6 +76,7 @@ elseif ("${PLATFORM}" STREQUAL "baremetal")
             beethoven
             PRIVATE
             $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/
+            include
     )
 else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
@@ -86,8 +88,7 @@ add_executable(alloc_sizes src/tests/alloc_sizes.cc)
 target_link_libraries(alloc_sizes beethoven)
 
 
-if (NOT "${PLATFORM}" STREQUAL "baremetal")
-
+if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
     if (APPLE)
         message(Debug "Building for Darwin/OSX platform")
     elseif (UNIX)
