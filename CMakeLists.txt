@@ -69,61 +69,65 @@ else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
 endif ()
 
-
-if (APPLE)
-    message(Debug "Building for Darwin/OSX platform")
-elseif (UNIX)
-    message(Debug "Building for Linux platform")
-    target_link_libraries(beethoven PUBLIC rt pthread)
-else ()
-    message(FATAL_ERROR "Unsupported platform.")
-endif ()
-
-message("install interface is ${BEETHOVEN_INSTALL_INCLUDEDIR}")
-target_include_directories(beethoven
-        PUBLIC
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${BEETHOVEN_INSTALL_INCLUDEDIR}/>
-)
-
-set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
-set(EXPORT_TARGETS beethoven)
-configure_package_config_file(
-        "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in"
-        "${PROJECT_BINARY_DIR}/cmake/beethovenConfig.cmake"
-        INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
-        PATH_VARS BEETHOVEN_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
-)
-
-write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
-        VERSION "${version}"
-        COMPATIBILITY AnyNewerVersion
-)
-
-install(TARGETS beethoven
-        EXPORT beethovenTargets
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
-        DESTINATION "${BEETHOVEN_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING PATTERN "*.h")
-
-install(EXPORT beethovenTargets
-        DESTINATION "${CONFIG_EXPORT_DIR}"
-        NAMESPACE APEX::)
-
-
-install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/beethoven
-)
-
 add_executable(merge_sort src/tests/merge_sort.cc)
 target_link_libraries(merge_sort beethoven)
 add_executable(alloc_sizes src/tests/alloc_sizes.cc)
 target_link_libraries(alloc_sizes beethoven)
+
+
+if (NOT "${PLATFORM}" STREQUAL "baremetal")
+
+    if (APPLE)
+        message(Debug "Building for Darwin/OSX platform")
+    elseif (UNIX)
+        message(Debug "Building for Linux platform")
+        target_link_libraries(beethoven PUBLIC rt pthread)
+    else ()
+        message(FATAL_ERROR "Unsupported platform.")
+    endif ()
+
+    message("install interface is ${BEETHOVEN_INSTALL_INCLUDEDIR}")
+    target_include_directories(beethoven
+            PUBLIC
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${BEETHOVEN_INSTALL_INCLUDEDIR}/>
+    )
+
+    set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
+    set(EXPORT_TARGETS beethoven)
+    configure_package_config_file(
+            "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in"
+            "${PROJECT_BINARY_DIR}/cmake/beethovenConfig.cmake"
+            INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
+            PATH_VARS BEETHOVEN_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
+    )
+
+    write_basic_package_version_file(
+            "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
+            VERSION "${version}"
+            COMPATIBILITY AnyNewerVersion
+    )
+
+    install(TARGETS beethoven
+            EXPORT beethovenTargets
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+            DESTINATION "${BEETHOVEN_INSTALL_INCLUDEDIR}"
+            FILES_MATCHING PATTERN "*.h")
+
+    install(EXPORT beethovenTargets
+            DESTINATION "${CONFIG_EXPORT_DIR}"
+            NAMESPACE APEX::)
+
+
+    install(FILES
+            "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfig.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/beethoven
+    )
+endif ()
+
 
