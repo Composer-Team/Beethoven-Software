@@ -74,7 +74,7 @@ elseif ("${PLATFORM}" STREQUAL "baremetal")
     )
     target_include_directories(
             beethoven
-            PRIVATE
+            PUBLIC
             $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/
             include
     )
