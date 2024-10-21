@@ -22,6 +22,7 @@
 #include <mutex>
 
 #ifndef BAREMETAL
+
 #include <array>
 #include <tuple>
 #include <set>
@@ -29,6 +30,7 @@
 #include <pthread.h>
 #include <iostream>
 #include <algorithm>
+
 #endif
 
 namespace beethoven {
@@ -41,79 +43,57 @@ namespace beethoven {
     intptr_t fpga_addr;
     void *host_addr;
 
-#ifndef BAREMETAL
     size_t len;
     ptrdiff_t offset;
     std::mutex *mutex = nullptr;
     uint16_t *count = nullptr;
-#endif
 
-#ifndef BAREMETAL
-    remote_ptr(const intptr_t &faddr, void *haddr
-            ,const size_t &l,
-            uint16_t *c,
-            std::mutex *m,
-            ptrdiff_t off
+    remote_ptr(const intptr_t &faddr, void *haddr, const size_t &l,
+               uint16_t *c,
+               std::mutex *m,
+               ptrdiff_t off
     ) noexcept:
             fpga_addr(faddr),
-            host_addr(haddr)
-    ,len(l),
-    count(c),
-    mutex(m),
-    offset(off)
-    {
-#ifndef BAREMETAL
+            host_addr(haddr), len(l),
+            count(c),
+            mutex(m),
+            offset(off) {
       if (mutex) {
         std::lock_guard<std::mutex> lock(*mutex);
         (*count)++;
       }
-#endif
     }
-#endif
+
   public:
     [[nodiscard]] uint64_t getFpgaAddr() const {
       return fpga_addr;
     }
 
-#ifndef BAREMETAL
     [[nodiscard]] size_t getLen() const {
       return len;
     }
-#endif
 
     [[nodiscard]] void *getHostAddr() const {
       return host_addr;
     }
 
-    explicit remote_ptr(intptr_t fpgaAddr, void *hostAddr
-#ifndef BAREMETAL
-        , size_t len
-#endif
-        ):
+    explicit remote_ptr(intptr_t fpgaAddr, void *hostAddr, size_t len
+    ) :
             fpga_addr(fpgaAddr),
-            host_addr(hostAddr)
-#ifndef BAREMETAL
-    ,len(len)
-#endif
-    {
-
-#ifndef BAREMETAL
+            host_addr(hostAddr),
+            len(len) {
       offset = 0;
       mutex = new std::mutex();
       count = new uint16_t(1);
-#endif
     }
 
     explicit remote_ptr() :
             fpga_addr(0),
-            host_addr(nullptr)
-#ifndef BAREMETAL
-    ,len(0),
-    mutex(nullptr),
-    count(nullptr),
-    offset(0)
-#endif
-    {}
+            host_addr(nullptr),
+            len(0),
+            mutex(nullptr),
+            count(nullptr),
+            offset(0) {}
 
     bool operator==(const remote_ptr &other) const {
       return fpga_addr == other.fpga_addr;
@@ -126,74 +106,62 @@ namespace beethoven {
 
     remote_ptr(const remote_ptr &other) noexcept:
             fpga_addr(other.fpga_addr),
-            host_addr(other.host_addr)
-#ifndef BAREMETAL
-    ,len(other.len),
-    count(other.count),
-    mutex(other.mutex),
+            host_addr(other.host_addr),
+            len(other.len),
+            count(other.count),
+            mutex(other.mutex),
 
-    offset(other.offset)
-#endif
+            offset(other.offset)
     {
-#ifndef BAREMETAL
       if (mutex) {
         std::lock_guard<std::mutex> lock(*mutex);
         (*count)++;
       }
-#endif
     };
 
-#ifndef BAREMETAL
     explicit remote_ptr(const intptr_t &faddr) noexcept:
             fpga_addr(faddr),
             host_addr(nullptr),
             len(0),
             count(nullptr),
             mutex(nullptr),
-            offset(0)
-    {
+            offset(0) {
     }
-#endif
+
 
     // don't need move constructor for baremetal
-#ifndef BAREMETAL
-    remote_ptr(remote_ptr && other) noexcept :
+    remote_ptr(remote_ptr &&other) noexcept:
             fpga_addr(other.fpga_addr),
             host_addr(other.host_addr),
             len(other.len),
             count(other.count),
             mutex(other.mutex),
-            offset(other.offset){
+            offset(other.offset) {
     };
-#endif
 
 
-#ifndef BAREMETAL
     remote_ptr &operator=(remote_ptr &&) noexcept;
-#endif
 
     remote_ptr &operator=(const remote_ptr &other) noexcept;
 
     ~remote_ptr();
 
     remote_ptr operator+(int q) const {
-      return remote_ptr(this->fpga_addr + q, (char *) (this->host_addr) + q
-#ifndef BAREMETAL
-              , this->len - q,
-              this->count, this->mutex,
-              offset+q
-#endif
+      return remote_ptr(this->fpga_addr + q,
+                        (char *) (this->host_addr) + q,
+                        this->len - q,
+                        this->count, this->mutex,
+                        offset + q
 
       );
     }
 
     remote_ptr operator-(int q) const {
-      return remote_ptr(this->fpga_addr - q, (char *) (this->host_addr) - q
-#ifndef BAREMETAL
-                        , this->len + q,
+      return remote_ptr(this->fpga_addr - q,
+                        (char *) (this->host_addr) - q,
+                        this->len + q,
                         this->count, this->mutex,
-                        offset-q
-#endif
+                        offset - q
       );
     }
   };

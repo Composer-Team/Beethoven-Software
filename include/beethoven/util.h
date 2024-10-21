@@ -23,6 +23,7 @@ namespace beethoven {
   };
 
 #ifdef BAREMETAL
+  // TODO inspect ARM assembly
   template <typename t=uint32_t>
   void poke_addr(intptr_t ptr, t r) {
     *(reinterpret_cast<volatile t*>(ptr)) = r;

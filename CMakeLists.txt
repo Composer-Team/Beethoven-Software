@@ -9,42 +9,66 @@ include(CheckCXXCompilerFlag)
 include(GNUInstallDirs)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if ("${KRIA}" STREQUAL "1")
-    add_definitions(-DKria)
-endif ()
-
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
             STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
 endif ()
 
+option(PLATFORM "Platform to build for")
+
 message("Build type: ${CMAKE_BUILD_TYPE}")
 set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
 
-if (DEFINED BAREMETAL)
-    add_compile_definitions(BAREMETAL)
-    include_directories($ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/)
-    add_library(beethoven STATIC
-            src/baremetal.cc
-            src/rocc_cmd.cc
-            src/alloc.cc
-            src/util.cc
-            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc
-            include/beethoven/response_handle.h
-            include/beethoven/rocc_cmd.h)
+if ("${PLATFORM}" STREQUAL "discrete")
+    add_definitions(-DDiscrete)
+elseif ("${PLATFORM}" STREQUAL "kria")
+    add_definitions(-DKria)
+elseif ("${PLATFORM}" STREQUAL "baremetal")
+    add_definitions(-DBAREMETAL)
 else ()
-    add_library(beethoven SHARED
-            src/rocc_cmd.cc
-            src/util.cc
-            src/fpga_handle.cc
-            src/alloc.cc
-            src/response_handle.cc
-            src/rocc_response.cc
-            src/verilator_server.cc
-            include/beethoven/response_handle.h
-            include/beethoven/rocc_cmd.h)
+    message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
 endif ()
+
+
+add_library(beethoven SHARED
+        src/rocc_cmd.cc
+        src/util.cc
+        src/alloc.cc
+        src/rocc_response.cc
+        include/beethoven/response_handle.h
+        include/beethoven/rocc_cmd.h
+        include/beethoven/allocator/device_allocator.h)
+
+if ("${PLATFORM}" STREQUAL "discrete")
+    add_definitions(-DDiscrete)
+    target_sources(beethoven PRIVATE
+            src/fpga_handle_impl/fpga_handle_discrete.cc
+            src/response_handle.cc
+            src/verilator_server.cc)
+elseif ("${PLATFORM}" STREQUAL "kria")
+    add_definitions(-DKria)
+    target_sources(beethoven PRIVATE
+            src/fpga_handle_impl/fpga_handle_kria.cc
+            src/response_handle.cc
+            src/verilator_server.cc
+    )
+elseif ("${PLATFORM}" STREQUAL "baremetal")
+    add_definitions(-DBaremetal)
+
+    target_sources(beethoven PRIVATE
+            src/fpga_handle_impl/fpga_handle_baremetal.cc
+            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc
+    )
+    target_include_directories(
+            beethoven
+            PRIVATE
+            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/
+    )
+else ()
+    message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
+endif ()
+
 
 if (APPLE)
     message(Debug "Building for Darwin/OSX platform")

@@ -37,3 +37,17 @@ function(beethoven_library TARGET)
         include_directories("$ENV{BEETHOVEN_ROOT}/aws-fpga/sdk/userspace/include")
     endif()
 endfunction()
+
+function(link_beethoven_to_target TARGET)
+    cmake_parse_arguments(BEETHOVEN "F1"
+                                   ""
+                                   ""
+                                   ${ARGN} )
+    target_sources(${TARGET} PRIVATE $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc)
+    target_include_directories(${TARGET} PUBLIC $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/)
+    target_link_libraries(${TARGET} PUBLIC APEX::beethoven)
+    if (F1)
+        target_link_libraries(${TARGET} fpga_mgmt)
+        include_directories("$ENV{BEETHOVEN_ROOT}/aws-fpga/sdk/userspace/include")
+    endif()
+endfunction()

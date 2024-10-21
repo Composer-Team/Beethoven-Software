@@ -2,7 +2,7 @@
 // Created by Christopher Kjellqvist on 2/28/24.
 //
 
-// use smart pointers to do a basic merge sort
+// use smart pointers to do a basic merge sort without memory leaks
 
 #include <iostream>
 #include "beethoven/fpga_handle.h"

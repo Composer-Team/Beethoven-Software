@@ -171,6 +171,7 @@ response_handle<rocc_response> rocc_cmd::send() const {
   assert(ctx != nullptr);
   return ctx->send(*this);
 #else
+  // TODO write this in assembly
   uint8_t id = 255;
   uint32_t cmd[5];
   if (xd) {

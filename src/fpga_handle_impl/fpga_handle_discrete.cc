@@ -13,19 +13,6 @@
 #include <cstring>
 #include "beethoven/alloc.h"
 
-#ifdef Kria
-
-#include <sys/mman.h>
-#include <pthread.h>
-
-
-const unsigned kria_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};
-const unsigned kria_huge_page_flags[] = {21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
-                                         30 << MAP_HUGE_SHIFT};
-const unsigned kria_n_page_sizes = 4;
-
-#endif
-
 using namespace beethoven;
 
 
@@ -67,47 +54,10 @@ fpga_handle_t *beethoven::current_handle_context;
 
 using namespace beethoven;
 
-#ifdef Kria
-// https://stackoverflow.com/questions/2440385/how-to-find-the-physical-address-of-a-variable-from-user-space-in-linux
-#include "cstdio"
-#include "cinttypes"
-
-uint64_t vtop(unsigned long virt_addr) {
-  FILE *pagemap;
-  uint64_t paddr = 0;
-  uint64_t offset = (virt_addr / sysconf(_SC_PAGESIZE)) * sizeof(uint64_t);
-  uint64_t e;
-  if ((pagemap = fopen("/proc/self/pagemap", "r"))) {
-    if (lseek(fileno(pagemap), (long)offset, SEEK_SET) == offset) {
-      if (fread(&e, sizeof(uint64_t), 1, pagemap)) {
-        if (e & (1ULL << 63)) { // page present ?
-          paddr = e & ((1ULL << 54) - 1); // pfn mask
-          paddr = paddr * sysconf(_SC_PAGESIZE);
-          // add offset within page
-          paddr = paddr | (virt_addr & (sysconf(_SC_PAGESIZE) - 1));
-        }
-      }
-    }
-    fclose(pagemap);
-  }
-  return paddr;
-}
-
-#endif
-
 static int cacheLineSz;
 static int logCacheLineSz;
 
 fpga_handle_t::fpga_handle_t() {
-#ifdef Kria
-  cacheLineSz = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-  int t = cacheLineSz;
-  logCacheLineSz = 0;
-  while (t != 0) {
-    logCacheLineSz++;
-    t >>= 1;
-  }
-#endif
   // map in command server
   auto cmd_fname = cmd_server_file_name();
   csfd = shm_open(cmd_fname.c_str(), O_RDWR, file_access_flags);
@@ -158,9 +108,7 @@ fpga_handle_t::~fpga_handle_t() {
     shm_unlink(std::get<3>(tup->second).c_str());
     device2virtual.erase(device2virtual.begin());
   }
-#ifndef Kria
   munmap(data_server, sizeof(data_server_file));
-#endif
 }
 
 
@@ -221,37 +169,6 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
 }
 
 remote_ptr fpga_handle_t::malloc(size_t len) {
-#ifdef Kria
-  void *addr;
-  size_t sz;
-  if (len <= 1 << 12) {
-    sz = 1 << 12;
-    addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS,
-                -1, 0);
-  } else {
-    // Kria only uses local mappings via OS
-    // see if allocation fits inside size classes
-    int fit = -1;
-    for (int i = 0; i < kria_n_page_sizes && fit == -1; ++i) {
-      if (len <= kria_huge_page_sizes[i])
-        fit = i;
-    }
-    if (fit == -1)
-      throw std::runtime_error("Error in FPGA malloc: no huge page size available for allocation of size "
-                                + std::to_string(len) + "B");
-    addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
-                -1, 0);
-    sz = kria_huge_page_sizes[fit];
-  }
-
-  if (addr == MAP_FAILED)
-    throw std::runtime_error("Error in FPGA malloc. Map failed. Err msg: " + std::string(strerror(errno)));
-
-  if (mlock(addr, sz))
-    throw std::runtime_error("Error in FPGA malloc. mlock failed. Err msg: " + std::string(strerror(errno)));
-  return remote_ptr(vtop((intptr_t) addr), addr, sz);
-#else
   // acquire lock over client side
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->op_argument = len;
@@ -275,11 +192,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   // release lock over client side
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
   return remote_ptr(addr, ptr, len);
-#endif
 }
 
 [[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
-#ifndef Kria
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_TO_FPGA;
   data_server->op_argument = dst.getFpgaAddr();
@@ -287,11 +202,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   pthread_mutex_unlock(&data_server->server_mut);
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-#endif
 }
 
 [[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
-#ifndef Kria
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->operation = data_server_op::MOVE_FROM_FPGA;
   data_server->op2_argument = src.getFpgaAddr();
@@ -299,14 +212,9 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   pthread_mutex_unlock(&data_server->server_mut);
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-#endif
 }
 
 [[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
-#ifdef Kria
-  // erase ptr from allocated regions vector
-  munmap(ptr.getHostAddr(), ptr.getLen());
-#else
   pthread_mutex_lock(&data_server->data_cmd_send_lock);
   data_server->op_argument = ptr.getFpgaAddr();
   data_server->operation = FREE;
@@ -315,7 +223,6 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
   // now the server has returned the device addr (for building commands), and the file name
   pthread_mutex_unlock(&data_server->data_cmd_send_lock);
-#endif
 }
 
 [[maybe_unused]] void fpga_handle_t::shutdown() const {
