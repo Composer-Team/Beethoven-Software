@@ -29,8 +29,42 @@ elseif ("${PLATFORM}" STREQUAL "kria")
     add_definitions(-DKria)
     set(BUILD_SHARED ON)
 elseif ("${PLATFORM}" STREQUAL "baremetal")
+    message(STATUS "Running in baremetal mode")
     add_definitions(-DBAREMETAL)
     set(BUILD_SHARED OFF)
+    # ===== added for cortex-m55 =====
+    # Copy CMSIS and Device directories to build directory
+    file(COPY ${M55_INC}/CMSIS DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    file(COPY ${M55_INC}/Device DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    # Specify the C compiler
+    set(CMAKE_C_COMPILER arm-none-eabi-gcc)
+    set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+    # Compiler flags
+    set(CMAKE_C_FLAGS "-mthumb -march=armv8.1-m.main+mve -mtune=cortex-m55+nomve.fp -mcmse -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fomit-frame-pointer -D__GCC")
+    # Include directories
+    include_directories(
+        ${CMAKE_CURRENT_BINARY_DIR}/CMSIS/Include
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Include
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${M55_SRC}/yamin/logical/yamin/pmc_files
+        ${M55_SRC}/pmc100/software/api
+    )
+    # Preprocessor definitions
+    add_definitions(-D_FPU -D_EPU -D_MVE -D_MVE1 -D_EPU -D_DCACHE_PRESENT -D_ICACHE_PRESENT)
+    # Add startup file separately
+    set(STARTUP_FILE ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Source/GCC/startup_exectb_mcu.S)
+    # Set properties for the startup file
+    set_property(SOURCE ${STARTUP_FILE} PROPERTY LANGUAGE C)
+    set_property(SOURCE ${STARTUP_FILE} PROPERTY COMPILE_FLAGS "-x assembler-with-cpp")
+    # Linker script
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Source/GCC/mem.ld --specs=nosys.specs")
+    set(M55_SOURCES
+        ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Source/system_exectb_mcu.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/retarget_exectb_mcu.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/EXECTB_tests.c
+    )
+    # ===== end of added for cortex-m55 =====
 else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
 endif ()
