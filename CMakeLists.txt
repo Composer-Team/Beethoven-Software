@@ -32,6 +32,8 @@ elseif ("${PLATFORM}" STREQUAL "baremetal")
     message(STATUS "Running in baremetal mode")
     add_definitions(-DBAREMETAL)
     set(BUILD_SHARED OFF)
+    # set M55_INC to M55_SRC/yamin/logical/testbench/execution_tb/tests/
+    set(M55_INC ${M55_SRC}/yamin/logical/testbench/execution_tb/tests/)
     # ===== added for cortex-m55 =====
     # Copy CMSIS and Device directories to build directory
     file(COPY ${M55_INC}/CMSIS DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
