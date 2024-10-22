@@ -1,1 +1,1 @@
-BEETHOVEN_ROOT=/Users/entropy/Development/Composer-Software/beethoven_dir cmake .. -DPLATFORM=baremetal -DM55_INC=/Users/entropy/Development/cortex_m55/yamin/logical/testbench/execution_tb/tests/ -DM55_SRC=/Users/entropy/Development/cortex_m55/
+BEETHOVEN_ROOT=/Users/entropy/Development/Composer-Software/beethoven_dir cmake .. -DPLATFORM=baremetal -DM55_SRC=/Users/entropy/Development/cortex_m55/
