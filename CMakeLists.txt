@@ -86,14 +86,6 @@ if (BUILD_SHARED)
             include/beethoven/response_handle.h
             include/beethoven/rocc_cmd.h
             include/beethoven/allocator/device_allocator.h)
-else ()
-    add_library(beethoven STATIC
-            src/rocc_cmd.cc
-            src/util.cc
-            src/rocc_response.cc
-            include/beethoven/response_handle.h
-            include/beethoven/rocc_cmd.h
-            src/allocator/alloc_baremetal.cpp)
 endif ()
 
 if ("${PLATFORM}" STREQUAL "discrete")
@@ -108,11 +100,14 @@ elseif ("${PLATFORM}" STREQUAL "kria")
             src/verilator_server.cc
     )
 elseif ("${PLATFORM}" STREQUAL "baremetal")
-    target_sources(beethoven
-            PRIVATE
+    add_library(beethoven STATIC
+            src/rocc_cmd.cc
+            src/util.cc
+            src/rocc_response.cc
+            src/allocator/alloc_baremetal.cpp
             src/fpga_handle_impl/fpga_handle_baremetal.cc
-            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc
-    )
+            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc)
+
     target_include_directories(
             beethoven
             PUBLIC

@@ -21,7 +21,6 @@
 #include <beethoven/beethoven_consts.h>
 #include <beethoven/util.h>
 #include <beethoven/response_handle.h>
-//#include "include/beethoven/allocator/alloc.h"
 
 namespace beethoven {
   class fpga_handle_t;

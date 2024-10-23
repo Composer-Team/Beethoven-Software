@@ -28,25 +28,16 @@ namespace beethoven {
 
     intptr_t fpga_addr;
     void *host_addr;
-
-    size_t len;
-    ptrdiff_t offset;
-    remote_ptr(const intptr_t &faddr, void *haddr, const size_t &l, ptrdiff_t off) noexcept;
-
   public:
+    remote_ptr(const intptr_t &faddr, void *haddr) noexcept;
+
     [[nodiscard]] uint64_t getFpgaAddr() const {
       return fpga_addr;
-    }
-
-    [[nodiscard]] size_t getLen() const {
-      return len;
     }
 
     [[nodiscard]] void *getHostAddr() const {
       return host_addr;
     }
-
-    explicit remote_ptr(intptr_t fpgaAddr, void *hostAddr, size_t len);
 
     explicit remote_ptr();
 

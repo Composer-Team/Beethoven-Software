@@ -10,13 +10,8 @@
 #include "beethoven/fpga_handle.h"
 #include "beethoven/rocc_cmd.h"
 #include "beethoven/rocc_response.h"
-
-#include "beethoven/fpga_handle.h"
-#include <cstring>
 #include "include/beethoven/allocator/alloc_baremetal.h"
 #include "beethoven_allocator_declaration.h"
-
-//device_allocator<1 << 24> allocator; // 16MB right now
 
 using namespace beethoven;
 
@@ -35,37 +30,39 @@ using namespace beethoven;
  * limitations under the License.
  */
 
-#include "beethoven/verilator_server.h"
 #include "beethoven/response_handle.h"
-#include <unistd.h>
 
-#include <fcntl.h>
 
 using namespace beethoven;
 
-static int cacheLineSz;
-static int logCacheLineSz;
-
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "VirtualCallInCtorOrDtor"
-
-#pragma clang diagnostic pop
 
 fpga_handle_t::~fpga_handle_t() {}
+
 fpga_handle_t::fpga_handle_t() {}
 
-remote_ptr fpga_handle_t::malloc(size_t len) {
+#define seg(x) {x, (void*)(intptr_t(x))}
+
+remote_ptr segments[] = {seg(0), seg(1 << 10), seg(1 << 11), seg(1 << 12), seg(1 << 13)};
+bool segs_free[] = {true, true, true, true, true};
+
+remote_ptr fpga_handle_t::malloc(size_t) {
 //  auto ptr = allocator.malloc(len);
-  return remote_ptr(0, reinterpret_cast<void*>(0), len);
+  for (int i = 0; i < 5; ++i) {
+    if (segs_free[i]) {
+      segs_free[i] = false;
+      return segments[i];
+    }
+  }
+  return remote_ptr();
 }
 
-[[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {}
-
-[[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {}
-
 [[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
-//  allocator.free(ptr.fpga_addr);
+  for (int i = 0; i < 5; ++i) {
+    if (!segs_free[i]) {
+      segments[i] = ptr;
+      segs_free[i] = true;
+    }
+  }
 }
 
 using namespace beethoven;
@@ -74,9 +71,10 @@ using namespace beethoven;
 
 uint32_t actives = 0;
 uint32_t valid_resps = 0;
-rocc_response resps[sizeof(int)*8];
+rocc_response resps[sizeof(int) * 8];
 
-template<> rocc_response response_handle<rocc_response>::get() {
+template<>
+rocc_response response_handle<rocc_response>::get() {
   auto resp = rg.get();
   // memory segments on discrete targets need to get copied back if they are allocated to indicate that the FPGA writes
   return resp;
