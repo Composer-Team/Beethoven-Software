@@ -1,5 +1,5 @@
-project(beethoven)
 cmake_minimum_required(VERSION 3.0)
+project(beethoven)
 set(version 1.0.6)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -32,6 +32,9 @@ elseif ("${PLATFORM}" STREQUAL "baremetal")
     message(STATUS "Running in baremetal mode")
     add_definitions(-DBAREMETAL)
     set(BUILD_SHARED OFF)
+    if ("${M55_SRC}" STREQUAL "")
+        message(FATAL_ERROR "M55_SRC not set. Please set M55_SRC to the path of the cortex-m55 source code.")
+    endif ()
     # set M55_INC to M55_SRC/yamin/logical/testbench/execution_tb/tests/
     set(M55_INC ${M55_SRC}/yamin/logical/testbench/execution_tb/tests/)
     # ===== added for cortex-m55 =====
