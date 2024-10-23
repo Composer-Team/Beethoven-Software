@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.24)
 project(beethoven)
 set(version 1.0.6)
 set(CMAKE_CXX_STANDARD 17)
@@ -42,8 +42,11 @@ elseif ("${PLATFORM}" STREQUAL "baremetal")
     file(COPY ${M55_INC}/CMSIS DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
     file(COPY ${M55_INC}/Device DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
     # Specify the C compiler
-    set(CMAKE_C_COMPILER arm-none-eabi-gcc)
-    set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+#    set(CMAKE_C_COMPILER arm-none-eabi-gcc)
+#    set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+#     IF YOU GET ERRORS ABOUT COLORED DIAGNOSTICS, USE THESE SCRIPTS
+    set(CMAKE_C_COMPILER /home/chriskjellqvist/Code/Composer-Software/m55_bin/gcc_filter)
+    set(CMAKE_CXX_COMPILER /home/chriskjellqvist/Code/Composer-Software/m55_bin/g++_filter)
     # Compiler flags
     set(CMAKE_C_FLAGS "-mthumb -march=armv8.1-m.main+mve -mtune=cortex-m55+nomve.fp -mcmse -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fomit-frame-pointer -D__GCC")
     # Include directories
@@ -78,7 +81,7 @@ if (BUILD_SHARED)
     add_library(beethoven SHARED
             src/rocc_cmd.cc
             src/util.cc
-            src/alloc.cc
+            src/allocator/alloc.cc
             src/rocc_response.cc
             include/beethoven/response_handle.h
             include/beethoven/rocc_cmd.h
@@ -87,11 +90,10 @@ else ()
     add_library(beethoven STATIC
             src/rocc_cmd.cc
             src/util.cc
-            src/alloc.cc
             src/rocc_response.cc
             include/beethoven/response_handle.h
             include/beethoven/rocc_cmd.h
-            include/beethoven/allocator/device_allocator.h)
+            src/allocator/alloc_baremetal.cpp)
 endif ()
 
 if ("${PLATFORM}" STREQUAL "discrete")

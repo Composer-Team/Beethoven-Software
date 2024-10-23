@@ -18,11 +18,15 @@
 
 #include <beethoven/rocc_response.h>
 #include <beethoven/response_handle.h>
+#include <cstddef>
 
 #ifndef BAREMETAL
 #include <beethoven/verilator_server.h>
 #include <map>
 #include <vector>
+#include "beethoven/allocator/alloc.h"
+#else
+#include "beethoven/allocator/alloc_baremetal.h"
 #endif
 
 namespace beethoven {

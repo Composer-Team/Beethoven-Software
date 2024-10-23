@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Filter out -fcolor-diagnostics from the arguments
+filtered_args=()
+for arg in "$@"; do
+    if [ "$arg" != "-fcolor-diagnostics" ]; then
+        filtered_args+=("$arg")
+    fi
+done
+
+# Invoke the command with the filtered arguments
+arm-none-eabi-g++ "${filtered_args[@]}"

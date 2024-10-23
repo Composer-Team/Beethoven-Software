@@ -16,11 +16,8 @@
 #ifndef BEETHOVEN_ALLOC_H
 #define BEETHOVEN_ALLOC_H
 
-#include <cinttypes>
+#include <cstdint>
 #include <cstddef>
-#include <memory>
-
-#ifndef BAREMETAL
 #include <mutex>
 #include <array>
 #include <tuple>
@@ -29,8 +26,6 @@
 #include <pthread.h>
 #include <iostream>
 #include <algorithm>
-
-#endif
 
 namespace beethoven {
 
@@ -44,7 +39,6 @@ namespace beethoven {
 
     size_t len;
     ptrdiff_t offset;
-#ifndef BAREMETAL
     std::mutex *mutex = nullptr;
     uint16_t *count = nullptr;
 
@@ -53,9 +47,6 @@ namespace beethoven {
                std::mutex *m,
                ptrdiff_t off
     ) noexcept;
-#else
-    remote_ptr(const intptr_t &faddr, void *haddr, const size_t &l, ptrdiff_t off) noexcept;
-#endif
 
   public:
     [[nodiscard]] uint64_t getFpgaAddr() const {

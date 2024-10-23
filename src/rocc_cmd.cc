@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include "beethoven/rocc_cmd.h"
-#include "beethoven/alloc.h"
+//#include "include/beethoven/allocator/alloc.h"
 #include "beethoven/util.h"
 #ifndef BAREMETAL
 #include <cstring>

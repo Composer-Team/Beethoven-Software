@@ -5,11 +5,12 @@
 #ifndef BEETHOVEN_DEVICE_ALLOCATOR_H
 #define BEETHOVEN_DEVICE_ALLOCATOR_H
 
-#include <cstdint>
 #include <pthread.h>
+#include <algorithm>
 #include <vector>
 #include <set>
-#include "beethoven/alloc.h"
+
+#include "alloc.h"
 
 const uint32_t superblock_size = 1 << 21;
 const uint32_t min_block_size = 1 << 12;
@@ -24,7 +25,18 @@ static constexpr uint8_t log2up(const uint64_t &val) {
   return 64;
 }
 
-template <uint64_t allocator_bytes>
+
+struct superblock {
+  uint8_t log_block_size = 0;
+  uint8_t flags = 0;
+  std::vector<uint16_t> free_blocks;
+  pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+  superblock() = default;
+};
+
+
+template<uint64_t allocator_bytes>
 class [[maybe_unused]] device_allocator {
   constexpr static uint8_t addr_bits = log2up(allocator_bytes);
   constexpr static uint8_t log_min_block = log2up(min_block_size);
@@ -67,27 +79,9 @@ class [[maybe_unused]] device_allocator {
   std::vector<uint32_t> free_list;
   pthread_mutex_t free_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
-  struct superblock {
-    uint8_t log_block_size = 0;
-    uint8_t flags = 0;
-    std::vector<uint16_t> free_blocks;
-    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+  superblock superblocks[num_superblocks];
 
-    superblock(uint16_t logBlockSize, uint64_t base) : log_block_size(logBlockSize) {}
-
-    // prioritize superblocks with less room
-    [[nodiscard]] uint64_t priority() const {
-      if (free_blocks.empty())
-        return superblock_size;
-      else
-        return free_blocks.size();
-    }
-
-    superblock() = default;
-  };
-
-  std::array<superblock, num_superblocks> superblocks;
-
+//  std::array<superblock, num_superblocks> superblocks;
   struct superblock_ptr {
     uint32_t sb_id;
 
@@ -103,7 +97,7 @@ class [[maybe_unused]] device_allocator {
 
   // TODO HOW DO WE DEAL WITH SECURITY? consider notes in beethoven_alloc.h - just load the remote_ptr with data that
   //  can be double checked with beethoven-runtime's state
-  std::array<std::set<superblock_ptr>, num_lists> superblock_head_list;
+  std::set<superblock_ptr> superblock_head_list[num_lists];
   std::array<pthread_mutex_t, num_lists> head_locks;
 
   void unpack_free_list_THREAD_UNSAFE() {
@@ -119,8 +113,10 @@ class [[maybe_unused]] device_allocator {
 
   struct block_info {
     uint32_t superblock_id, block_id;
+
     block_info(uint32_t sid, uint32_t bid) : superblock_id(sid), block_id(bid) {}
   };
+
   block_info get_block_info(const beethoven::remote_ptr &ptr) {
     uint32_t superblock_id = (ptr.getFpgaAddr() >> log_superblock_size) & superblock_id_mask();
     auto &sb = superblocks[superblock_id];
@@ -161,6 +157,7 @@ public:
       pthread_mutex_t &my_head_lock = head_locks[idx];
       pthread_mutex_lock(&my_head_lock);
       auto &sblist = superblock_head_list[idx];
+
       if (sblist.empty()) {
         // no superblocks currently with this block size
         // see if there are any superblocks in free list. otherwise allocate from upper address space
@@ -269,9 +266,11 @@ public:
       if (success) {
         // then we can use this segment instead of allocating new memory
         // remove it from free list
-        auto alloc_start_it = std::find(free_list.begin(), free_list.end(), alloc_start);
+        auto ptr_to = free_list.begin();
+        while (alloc_start != *ptr_to) ptr_to++;
+//        auto alloc_start_it = std::find(free_list.begin(), free_list.end(), alloc_start);
         // we can use erase range since all elements are contiguous
-        free_list.erase(alloc_start_it, alloc_start_it + num_superblocks_needed);
+        free_list.erase(ptr_to, ptr_to + num_superblocks_needed);
         pthread_mutex_unlock(&free_list_lock);
         // initialize superblocks outside this control statement
       } else {

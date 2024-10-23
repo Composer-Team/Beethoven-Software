@@ -13,11 +13,10 @@
 
 #include "beethoven/fpga_handle.h"
 #include <cstring>
-#include "beethoven/alloc.h"
+#include "include/beethoven/allocator/alloc_baremetal.h"
 #include "beethoven_allocator_declaration.h"
-#include "beethoven/allocator/device_allocator.h"
 
-device_allocator<1 << 24> allocator; // 16MB right now
+//device_allocator<1 << 24> allocator; // 16MB right now
 
 using namespace beethoven;
 
@@ -57,8 +56,8 @@ fpga_handle_t::~fpga_handle_t() {}
 fpga_handle_t::fpga_handle_t() {}
 
 remote_ptr fpga_handle_t::malloc(size_t len) {
-  auto ptr = allocator.malloc(len);
-  return remote_ptr(ptr, reinterpret_cast<void*>(ptr), len);
+//  auto ptr = allocator.malloc(len);
+  return remote_ptr(0, reinterpret_cast<void*>(0), len);
 }
 
 [[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {}
@@ -66,7 +65,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 [[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {}
 
 [[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
-  allocator.free(ptr.fpga_addr);
+//  allocator.free(ptr.fpga_addr);
 }
 
 using namespace beethoven;

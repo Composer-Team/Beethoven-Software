@@ -4,9 +4,7 @@
 
 // use smart pointers to do a basic merge sort without memory leaks
 
-#include <iostream>
 #include "beethoven/fpga_handle.h"
-#include <random>
 
 using namespace beethoven;
 
@@ -49,20 +47,17 @@ remote_ptr merge_sort(const remote_ptr &arr_ptr, int size) {
 
 int main() {
   int n_elements = 1024;
-  // generate random array
-  std::random_device rd;
-  std::uniform_int_distribution<int> dist(0, 100);
-  auto seed = rd();
-  std::default_random_engine eng(seed);
   auto arr_handle = handle.malloc(n_elements * sizeof(int));
   int *arr = (int*)arr_handle.getHostAddr();
+
   for (int i = 0; i < n_elements; i++) {
-    arr[i] = dist(eng);
+    arr[i] = i * ((1 << 13) - 1) % 1024;
   }
   // sort array
   auto sorted_handle = merge_sort(arr_handle, n_elements);
   int *sorted = (int*)sorted_handle.getHostAddr();
-  for (int i = 0; i < n_elements; i++) {
-    std::cout << sorted[i] << " ";
-  }
+//  for (int i = 0; i < n_elements; i++) {
+//    std::cout << sorted[i] << " ";
+//  }
+  return sorted[0];
 }

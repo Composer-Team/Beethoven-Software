@@ -9,7 +9,7 @@
 #include <vector>
 #include <stdexcept>
 #include <cstring>
-#include "beethoven/alloc.h"
+#include "include/beethoven/allocator/alloc.h"
 #include <sys/mman.h>
 #include <pthread.h>
 
