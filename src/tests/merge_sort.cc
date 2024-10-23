@@ -23,7 +23,7 @@ remote_ptr merge(const remote_ptr &a_ptr,
     if (a[i] < b[j]) {
       c[k++] = a[i++];
     } else {
-      c[k++] = b[j++];
+      c[k++cd ] = b[j++];
     }
   }
   while (i < a_size) {

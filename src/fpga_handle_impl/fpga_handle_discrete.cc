@@ -11,7 +11,7 @@
 #include <stdexcept>
 #endif
 #include <cstring>
-#include "include/beethoven/allocator/alloc.h"
+#include "beethoven/allocator/alloc.h"
 
 using namespace beethoven;
 

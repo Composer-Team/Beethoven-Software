@@ -78,6 +78,8 @@ namespace beethoven {
 
     explicit remote_ptr(const intptr_t &faddr) noexcept;
 
+    remote_ptr(const intptr_t &faddr, void *haddr, const size_t &l, ptrdiff_t off) noexcept;
+
     // don't need move constructor for baremetal
     remote_ptr(remote_ptr &&other) noexcept;
 

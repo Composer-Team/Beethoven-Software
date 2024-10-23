@@ -1,7 +1,7 @@
 //
 // Created by Christopher Kjellqvist on 2/28/24.
 //
-#include "include/beethoven/allocator/alloc.h"
+#include "beethoven/allocator/alloc.h"
 
 using namespace beethoven;
 

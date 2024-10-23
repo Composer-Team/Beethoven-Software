@@ -3,6 +3,6 @@
 //
 
 #include <iostream>
-#include "include/beethoven/allocator/alloc.h"
+#include "beethoven/allocator/alloc.h"
 
 int main() {}
