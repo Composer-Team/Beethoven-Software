@@ -19,10 +19,9 @@
 #include <cinttypes>
 #include <cstddef>
 #include <memory>
-#include <mutex>
 
 #ifndef BAREMETAL
-
+#include <mutex>
 #include <array>
 #include <tuple>
 #include <set>
@@ -45,6 +44,7 @@ namespace beethoven {
 
     size_t len;
     ptrdiff_t offset;
+#ifndef BAREMETAL
     std::mutex *mutex = nullptr;
     uint16_t *count = nullptr;
 
@@ -52,17 +52,10 @@ namespace beethoven {
                uint16_t *c,
                std::mutex *m,
                ptrdiff_t off
-    ) noexcept:
-            fpga_addr(faddr),
-            host_addr(haddr), len(l),
-            count(c),
-            mutex(m),
-            offset(off) {
-      if (mutex) {
-        std::lock_guard<std::mutex> lock(*mutex);
-        (*count)++;
-      }
-    }
+    ) noexcept;
+#else
+    remote_ptr(const intptr_t &faddr, void *haddr, const size_t &l, ptrdiff_t off) noexcept;
+#endif
 
   public:
     [[nodiscard]] uint64_t getFpgaAddr() const {
@@ -77,23 +70,9 @@ namespace beethoven {
       return host_addr;
     }
 
-    explicit remote_ptr(intptr_t fpgaAddr, void *hostAddr, size_t len
-    ) :
-            fpga_addr(fpgaAddr),
-            host_addr(hostAddr),
-            len(len) {
-      offset = 0;
-      mutex = new std::mutex();
-      count = new uint16_t(1);
-    }
+    explicit remote_ptr(intptr_t fpgaAddr, void *hostAddr, size_t len);
 
-    explicit remote_ptr() :
-            fpga_addr(0),
-            host_addr(nullptr),
-            len(0),
-            mutex(nullptr),
-            count(nullptr),
-            offset(0) {}
+    explicit remote_ptr();
 
     bool operator==(const remote_ptr &other) const {
       return fpga_addr == other.fpga_addr;
@@ -104,41 +83,12 @@ namespace beethoven {
       return static_cast<t>(host_addr);
     }
 
-    remote_ptr(const remote_ptr &other) noexcept:
-            fpga_addr(other.fpga_addr),
-            host_addr(other.host_addr),
-            len(other.len),
-            count(other.count),
-            mutex(other.mutex),
+    remote_ptr(const remote_ptr &other) noexcept;
 
-            offset(other.offset)
-    {
-      if (mutex) {
-        std::lock_guard<std::mutex> lock(*mutex);
-        (*count)++;
-      }
-    };
-
-    explicit remote_ptr(const intptr_t &faddr) noexcept:
-            fpga_addr(faddr),
-            host_addr(nullptr),
-            len(0),
-            count(nullptr),
-            mutex(nullptr),
-            offset(0) {
-    }
-
+    explicit remote_ptr(const intptr_t &faddr) noexcept;
 
     // don't need move constructor for baremetal
-    remote_ptr(remote_ptr &&other) noexcept:
-            fpga_addr(other.fpga_addr),
-            host_addr(other.host_addr),
-            len(other.len),
-            count(other.count),
-            mutex(other.mutex),
-            offset(other.offset) {
-    };
-
+    remote_ptr(remote_ptr &&other) noexcept;
 
     remote_ptr &operator=(remote_ptr &&) noexcept;
 
@@ -146,24 +96,9 @@ namespace beethoven {
 
     ~remote_ptr();
 
-    remote_ptr operator+(int q) const {
-      return remote_ptr(this->fpga_addr + q,
-                        (char *) (this->host_addr) + q,
-                        this->len - q,
-                        this->count, this->mutex,
-                        offset + q
+    remote_ptr operator+(int q) const;
 
-      );
-    }
-
-    remote_ptr operator-(int q) const {
-      return remote_ptr(this->fpga_addr - q,
-                        (char *) (this->host_addr) - q,
-                        this->len + q,
-                        this->count, this->mutex,
-                        offset - q
-      );
-    }
+    remote_ptr operator-(int q) const;
   };
 }
 

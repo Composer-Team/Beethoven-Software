@@ -22,7 +22,7 @@ if (NOT "${PLATFORM}" STREQUAL "baremetal")
     endif ()
 endif ()
 
-if ("${PLATFORM}" STREQUAL "discrete")
+if ("${PLATFORM}" STREQUAL "discrete" OR "${PLATFORM}" STREQUAL "sim")
     add_definitions(-DDiscrete)
     set(BUILD_SHARED ON)
 elseif ("${PLATFORM}" STREQUAL "kria")
@@ -68,7 +68,7 @@ elseif ("${PLATFORM}" STREQUAL "baremetal")
     )
     # ===== end of added for cortex-m55 =====
 else ()
-    message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
+    message(FATAL_ERROR "Unsupported device. Supported devices are discrete, sim, kria, and baremetal.")
 endif ()
 
 if (BUILD_SHARED)
