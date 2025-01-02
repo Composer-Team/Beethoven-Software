@@ -38,7 +38,6 @@ namespace beethoven {
     explicit response_getter(uint8_t id) : id(id) {};
 #endif
 
-
     // copy constructor invalidates source
     response_getter(const response_getter &mv) {
 #ifndef BAREMETAL
@@ -48,6 +47,8 @@ namespace beethoven {
 #endif
       id = mv.id;
     }
+
+    response_getter() = default;
 
     rocc_response get();
 
