@@ -18,7 +18,7 @@ std::string whoami() {
   // call to get the identity of the current process
   // get stdout of whoami
   // return the string
-  if (atoi(getenv("EUID")) == 0) return "ROOT";
+  if (geteuid() == 0) return "ROOT";
   int pid = fork();
   if (pid == 0) {
     // child
