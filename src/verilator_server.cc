@@ -18,24 +18,28 @@ std::string whoami() {
   // call to get the identity of the current process
   // get stdout of whoami
   // return the string
-  if (geteuid() == 0) return "ROOT";
-  int pid = fork();
-  if (pid == 0) {
-    // child
-    int fd = open("/tmp/whoami", O_CREAT | O_RDWR, 0666);
-    dup2(fd, 1);
-    close(fd);
-    execlp("whoami", "whoami", nullptr);
-  } else {
-    // parent
-    waitpid(pid, nullptr, 0);
-    int fd = open("/tmp/whoami", O_RDONLY);
-    char buf[1024];
-    memset(buf, 0, 1024);
-    read(fd, buf, 1024);
-    close(fd);
-    return std::string(buf);
-  }
+
+  return std::to_string(geteuid());
+  // the following is obviously more palatable to the human eye
+  // but seems to only work sporadically
+  // if (geteuid() == 0) return "ROOT";
+  // int pid = fork();
+  // if (pid == 0) {
+  //   // child
+  //   int fd = open("/tmp/whoami", O_CREAT | O_RDWR, 0666);
+  //   dup2(fd, 1);
+  //   close(fd);
+  //   execlp("whoami", "whoami", nullptr);
+  // } else {
+  //   // parent
+  //   waitpid(pid, nullptr, 0);
+  //   int fd = open("/tmp/whoami", O_RDONLY);
+  //   char buf[1024];
+  //   memset(buf, 0, 1024);
+  //   read(fd, buf, 1024);
+  //   close(fd);
+  //   return std::string(buf);
+  // }
 }
 #pragma clang diagnostic pop
 
