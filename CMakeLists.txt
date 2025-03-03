@@ -163,7 +163,7 @@ if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
     install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
-            DESTINATION "${BEETHOVEN_INSTALL_INCLUDEDIR}"
+            DESTINATION include/beethoven
             FILES_MATCHING PATTERN "*.h")
 
     install(EXPORT beethovenTargets

@@ -39,13 +39,11 @@ std::string whoami() {
 }
 #pragma clang diagnostic pop
 
-static const std::string USER_NAME = whoami();
-
 std::string beethoven::cmd_server_file_name() {
-   return "/compo_c_" + USER_NAME;
+   return "/compo_c_" + whoami();
 }
 std::string beethoven::data_server_file_name() {
-   return "/compo_d_" + USER_NAME;
+   return "/compo_d_" + whoami();
 }
 
 void cmd_server_file::init(cmd_server_file &csf) {
