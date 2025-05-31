@@ -134,11 +134,11 @@ if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
         message(FATAL_ERROR "Unsupported platform.")
     endif ()
 
-    message("install interface is ${BEETHOVEN_INSTALL_INCLUDEDIR}")
+    message("install interface is ${CMAKE_INSTALL_PREFIX}/include")
     target_include_directories(beethoven
             PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:${BEETHOVEN_INSTALL_INCLUDEDIR}/>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include/>
     )
 
     set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
