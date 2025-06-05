@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.5.0)
 project(beethoven)
 set(version 1.0.6)
 set(CMAKE_CXX_STANDARD 17)
@@ -8,7 +8,6 @@ option(PLATFORM "Platform to build for")
 message("Build type: ${CMAKE_BUILD_TYPE}")
 
 if (NOT "${PLATFORM}" STREQUAL "baremetal")
-    set(BEETHOVEN_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}/beethoven")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     include(CMakePackageConfigHelpers)
     include(CMakeDependentOption)
@@ -135,8 +134,9 @@ if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
     endif ()
 
     message("install interface is ${CMAKE_INSTALL_PREFIX}/include")
+
     target_include_directories(beethoven
-            PUBLIC
+      INTERFACE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include/>
     )

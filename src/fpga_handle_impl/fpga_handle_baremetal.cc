@@ -10,8 +10,8 @@
 #include "beethoven/fpga_handle.h"
 #include "beethoven/rocc_cmd.h"
 #include "beethoven/rocc_response.h"
-#include "include/beethoven/allocator/alloc_baremetal.h"
-#include "beethoven_allocator_declaration.h"
+#include "beethoven/allocator/alloc_baremetal.h"
+#include "beethoven_hardware.h"
 
 using namespace beethoven;
 
