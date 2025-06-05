@@ -43,7 +43,7 @@ LD_FLAGS = -L/usr/local/lib/ivl/ -Lruntime/DRAMsim3 -ldramsim3
 
 ifeq ($(UNAME_S),Linux)
 	DRAMSIM3LIB = runtime/DRAMsim3/libdramsim3.so
-	LIB_EXPORT = export LD_LIBRARY_PATH=/usr/local/lib64:DRAMsim3/
+	LIB_EXPORT = export LD_LIBRARY_PATH=/usr/local/lib64:runtime/DRAMsim3/
 endif
 
 ifeq ($(UNAME_S),Darwin)
