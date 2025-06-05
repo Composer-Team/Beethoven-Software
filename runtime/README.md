@@ -1,0 +1,3 @@
+# Beethoven-Verilator
+This package should cloned and not run. The Beethoven root directory contains a executable script `bin/beethoven-make`
+that uses this package. No reason to look here really....

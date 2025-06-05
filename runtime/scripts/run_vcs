@@ -1,0 +1,4 @@
+#!/bin/bash
+source ../source_me.sh
+../build_vcs.sh
+./BeethovenTop

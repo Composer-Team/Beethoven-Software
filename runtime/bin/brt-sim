@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ "$1" == "verilator" ]; then
+  cmake $CONDA_PREFIX/share/brt/ -DTARGET=sim -DCMAKE_BUILD_TYPE=Debug -DFRONTEND=axi -DSIMULATOR=verilator
+  make -j4
+elif [ "$1" == "vcs" ]; then
+  cmake $CONDA_PREFIX/share/brt/ -DTARGET=sim -DCMAKE_BUILD_TYPE=Release -DFRONTEND=axi -DSIMULATOR=vcs
+  make -j4
+  make install
+  bash $CONDA_PREFIX/share/brt/scripts/vcs_build.sh
+else
+  echo "Error: Invalid argument. Please use 'verilator' or 'vcs'."
+  exit 1
+fi

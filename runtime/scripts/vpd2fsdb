@@ -1,0 +1,8 @@
+#!/bin/bash
+export VCS_HOME=/all/eda/tools/synopsys/vcs/V-2023.12-SP2-2
+export PATH=/all/eda/tools/synopsys/verdi/V-2023.12-SP2-2/bin/:/all/eda/tools/synopsys/vcs/V-2023.12-SP2-2/bin:$PATH
+#vpd2fsdb BeethovenTrace.vpd -o trace.fsdb
+vpd2vcd BeethovenTrace.vpd trace.vcd
+tar -czf trace.vcd.tgz trace.vcd
+mv trace.vcd.tgz $SPACE/
+chmod a+wrx $SPACE/trace.vcd.tgz
