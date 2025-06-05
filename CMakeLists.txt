@@ -137,7 +137,7 @@ if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
 
     target_include_directories(beethoven PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:$include/>
+            $<INSTALL_INTERFACE:include/>
     )
 
     set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
