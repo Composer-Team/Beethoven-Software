@@ -23,8 +23,9 @@ CXX = clang++
 .PHONY: install_swlib
 install_swlib:
 	mkdir -p build && \
-		cmake .. -DPLATFORM=$(PLATFORM) -DCMAKE_INSTALL_PREFIX=$(PREFIX) \
-		make -j \
+		cd build && \
+		cmake .. -DPLATFORM=$(PLATFORM) -DCMAKE_INSTALL_PREFIX=$(PREFIX) && \
+		make -j && \
 		$(SUDO) make install
 
 CXX_FLAGS = --std=c++17 -fPIC \

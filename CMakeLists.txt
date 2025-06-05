@@ -117,9 +117,9 @@ else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
 endif ()
 
-add_executable(merge_sort src/tests/merge_sort.cc)
+add_executable(merge_sort test/merge_sort.cc)
 target_link_libraries(merge_sort beethoven)
-add_executable(alloc_sizes src/tests/alloc_sizes.cc)
+add_executable(alloc_sizes test/alloc_sizes.cc)
 target_link_libraries(alloc_sizes beethoven)
 
 
@@ -136,7 +136,7 @@ if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
     message("install interface is ${CMAKE_INSTALL_PREFIX}/include")
 
     target_include_directories(beethoven
-      INTERFACE
+      PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include/>
     )
@@ -147,7 +147,7 @@ if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
             "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in"
             "${PROJECT_BINARY_DIR}/cmake/beethovenConfig.cmake"
             INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
-            PATH_VARS BEETHOVEN_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
+            PATH_VARS CMAKE_INSTALL_PREFIX CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
     )
 
     write_basic_package_version_file(
