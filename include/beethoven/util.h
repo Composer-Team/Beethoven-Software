@@ -2,9 +2,10 @@
 // Created by Chris Kjellqvist on 9/19/22.
 //
 
-#include <cstdint>
+#ifndef BEETHOVEN_UTIL_H
+#define BEETHOVEN_UTIL_H
 
-#pragma once
+#include <cstdint>
 namespace beethoven {
 //  uint64_t pack(uint32_t hi, uint32_t low);
 //
@@ -37,3 +38,4 @@ namespace beethoven {
 #endif
 
 }
+#endif
