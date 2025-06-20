@@ -112,6 +112,7 @@ bin/%: test/%.cc $(SRCS) $(DRAMSIM3LIB)
 
 test: $(TESTS)
 
+.PHONY: beethoven.vvp
 beethoven.vvp:
 	iverilog $(VERILOG_FLAGS) -s BeethovenTopVCSHarness -o$@ $(VERILOG_SRCS)
 
