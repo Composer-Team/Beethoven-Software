@@ -38,19 +38,16 @@ CXX_FLAGS = --std=c++17 -fPIC \
 	    -Iinclude -Iruntime/include -Iruntime/DRAMsim3/src \
 	    -Iruntime/DRAMsim3/ext/headers -I$(BEETHOVEN_PATH)/build/
 PWD = $(shell pwd)
-DRAMSIM3DIR = $(PWD)/runtime/DRAMsim3
 
 UNAME_S:=$(shell uname -s)
 LD_FLAGS = -L/usr/local/lib/ivl/ -Lruntime/DRAMsim3 -ldramsim3 
 
 ifeq ($(UNAME_S),Linux)
-	DRAMSIM3LIB = runtime/DRAMsim3/libdramsim3.so
 	LIB_EXPORT = export LD_LIBRARY_PATH=/usr/local/lib64:runtime/DRAMsim3/
 endif
 
 ifeq ($(UNAME_S),Darwin)
-	DRAMSIM3LIB = runtime/DRAMsim3/libdramsim3.so
-	LD_FLAGS += -rpath /usr/local/lib -rpath $(DRAMSIM3DIR) -undefined suppress
+	LD_FLAGS += -rpath /usr/local/lib -undefined suppress
 	LIB_EXPORT="export LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):runtime/DRAMsim3/"
 endif
 
@@ -96,12 +93,12 @@ runtime/src/%.o: runtime/src/%.cc
 src/%.o: src/%.cc
 	$(CXX) -c ${CXX_FLAGS} $(SW_DEF) -o$@ $^
 
-sim_BeethovenRuntime.vpi: $(SRCS) lib_beethoven.o $(DRAMSIM3LIB)
+sim_BeethovenRuntime.vpi: $(SRCS) lib_beethoven.o libdramsim3.so
 	$(CXX) -shared $(LD_FLAGS) -o$@ $^
 
 TESTS = bin/alloc_sizes bin/merge_sort
 
-bin/%: test/%.cc $(SRCS) $(DRAMSIM3LIB)
+bin/%: test/%.cc $(SRCS) libdramsim3.so
 	mkdir -p bin
 	$(CXX) -c ${CXX_FLAGS} $< -o $(basename $<)
 	$(CXX) $(LD_FLAGS) -o $@ $(SRCS) $(basename $<)
