@@ -34,7 +34,9 @@ CXX_FLAGS = --std=c++17 -fPIC \
 	    -Iinclude/ \
 	    -I/usr/local/include/beethoven \
 	    -IDRAMsim3/src/ \
-	    -IDRAMsim3/ext/headers/
+	    -IDRAMsim3/ext/headers/ \
+	    -Iinclude -Iruntime/include -Iruntime/DRAMsim3/src \
+	    -Iruntime/DRAMsim3/ext/headers -I$(BEETHOVEN_PATH)/build/
 PWD = $(shell pwd)
 DRAMSIM3DIR = $(PWD)/runtime/DRAMsim3
 
@@ -47,17 +49,15 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifeq ($(UNAME_S),Darwin)
-	DRAMSIM3LIB = runtime/DRAMsim3/libdramsim3.dylib
+	DRAMSIM3LIB = runtime/DRAMsim3/libdramsim3.so
 	LD_FLAGS += -rpath /usr/local/lib -rpath $(DRAMSIM3DIR) -undefined suppress
-	LIB_EXPORT=""
+	LIB_EXPORT="export LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):runtime/DRAMsim3/"
 endif
 
-
 # DEBUG FLAGS
-CXX_FLAGS += -O0 -g3 -Iinclude -Iruntime/include -Iruntime/DRAMsim3/src \
-	     -Iruntime/DRAMsim3/ext/headers -I$(BEETHOVEN_PATH)/build/
+CXX_FLAGS += -O0 -g3 
 # RELEASE FLAGS
-# CXX_FLAGS = $(CXX_FLAGS) -O2
+#CXX_FLAGS += -O2
 FRONTBUS=axi
 SIMULATOR=vpi
 VPI_LOC = /usr/local/lib/ivl
@@ -68,13 +68,9 @@ VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) ${BEETHOVEN_PATH
 # vpi
 CXX_FLAGS += -DSIM=vcs
 
-$(DRAMSIM3LIB):
-	cd runtime/DRAMsim3/ && \
-	mkdir -p build && \
-	cd build && \
-	cmake .. -DCMAKE_BUILD_TYPE=Release && \
-	make clean && \
-	make -j8
+libdramsim3.so:
+	$(MAKE) -C runtime/DRAMsim3/ -j
+	cp $(DRAMSIM3LIB) .
 
 SRCS = 	runtime/src/data_server.o \
 	runtime/src/cmd_server.o \
@@ -120,6 +116,7 @@ beethoven.vvp:
 sim_icarus: sim_BeethovenRuntime.vpi beethoven.vvp
 	export LD_LIBRARY_PATH=$(LIB_EXPORT):$(LD_LIBRARY_PATH);\
 		vvp -M. -msim_BeethovenRuntime beethoven.vvp
+		#lldb -- vvp -M. -msim_BeethovenRuntime beethoven.vvp
 
 .PHONY: clean
 clean:

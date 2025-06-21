@@ -34,6 +34,10 @@ int dma_txlength = 0;
 #endif
 
 void with_dramsim3_support::init_dramsim3() {
+  if (dramsim3config == nullptr) {
+    printf("DRAMsim3 config is null... Something happened in initialization!\n");
+    exit(0);
+  }
   mem_sys = new dramsim3::JedecDRAMSystem(
           *dramsim3config, "",
           [this](uint64_t addr) {
@@ -149,9 +153,10 @@ void mem_ctrl::init(const std::string &dram_ini_file) {
     std::cout << "Input DDR Config not found: " << dram_ini_file << std::endl;
     exit(-1);
   } else {
-    std::cout << "Found DDR" << std::endl;
+    std::cout << "Found DDR File '" << dram_ini_file << "'" << std::endl;
   }
   dramsim3config = new dramsim3::Config(dram_ini_file, "dramsim3log");
+  std::cout << "Loaded Config" << std::endl;
   // KRIA has much slower memory!
   // Config dramsim3config("../DRAMsim3/configs/Kria.ini", "./");
   DDR_BUS_WIDTH_BITS = dramsim3config->bus_width;

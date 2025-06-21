@@ -65,6 +65,8 @@ static std::vector<uint16_t> available_ids;
 #endif
 
 
+
+
 data_server_file *dsf;
 
 [[noreturn]] static void *data_server_f(void *) {
@@ -135,11 +137,6 @@ data_server_file *dsf;
   } else {
     std::cerr << "Success 3/3" << std::endl;
   }
-#endif
-
-#ifdef HAS_COHERENCE
-  for (int i = 0; i < HAS_COHERENCE; ++i)
-    available_ids.push_back(i);
 #endif
 
   srand(time(nullptr));// NOLINT(cert-msc51-cpp)
@@ -219,6 +216,11 @@ data_server_file *dsf;
 #if defined(SIM)
       case data_server_op::MOVE_TO_FPGA: {
         std::cerr << at.get_mapping(addr.op_argument).first << std::endl;
+#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
+        std::cout << "WARNING: YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
+        break;
+#endif
+
 #if defined(BEETHOVEN_HAS_DMA) and defined(SIM)
         auto amt_left = addr.op3_argument;
         auto ptr1 = (unsigned char *) at.translate(addr.op_argument);
@@ -247,7 +249,11 @@ data_server_file *dsf;
         break;
       }
       case data_server_op::MOVE_FROM_FPGA: {
-        std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
+        // std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
+#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
+        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
+        break;
+#endif
 #if defined(BEETHOVEN_HAS_DMA) and defined(SIM)
         auto ptr1 = (unsigned char *) at.translate(addr.op2_argument);
         auto ptr2 = addr.op2_argument;
@@ -272,6 +278,11 @@ data_server_file *dsf;
       }
 #elif defined(FPGA) && !defined(Kria)
       case data_server_op::MOVE_FROM_FPGA: {
+#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
+        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
+        break;
+#endif
+
         auto shaddr = at.translate(addr.op2_argument);
         //        std::cout << "from fpga addr: " << addr.op2_argument << std::endl;
         auto *mem = (uint8_t *) malloc(addr.op3_argument);
@@ -289,6 +300,11 @@ data_server_file *dsf;
         break;
       }
       case data_server_op::MOVE_TO_FPGA: {
+#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
+        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
+        break;
+#endif
+
         auto shaddr = at.translate(addr.op_argument);
         //        printf("trying to transfer\n"); fflush(stdout);
         //        std::cout << "to fpga addr: " << addr.op_argument << std::endl;
@@ -311,69 +327,6 @@ data_server_file *dsf;
       case data_server_op::MOVE_FROM_FPGA:
         fprintf(stderr, "Kria backend attempting to do unsupported op in data server\n");
         break;
-#ifdef HAS_COHERENCE
-      case data_server_op::INVALIDATE_REGION:
-      case data_server_op::CLEAN_INVALIDATE_REGION:
-      case data_server_op::RELEASE_COHERENCE_BARRIER:
-      case data_server_op::ADD_TO_COHERENCE_MANAGER: {
-        LOG(std::cerr << "Recieved coherence command" << std::endl);
-        uint16_t id;
-        if (addr.operation == ADD_TO_COHERENCE_MANAGER) {
-          id = available_ids.back();
-          available_ids.pop_back();
-        } else {
-          id = addr.op_argument;
-        }
-        if (id < 0 && addr.operation != data_server_op::RELEASE_COHERENCE_BARRIER) {
-          addr.resp_id = -1;
-          fprintf(stderr, "Recieved invalid ID on data server during coherence command");
-          break;
-        }
-        pthread_mutex_lock(&bus_lock);
-        // this arguments are ignored by `add` operation so doesn't matter
-        uint64_t &a = addr.op_argument;
-        uint64_t &l = addr.op2_argument;
-        for (int i = 0; i < 2; ++i) {// command is 5 32-bit payloads
-          while (!peek_mmio(COHERENCE_READY)) {}
-          poke_mmio(COHERENCE_BITS, ((uint32_t *) (&a))[i]);
-          poke_mmio(COHERENCE_VALID, 1);
-        }
-        for (int i = 0; i < 2; ++i) {// command is 5 32-bit payloads
-          while (!peek_mmio(COHERENCE_READY)) {}
-          poke_mmio(COHERENCE_BITS, ((uint32_t *) (&l))[i]);
-          poke_mmio(COHERENCE_VALID, 1);
-        }
-        uint32_t command;
-        switch (addr.operation) {
-          case data_server_op::INVALIDATE_REGION:
-            command = COHERENCE_OP_INVALIDATE;
-            LOG(std::cerr << "INVALIDATE COMMAND" << std::endl);
-            break;
-          case data_server_op::CLEAN_INVALIDATE_REGION:
-            command = COHERENCE_OP_CLEAN_INVALIDATE;
-            LOG(std::cerr << "CLEAN INVALIDATE COMMAND" << std::endl);
-            break;
-          case data_server_op::ADD_TO_COHERENCE_MANAGER:
-            LOG(fprintf(stderr, "REGISTER COHERENT SEGMENT: %16lx\n", addr.op_argument);
-                fflush(stderr));
-            command = COHERENCE_OP_ADD;
-            break;
-          case data_server_op::RELEASE_COHERENCE_BARRIER:
-            LOG(std::cerr << "RELEASE COHERENCE BARRIER" << std::endl);
-            command = COHERENCE_OP_BARRIER_RELEASE;
-            break;
-        }
-        command |= (id & 0xFFFF) << 2;
-
-        while (!peek_mmio(COHERENCE_READY)) {}
-        poke_mmio(COHERENCE_BITS, command);
-        poke_mmio(COHERENCE_VALID, 1);
-        pthread_mutex_unlock(&bus_lock);
-        addr.resp_id = id;
-
-        break;
-      }
-#endif
 #else
 #error("Doesn't appear that we're covering all cases inside data server")
 #endif
