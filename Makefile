@@ -18,7 +18,7 @@ SW_DEF = -DBAREMETAL
 endif
 endif
 
-CXX = clang++
+CXX = c++
 
 .PHONY: install_swlib
 install_swlib:
