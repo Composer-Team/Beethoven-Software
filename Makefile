@@ -67,7 +67,7 @@ CXX_FLAGS += -DSIM=vcs
 
 libdramsim3.so:
 	$(MAKE) -C runtime/DRAMsim3/ -j
-	cp $(DRAMSIM3LIB) .
+	cp runtime/DRAMsim3/libdramsim3.so .
 
 SRCS = 	runtime/src/data_server.o \
 	runtime/src/cmd_server.o \
