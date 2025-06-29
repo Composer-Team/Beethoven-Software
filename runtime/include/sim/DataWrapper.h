@@ -1,9 +1,13 @@
 #ifndef DATAWRAPPER_H
 #define DATAWRAPPER_H
 
-template <typename T>
+#include <cinttypes>
+#include <cstddef>
+#include <memory>
+
+template<typename T>
 struct GetSetWrapper {
-  T* ptr = nullptr;
+  T *ptr = nullptr;
   size_t l = sizeof(T);
 
   GetSetWrapper(T &v) {
@@ -12,16 +16,14 @@ struct GetSetWrapper {
 
   GetSetWrapper() = default;
 
-  T get(int idx) const {
-    return ptr[idx];
-  }
+  T get(int idx) const;
 
   T get() const {
     return this->get(0);
   }
 
   void set(int64_t value) {
-    if (sizeof(T) >= 8) {
+    if (sizeof(uint8_t) >= 8) {
       memcpy(ptr, &value, 8);
     } else {
       memcpy(ptr, &value, l);
@@ -29,14 +31,14 @@ struct GetSetWrapper {
   }
 };
 
-template <typename T, int l>
+template<typename T, int l>
 struct GetSetDataWrapper {
-  T* ptr = nullptr;
+  T *ptr = nullptr;
   int len = l;
 
-  template <typename G>
+  template<typename G>
   explicit GetSetDataWrapper(G *v) {
-    ptr = (T*)v;
+    ptr = (T *) v;
   }
   GetSetDataWrapper() = default;
 
@@ -56,9 +58,9 @@ struct GetSetDataWrapper {
       memcpy(ptr, &value, l);
     }
   }
-  
+
   void set(uint32_t payload, uint32_t idx) {
-    uint32_t *dst = (uint32_t*)ptr;
+    uint32_t *dst = (uint32_t *) ptr;
     dst[idx] = payload;
   }
 
@@ -66,5 +68,10 @@ struct GetSetDataWrapper {
     memcpy(ptr, value, l);
   }
 };
+
+// GetSetWrapper<uint8_t>;
+// GetSetWrapper<uint16_t>;
+// GetSetWrapper<uint32_t>;
+// GetSetWrapper<uint64_t>;
 
 #endif

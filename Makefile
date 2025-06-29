@@ -24,8 +24,13 @@ endif
 
 CXX = c++
 
-.PHONY: all
-all: BeethovenSim
+.PHONY: default
+ifeq ($(SIMULATOR),verilator)
+default: BeethovenSim
+endif
+ifeq ($(SIMULATOR),icarus)
+default: sim_icarus
+endif
 
 .PHONY: install_swlib
 install_swlib:
@@ -63,10 +68,6 @@ VPI_FLAGS = $(VPI_LOC)/system.vpi
 VERILOG_FLAGS = -DCLOCK_PERIOD=500
 VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) 
 
-ifeq ($(TARGET),sim)
-CXX_FLAGS += -DSIM
-endif
-
 # DEBUG FLAGS
 CXX_FLAGS += -O0 -g3 
 # RELEASE FLAGS
@@ -81,9 +82,9 @@ SRCS = 	runtime/src/data_server.o \
 	runtime/src/cmd_server.o \
 	runtime/src/mmio.o \
 	runtime/src/sim/axi/front_bus_ctrl_axi.o \
-	runtime/src/sim/axi/${SIMULATOR}_axi_frontend.o  \
 	runtime/src/sim/tick.o \
 	runtime/src/sim/mem_ctrl.o \
+	runtime/src/sim/DataWrapper.o \
 	src/verilator_server.o \
 	src/rocc_response.o \
 	src/util.o \
@@ -98,10 +99,8 @@ DEPS = sim_BeethovenRuntime.vpi beethoven.vvp
 
 VERILOG_FLAGS += -DICARUS
 VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
-
 CXX_FLAGS += -DSIM=vcs
 CXX_DEPS = 
-
 endif
 
 ifeq ($(SIMULATOR),verilator)
@@ -110,12 +109,14 @@ DEPS = obj_dir/VBeethovenTop.cpp
 CXX_FLAGS += -Iobj_dir -I$(VERILATOR_INC) -DVERILATOR
 VERILATOR_SRCS = $(shell ls obj_dir/*.cpp)
 VERILATOR_DEPS = $(patsubst %.c, %.o, $(VERILATOR_SRCS))
+CXX_FLAGS += -DSIM=verilator
 
 # verilator specific
 USER_CPPFLAGS = -std=c++17
 SRCS += runtime/src/sim/verilator.o
 endif
 
+SRCS += runtime/src/sim/axi/${SIMULATOR_BACKEND}_axi_frontend.o
 
 lib_beethoven.o: ${BEETHOVEN_PATH}/build/beethoven_hardware.cc ${BEETHOVEN_PATH}/build/beethoven_hardware.h
 	$(CXX) -c $(CXX_FLAGS) -o$@ ${BEETHOVEN_PATH}/build/beethoven_hardware.cc
@@ -161,7 +162,8 @@ endif
 beethoven.vvp: $(VERILOG_SRCS)
 	iverilog $(VERILOG_FLAGS) -s BeethovenTopVCSHarness -o$@ $(VERILOG_SRCS)
 
-sim_icarus: 
+.PHONY: sim_icarus
+sim_icarus: beethoven.vvp sim_BeethovenRuntime.vpi
 	export LD_LIBRARY_PATH=$(LIB_EXPORT):$(LD_LIBRARY_PATH);\
 		vvp -M. -msim_BeethovenRuntime beethoven.vvp
 		#lldb -- vvp -M. -msim_BeethovenRuntime beethoven.vvp

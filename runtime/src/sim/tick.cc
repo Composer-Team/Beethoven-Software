@@ -153,6 +153,7 @@ void tick_signals(ControlIntf *ctrl) {
             reinterpret_cast<uint8_t *>(addr)[off] = data.get()[off];
             memory_transacted++;
           }
+          // printf("%llx Writing %02d to %llx\n", axi4_mem.w.getStrb(off), data.get()[off], addr+off);
           off += 1;
         }
         trans->axi_bus_beats_progress++;

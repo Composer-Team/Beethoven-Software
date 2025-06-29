@@ -19,3 +19,5 @@ build
 *.so
 BeethovenSim
 dramsim3.txt
+*.vpi
+*.vcd
