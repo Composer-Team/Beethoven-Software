@@ -173,16 +173,16 @@ namespace mem_ctrl {
 #define prep(x) std::decay_t<decltype(x)>
 
 #ifdef VERILATOR
-#include "BeethovenTop.h"
+#include "VBeethovenTop.h"
 #include "sim/DataWrapper.h"
 
 using mem_intf_t = mem_ctrl::mem_interface<
-        GetSetWrapper<prep(BeethovenTop::M00_AXI_arid)>,
-        GetSetWrapper<prep(BeethovenTop::M00_AXI_arsize)>,
-        GetSetWrapper<prep(BeethovenTop::M00_AXI_arburst)>,
-        GetSetWrapper<prep(BeethovenTop::M00_AXI_araddr)>,
-        GetSetWrapper<prep(BeethovenTop::M00_AXI_arlen)>,
-        GetSetWrapper<prep(BeethovenTop::M00_AXI_wstrb)>,
+        GetSetWrapper<prep(VBeethovenTop::M00_AXI_arid)>,
+        GetSetWrapper<prep(VBeethovenTop::M00_AXI_arsize)>,
+        GetSetWrapper<prep(VBeethovenTop::M00_AXI_arburst)>,
+        GetSetWrapper<prep(VBeethovenTop::M00_AXI_araddr)>,
+        GetSetWrapper<prep(VBeethovenTop::M00_AXI_arlen)>,
+        GetSetWrapper<prep(VBeethovenTop::M00_AXI_wstrb)>,
         GetSetWrapper<uint8_t>,
         GetSetDataWrapper<uint8_t, DATA_BUS_WIDTH/8>>;
 #else

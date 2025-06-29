@@ -18,8 +18,12 @@
 
 #include "../include/data_server.h"
 
-#if defined(SIM) && !defined(USE_VERILATOR)
+#ifdef SIM
+#ifdef VERILATOR
+#include "sim/verilator.h"
+#else
 #include <vpi_user.h>
+#endif
 #endif
 
 #include <fcntl.h>
@@ -213,15 +217,77 @@ data_server_file *dsf;
         munmap(at.get_mapping(addr.op_argument).first, at.get_mapping(addr.op_argument).second);
         at.remove_mapping(addr.op_argument);
         break;
-#if defined(SIM)
-      case data_server_op::MOVE_TO_FPGA: {
-        std::cerr << at.get_mapping(addr.op_argument).first << std::endl;
+      case data_server_op::MOVE_FROM_FPGA: {
+        // std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
 #ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
-        std::cout << "WARNING: YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
-        break;
+        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
 #endif
 
-#if defined(BEETHOVEN_HAS_DMA) and defined(SIM)
+#ifdef SIM
+#ifdef BEETHOVEN_HAS_DMA
+        auto ptr1 = (unsigned char *) at.translate(addr.op2_argument);
+        auto ptr2 = addr.op2_argument;
+        auto amt_left = addr.op3_argument;
+        while (amt_left > 0) {
+          auto n_beats_here = std::max(uint64_t(1), rand() % std::min(uint64_t(64), amt_left >> 6));
+          pthread_mutex_lock(&dma_lock);
+          dma_len = 64 * n_beats_here;
+          amt_left -= n_beats_here * 64;
+          dma_ptr = ptr1;
+          dma_fpga_addr = ptr2;
+          dma_valid = true;
+          dma_write = false;
+          dma_in_progress = false;
+          pthread_mutex_unlock(&dma_lock);
+          pthread_mutex_lock(&dma_wait_lock);
+          ptr1 += 64 * n_beats_here;
+          ptr2 += 64 * n_beats_here;
+        }
+#endif
+#elif defined(FPGA) // end SIM
+#ifndef Kria
+        auto shaddr = at.translate(addr.op2_argument);
+        //        std::cout << "from fpga addr: " << addr.op2_argument << std::endl;
+        auto *mem = (uint8_t *) malloc(addr.op3_argument);
+        int rc = wrapper_fpga_dma_burst_read(xdma_read_fd, (uint8_t *) mem, addr.op3_argument, addr.op2_argument);
+        memcpy(shaddr, mem, addr.op3_argument);
+        free(mem);
+        //        for (int i = 0; i < addr.op3_argument / sizeof(int); ++i)
+        //          printf("%d ", ((int *) shaddr)[i]);
+        //        fflush(stdout);
+        if (rc) {
+          fprintf(stderr, "Something failed inside MOVE_FROM_FPGA - %d %p %ld %lx\n", xdma_read_fd, shaddr,
+                  addr.op3_argument, addr.op2_argument);
+          exit(1);
+        }
+#else // end ndef Kria
+        fprintf(stderr, "Kria backend attempting to do unsupported op in data server\n");
+#endif
+#else // end SIM/FPGA
+#error "All cases not covered"
+#endif
+        break;
+      }
+      case data_server_op::MOVE_TO_FPGA: {
+#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
+        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
+#endif
+#ifdef FPGA
+#ifndef Kria // implied discrete
+        auto shaddr = at.translate(addr.op_argument);
+        auto *mem = (uint8_t *) malloc(addr.op3_argument);
+        memcpy(mem, shaddr, addr.op3_argument);
+        int rc = wrapper_fpga_dma_burst_write(xdma_write_fd, (uint8_t *) shaddr, addr.op3_argument, addr.op_argument);
+        if (rc) {
+          fprintf(stderr, "Something failed inside MOVE_TO_FPGA - %d %p %ld %lx\n", xdma_write_fd, shaddr,
+                  addr.op3_argument, addr.op2_argument);
+          exit(1);
+        }
+#else
+        fprintf(stderr, "Kria backend attempting to do unsupported op in data server\n");
+#endif // end Kria
+#else // end FPGA, else SIM
+#if defined(BEETHOVEN_HAS_DMA)
         auto amt_left = addr.op3_argument;
         auto ptr1 = (unsigned char *) at.translate(addr.op_argument);
         auto ptr2 = addr.op_argument;
@@ -244,92 +310,10 @@ data_server_file *dsf;
           ptr1 += 64 * n_beats_here;
           ptr2 += 64 * n_beats_here;
         }
-#endif
-        //        std::cerr << "finish DMA " << std::endl;
+#endif // end DMA
+#endif // end SIM
         break;
       }
-      case data_server_op::MOVE_FROM_FPGA: {
-        // std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
-#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
-        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
-        break;
-#endif
-#if defined(BEETHOVEN_HAS_DMA) and defined(SIM)
-        auto ptr1 = (unsigned char *) at.translate(addr.op2_argument);
-        auto ptr2 = addr.op2_argument;
-        auto amt_left = addr.op3_argument;
-        while (amt_left > 0) {
-          auto n_beats_here = std::max(uint64_t(1), rand() % std::min(uint64_t(64), amt_left >> 6));
-          pthread_mutex_lock(&dma_lock);
-          dma_len = 64 * n_beats_here;
-          amt_left -= n_beats_here * 64;
-          dma_ptr = ptr1;
-          dma_fpga_addr = ptr2;
-          dma_valid = true;
-          dma_write = false;
-          dma_in_progress = false;
-          pthread_mutex_unlock(&dma_lock);
-          pthread_mutex_lock(&dma_wait_lock);
-          ptr1 += 64 * n_beats_here;
-          ptr2 += 64 * n_beats_here;
-        }
-#endif
-        break;
-      }
-#elif defined(FPGA) && !defined(Kria)
-      case data_server_op::MOVE_FROM_FPGA: {
-#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
-        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
-        break;
-#endif
-
-        auto shaddr = at.translate(addr.op2_argument);
-        //        std::cout << "from fpga addr: " << addr.op2_argument << std::endl;
-        auto *mem = (uint8_t *) malloc(addr.op3_argument);
-        int rc = wrapper_fpga_dma_burst_read(xdma_read_fd, (uint8_t *) mem, addr.op3_argument, addr.op2_argument);
-        memcpy(shaddr, mem, addr.op3_argument);
-        free(mem);
-        //        for (int i = 0; i < addr.op3_argument / sizeof(int); ++i)
-        //          printf("%d ", ((int *) shaddr)[i]);
-        //        fflush(stdout);
-        if (rc) {
-          fprintf(stderr, "Something failed inside MOVE_FROM_FPGA - %d %p %ld %lx\n", xdma_read_fd, shaddr,
-                  addr.op3_argument, addr.op2_argument);
-          exit(1);
-        }
-        break;
-      }
-      case data_server_op::MOVE_TO_FPGA: {
-#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
-        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
-        break;
-#endif
-
-        auto shaddr = at.translate(addr.op_argument);
-        //        printf("trying to transfer\n"); fflush(stdout);
-        //        std::cout << "to fpga addr: " << addr.op_argument << std::endl;
-        //        for (int i = 0; i < addr.op3_argument / sizeof(int); ++i)
-        //          printf("%d ", ((int *) shaddr)[i]);
-        //        fflush(stdout);
-        auto *mem = (uint8_t *) malloc(addr.op3_argument);
-        memcpy(mem, shaddr, addr.op3_argument);
-        int rc = wrapper_fpga_dma_burst_write(xdma_write_fd, (uint8_t *) shaddr, addr.op3_argument, addr.op_argument);
-        if (rc) {
-          fprintf(stderr, "Something failed inside MOVE_TO_FPGA - %d %p %ld %lx\n", xdma_write_fd, shaddr,
-                  addr.op3_argument, addr.op2_argument);
-          exit(1);
-        }
-        //        printf("finished transfering\n"); fflush(stdout);
-        break;
-      }
-#elif defined(Kria)
-      case data_server_op::MOVE_TO_FPGA:
-      case data_server_op::MOVE_FROM_FPGA:
-        fprintf(stderr, "Kria backend attempting to do unsupported op in data server\n");
-        break;
-#else
-#error("Doesn't appear that we're covering all cases inside data server")
-#endif
     }
     // un-lock client to read response
     pthread_mutex_unlock(&addr.data_cmd_recieve_resp_lock);
@@ -357,10 +341,10 @@ void *address_translator::translate(uint64_t fp_addr) const {
     for (auto q: mappings) {
       std::cerr << q.fpga_addr << "\t" << q.mapping_length << std::endl;
     }
-#if defined(SIM) && defined(TRACE)
+#if defined(SIM) && defined(VERILATOR)
     tfp->close();
 #endif
-#if defined(SIM) && !defined(USE_VERILATOR)
+#if defined(SIM) && !defined(VERILATOR)
     vpi_control(vpiFinish);
     return nullptr;
 #else

@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "BeethovenTop.h"
+#include "VBeethovenTop.h"
 #include "cmd_server.h"
 #include "data_server.h"
 #include <csignal>
@@ -33,7 +33,7 @@ bool active_reset = false;
 #define RESET_NAME top.RESETn
 #endif
 
-BeethovenTop top;
+VBeethovenTop top;
 
 pthread_mutex_t main_lock = PTHREAD_MUTEX_INITIALIZER;
 bool kill_sig = false;
@@ -44,6 +44,25 @@ extern int strobe_width;
 
 
 void sig_handle(int sig) {
+  switch (sig) {
+    case SIGINT:
+      fprintf(stderr, "CAUGHT SIGINT\n");
+      break;
+    case SIGKILL:
+      fprintf(stderr, "CAUGHT SIGKILL\n");
+      break;
+    case SIGABRT:
+      fprintf(stderr, "CAUGHT SIGABRT\n");
+      break;
+    case SIGILL:
+      fprintf(stderr, "CAUGHT SIGILL\n");
+      break;
+    case SIGTERM:
+      fprintf(stderr, "CAUGHT SIGTERM\n");
+      break;
+
+  }
+  
 #if NUM_DDR_CHANNELS >= 1
   for (auto &q: axi4_mems) {
     q.mem_sys->PrintStats();
@@ -54,10 +73,10 @@ void sig_handle(int sig) {
 #endif
   fprintf(stderr, "FST written!\n");
   fflush(stderr);
-  exit(sig);
+  _exit(sig);
 }
 
-void tick(BeethovenTop *top) {
+void tick(VBeethovenTop *top) {
   try {
     top->eval();
   } catch (std::exception &e) {
@@ -364,15 +383,7 @@ void run_verilator(const std::string &dram_config_file) {
       fflush(stdout);
     }
     tick_signals(ctrl);
-//    if (use_trace) {
-//      if (main_time > fpga_clock_inc * 200)
-//        trace_rising_edge_pre(top);
-//    }
     tick(&top);
-//    if (use_trace) {
-//      if (main_time > fpga_clock_inc * 200)
-//        trace_rising_edge_post(top);
-//    }
     tfp->dump(main_time);
     top.clock = 0;// negedge
     tick(&top);
@@ -396,6 +407,8 @@ int main(int argc, char **argv) {
   signal(SIGABRT, sig_handle);
   signal(SIGINT, sig_handle);
   signal(SIGKILL, sig_handle);
+  signal(SIGILL, sig_handle);
+
 
   std::optional<std::string> dram_file = {};
   for (int i = 1; i < argc; ++i) {
@@ -408,7 +421,7 @@ int main(int argc, char **argv) {
   }
 
   if (!dram_file.has_value()) {
-    dram_file = std::string("../custom_dram_configs/DDR4_8Gb_x16_3200.ini");
+    dram_file = std::string("runtime/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini");
   }
 
   data_server::start();

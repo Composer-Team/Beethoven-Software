@@ -1,9 +1,13 @@
 PLATFORM = discrete
 TARGET = sim
 DEVICE = kria
+SIMULATOR ?= icarus
+
 SUDO ?= sudo
 PREFIX ?= /usr/local/
 BUILD_TYPE ?= DEBUG
+
+VERILATOR_INC = /opt/homebrew/share/verilator/include/
 
 ifeq ($(PLATFORM),discrete)
 SW_DEF = -DDISCRETE
@@ -19,6 +23,9 @@ endif
 endif
 
 CXX = c++
+
+.PHONY: all
+all: BeethovenSim
 
 .PHONY: install_swlib
 install_swlib:
@@ -51,19 +58,20 @@ ifeq ($(UNAME_S),Darwin)
 	LIB_EXPORT="export LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):runtime/DRAMsim3/"
 endif
 
+VPI_LOC = /usr/local/lib/ivl
+VPI_FLAGS = $(VPI_LOC)/system.vpi
+VERILOG_FLAGS = -DCLOCK_PERIOD=500
+VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) 
+
+ifeq ($(TARGET),sim)
+CXX_FLAGS += -DSIM
+endif
+
 # DEBUG FLAGS
 CXX_FLAGS += -O0 -g3 
 # RELEASE FLAGS
 #CXX_FLAGS += -O2
 FRONTBUS=axi
-SIMULATOR=vpi
-VPI_LOC = /usr/local/lib/ivl
-VPI_FLAGS = $(VPI_LOC)/system.vpi
-VERILOG_FLAGS = -DCLOCK_PERIOD=500 -DICARUS
-VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
-
-# vpi
-CXX_FLAGS += -DSIM=vcs
 
 libdramsim3.so:
 	$(MAKE) -C runtime/DRAMsim3/ -j
@@ -84,13 +92,38 @@ SRCS = 	runtime/src/data_server.o \
 	src/rocc_cmd.o \
 	$(HANDLE_O)
 
+ifeq ($(SIMULATOR),icarus)
+SIMULATOR_BACKEND=vpi
+DEPS = sim_BeethovenRuntime.vpi beethoven.vvp
+
+VERILOG_FLAGS += -DICARUS
+VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
+
+CXX_FLAGS += -DSIM=vcs
+CXX_DEPS = 
+
+endif
+
+ifeq ($(SIMULATOR),verilator)
+SIMULATOR_BACKEND=verilator
+DEPS = obj_dir/VBeethovenTop.cpp
+CXX_FLAGS += -Iobj_dir -I$(VERILATOR_INC) -DVERILATOR
+VERILATOR_SRCS = $(shell ls obj_dir/*.cpp)
+VERILATOR_DEPS = $(patsubst %.c, %.o, $(VERILATOR_SRCS))
+
+# verilator specific
+USER_CPPFLAGS = -std=c++17
+SRCS += runtime/src/sim/verilator.o
+endif
+
+
 lib_beethoven.o: ${BEETHOVEN_PATH}/build/beethoven_hardware.cc ${BEETHOVEN_PATH}/build/beethoven_hardware.h
 	$(CXX) -c $(CXX_FLAGS) -o$@ ${BEETHOVEN_PATH}/build/beethoven_hardware.cc
 
-runtime/src/%.o: runtime/src/%.cc
-	$(CXX) -c ${CXX_FLAGS} -o$@ $^
+runtime/src/%.o: runtime/src/%.cc $(CXX_DEPS)
+	$(CXX) -c ${CXX_FLAGS} -o$@ $<
 
-src/%.o: src/%.cc
+src/%.o: src/%.cc 
 	$(CXX) -c ${CXX_FLAGS} $(SW_DEF) -o$@ $^
 
 sim_BeethovenRuntime.vpi: $(SRCS) lib_beethoven.o libdramsim3.so
@@ -105,12 +138,30 @@ bin/%: test/%.cc $(SRCS) libdramsim3.so
 
 test: $(TESTS)
 
-.PHONY: beethoven.vvp
-beethoven.vvp:
+############### VERILATOR ONLY ###################
+ifeq ($(SIMULATOR),verilator)
+
+.PHONY: verilate
+verilate: $(VERILOG_SRCS)
+	verilator --cc --top BeethovenTop --trace-fst $(VERILOG_SRCS)
+
+obj_dir/VBeethovenTop__ALL.a: verilate
+	$(MAKE) -f VBeethovenTop.mk -C obj_dir USER_CPPFLAGS="$(USER_CPPFLAGS)" VM_TRACE_FST=1
+
+	
+BeethovenSim: obj_dir/VBeethovenTop__ALL.a $(SRCS) libdramsim3.so lib_beethoven.o
+	c++ $(CXX_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz
+
+endif
+	
+
+############ END VERILATOR ONLY ##################
+
+
+beethoven.vvp: $(VERILOG_SRCS)
 	iverilog $(VERILOG_FLAGS) -s BeethovenTopVCSHarness -o$@ $(VERILOG_SRCS)
 
-.PHONY: sim_icarus
-sim_icarus: sim_BeethovenRuntime.vpi beethoven.vvp
+sim_icarus: 
 	export LD_LIBRARY_PATH=$(LIB_EXPORT):$(LD_LIBRARY_PATH);\
 		vvp -M. -msim_BeethovenRuntime beethoven.vvp
 		#lldb -- vvp -M. -msim_BeethovenRuntime beethoven.vvp
@@ -120,4 +171,5 @@ clean:
 	rm -f beethoven.vvp \
 		`find . -name '*.o'` \
 		`find . -name '*.so'`\
-	       	`find . -name '*.dylib'`
+		`find . -name '*.dylib'` \
+		`find . -name '*.a'`

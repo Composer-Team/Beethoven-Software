@@ -386,7 +386,7 @@ int main(int argc, char **argv) {
   }
 
   if (!dram_file.has_value()) {
-    dram_file = std::string("../custom_dram_configs/DDR4_8Gb_x16_3200.ini");
+    dram_file = std::string("runtime/src/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini");
   }
   assert(trace_file.has_value());
 
