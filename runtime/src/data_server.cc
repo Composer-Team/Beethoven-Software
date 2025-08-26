@@ -103,7 +103,7 @@ data_server_file *dsf;
   data_server_file::init(addr);
   LOG(std::cerr << "Data server file constructed" << std::endl);
 
-#if defined(FPGA) && USE_XDMA
+#if defined(FPGA) && AWS
   std::cerr << "Running FPGA MemCpy Sanity Checks..." << std::endl;
   auto sanity_alloc = (uint8_t *) malloc(1024);
   auto sanity_int = (uint32_t *) sanity_alloc;
@@ -219,10 +219,6 @@ data_server_file *dsf;
         break;
       case data_server_op::MOVE_FROM_FPGA: {
         // std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
-#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
-        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
-#endif
-
 #ifdef SIM
 #ifdef BEETHOVEN_HAS_DMA
         auto ptr1 = (unsigned char *) at.translate(addr.op2_argument);
@@ -269,9 +265,6 @@ data_server_file *dsf;
         break;
       }
       case data_server_op::MOVE_TO_FPGA: {
-#ifdef __BEETHOVEN_USE_F2_DMA_WORKAROUND
-        std::cout << "YOU ARE USING THE F2 WORKAROUND BUT CALLED .copy_from_fpga(). Use the workaround routines." << std::endl;
-#endif
 #ifdef FPGA
 #ifndef Kria // implied discrete
         auto shaddr = at.translate(addr.op_argument);

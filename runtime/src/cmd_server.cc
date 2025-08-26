@@ -193,8 +193,8 @@ void register_reponse(uint32_t *r_buffer) {
   pthread_mutex_lock(&cmdserverlock);
   auto it = in_flight.find(pr);
   if (it == in_flight.end()) {
-    std::cerr << "Error: Got bad response from HW: " << r_buffer[0] << " " << r_buffer[1] << " " << r_buffer[2]
-              << std::endl;
+    fprintf(stderr, "Error: Got bad response from Sys(%d) Core(%d)\n", r.system_id, r.core_id);
+    fflush(stderr);
 #ifdef USE_VCS
 #ifdef SIM
       vpi_control(vpiFinish);
@@ -204,6 +204,7 @@ void register_reponse(uint32_t *r_buffer) {
     pthread_mutex_unlock(&main_lock);
   } else {
     int id = in_flight[pr]->front();
+    fprintf(stderr, "Status: Got response from Sys(%d) Core(%d)\n", r.system_id, r.core_id);
     csf->responses[id] = r;
     // allow client thread to access response
     pthread_mutex_unlock(&csf->wait_for_response[id]);

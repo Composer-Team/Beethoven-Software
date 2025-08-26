@@ -52,8 +52,7 @@ void fpga_setup(int slot_id) {
   rc = fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR0, 0, &pci_bar_handle);
   check_rc(rc, "fpga_pci_attach FAILED");
 
-#if USE_XDMA
-
+#ifdef USE_XDMA
   xdma_read_fd = fpga_dma_open_queue(FPGA_DMA_XDMA, slot_id, 0, true);
   if (xdma_read_fd < 0) {
     fprintf(stderr, "Error opening XDMA read fd\n");
@@ -64,7 +63,12 @@ void fpga_setup(int slot_id) {
     fprintf(stderr, "Error opening XDMA write fd\n");
     exit(1);
   }
-#endif
+#else
+  rc = fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR4, 0, &xdma_read_fd);
+  check_rc(rc, "fpga_pci_attach read descriptor FAILED");
+  rc = fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR4, BURST_CAPABLE, &xdma_write_fd);
+  check_rc(rc, "fpga_pci_attach write descriptor FAILED");
+
 #endif
 }
 
@@ -77,19 +81,28 @@ void fpga_shutdown() {
 
 int wrapper_fpga_dma_burst_write(int fd, uint8_t *buffer, size_t xfer_sz,
                                  size_t address) {
+#if AWS
 #if USE_XDMA
   return fpga_dma_burst_write(fd, buffer, xfer_sz, address);
+#else
+  struct fpga_pci_bar *bar = fpga_pci_bar_get(xdma_read_fd);
+  memcpy(bar->mem_base + address, buffer, xfer_sz);
 #endif
-  return 0;
+#endif
+return 0;
 }
 
 int wrapper_fpga_dma_burst_read(int fd, uint8_t *buffer, size_t xfer_sz,
                                 size_t address) {
+#if AWS                                  
 #if USE_XDMA
   return fpga_dma_burst_read(fd, buffer, xfer_sz, address);
 #else
-  return 0;
+  struct fpga_pci_bar *bar = fpga_pci_bar_get(xdma_read_fd);
+  memcpy(buffer, bar->mem_base + address, xfer_sz);
 #endif
+#endif 
+return 0;
 }
 
 #endif

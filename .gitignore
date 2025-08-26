@@ -20,4 +20,8 @@ build
 BeethovenSim
 dramsim3.txt
 *.vpi
+*.vvp
 *.vcd
+bin/
+test/alloc_sizes
+test/merge_sort
