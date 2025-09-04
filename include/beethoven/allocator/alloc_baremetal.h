@@ -16,57 +16,51 @@
 #ifndef BEETHOVEN_ALLOC_BAREMETAL_H
 #define BEETHOVEN_ALLOC_BAREMETAL_H
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+#include <bit>
 
 namespace beethoven {
 
-  class fpga_handle_t;
+class fpga_handle_t;
 
-  class remote_ptr {
-    friend fpga_handle_t;
+class remote_ptr {
+  friend fpga_handle_t;
 
-    intptr_t fpga_addr;
-    void *host_addr;
-  public:
-    remote_ptr(const intptr_t &faddr, void *haddr) noexcept;
+  intptr_t fpga_addr;
+public:
 
-    [[nodiscard]] uint64_t getFpgaAddr() const {
-      return fpga_addr;
-    }
+  [[nodiscard]] uint64_t getFpgaAddr() const { return fpga_addr; }
 
-    [[nodiscard]] void *getHostAddr() const {
-      return host_addr;
-    }
+  [[nodiscard]] void *getHostAddr() const { return reinterpret_cast<void*>(fpga_addr); }
 
-    explicit remote_ptr();
+  constexpr explicit remote_ptr() : fpga_addr(0) {}
+  constexpr ~remote_ptr() {}
 
-    bool operator==(const remote_ptr &other) const {
-      return fpga_addr == other.fpga_addr;
-    }
+  bool operator==(const remote_ptr &other) const {
+    return fpga_addr == other.fpga_addr;
+  }
 
-    template<typename t>
-    explicit operator t() const {
-      return static_cast<t>(host_addr);
-    }
+  remote_ptr(const remote_ptr &other) noexcept
+      : fpga_addr(other.fpga_addr) {};
 
-    remote_ptr(const remote_ptr &other) noexcept;
+  constexpr explicit remote_ptr(const intptr_t &faddr) noexcept
+      : fpga_addr(faddr) {}
 
-    explicit remote_ptr(const intptr_t &faddr) noexcept;
+  constexpr remote_ptr &operator=(remote_ptr &&other) noexcept {
+    fpga_addr = other.fpga_addr;
+    return *this;
+  }
 
-    // don't need move constructor for baremetal
-    remote_ptr(remote_ptr &&other) noexcept;
+  constexpr remote_ptr &operator=(const remote_ptr &other) noexcept {
+    fpga_addr = other.fpga_addr;
+    return *this;
+  }
 
-    remote_ptr &operator=(remote_ptr &&) noexcept;
+  remote_ptr operator+(int q) const;
 
-    remote_ptr &operator=(const remote_ptr &other) noexcept;
+  remote_ptr operator-(int q) const;
+};
+} // namespace beethoven
 
-    ~remote_ptr();
-
-    remote_ptr operator+(int q) const;
-
-    remote_ptr operator-(int q) const;
-  };
-}
-
-#endif //BEETHOVEN_ALLOC_BAREMETAL_H
+#endif // BEETHOVEN_ALLOC_BAREMETAL_H

@@ -11,14 +11,13 @@ using namespace beethoven;
 rocc_response response_getter::get() {
   if (can_wait) {
     if (has_recieved) {
-      fprintf(stderr, "Attempted to wait on a return handle that has already received a response!\n");
-      exit(1);
+      throw new std::runtime_error("Attempted to wait on a return handle that has already received a response!\n");
     } else {
       has_recieved = true;
       return h->get_response_from_handle(id);
     }
   } else {
-    fprintf(stderr, "Attempting to wait on a return handle for a command that explicitly disallowed returns."
+    throw new std::runtime_error("Attempting to wait on a return handle for a command that explicitly disallowed returns."
                     "All `addr` commands do not return. Start commands that specify `xd=0` will not return.\n");
     exit(1);
   }

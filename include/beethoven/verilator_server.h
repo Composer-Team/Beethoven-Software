@@ -7,8 +7,8 @@
 
 #ifndef BAREMETAL
 
-#include <beethoven/rocc_response.h>
-#include <beethoven/rocc_cmd.h>
+#include "rocc_response.h"
+#include "rocc_cmd.h"
 #include <string>
 #include <sys/stat.h>
 #include <sys/mman.h>

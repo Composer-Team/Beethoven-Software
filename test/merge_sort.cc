@@ -39,7 +39,7 @@ remote_ptr merge_sort(const remote_ptr &arr_ptr, int size) {
   if (size <= 1) {
     return arr_ptr;
   }
-  int mid = size / 2;
+  int mid = size >> 1;
   auto left = merge_sort(arr_ptr, mid);
   auto right = merge_sort(arr_ptr + mid, size - mid);
   return merge(left, mid, right, size - mid);
@@ -51,7 +51,7 @@ int main() {
   int *arr = (int*)arr_handle.getHostAddr();
 
   for (int i = 0; i < n_elements; i++) {
-    arr[i] = i * ((1 << 13) - 1) % 1024;
+    arr[i] = i * ((1 << 13) - 1) & 0x3FF;
   }
   // sort array
   auto sorted_handle = merge_sort(arr_handle, n_elements);

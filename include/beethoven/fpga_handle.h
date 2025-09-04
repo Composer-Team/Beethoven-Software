@@ -16,8 +16,8 @@
 #ifndef FPGA_HANDLE_H
 #define FPGA_HANDLE_H
 
-#include <beethoven/rocc_response.h>
-#include <beethoven/response_handle.h>
+#include "rocc_response.h"
+#include "response_handle.h"
 #include <cstddef>
 
 #ifndef BAREMETAL
@@ -26,7 +26,7 @@
 #include <vector>
 #include "beethoven/allocator/alloc.h"
 #else
-#include "beethoven/allocator/alloc_baremetal.h"
+#include "allocator/alloc_baremetal.h"
 #endif
 
 namespace beethoven {

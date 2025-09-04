@@ -11,7 +11,7 @@
 #include "beethoven/rocc_cmd.h"
 #include "beethoven/rocc_response.h"
 #include "beethoven/allocator/alloc_baremetal.h"
-#include "beethoven_hardware.h"
+#include <beethoven_hardware.h>
 
 using namespace beethoven;
 
@@ -25,30 +25,11 @@ fpga_handle_t::~fpga_handle_t() {}
 
 fpga_handle_t::fpga_handle_t() {}
 
-#define seg(x) {x, (void*)(intptr_t(x))}
-
-remote_ptr segments[] = {seg(0), seg(1 << 10), seg(1 << 11), seg(1 << 12), seg(1 << 13)};
-bool segs_free[] = {true, true, true, true, true};
-
 remote_ptr fpga_handle_t::malloc(size_t) {
-//  auto ptr = allocator.malloc(len);
-  for (int i = 0; i < 5; ++i) {
-    if (segs_free[i]) {
-      segs_free[i] = false;
-      return segments[i];
-    }
-  }
   return remote_ptr();
 }
 
-[[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
-  for (int i = 0; i < 5; ++i) {
-    if (!segs_free[i]) {
-      segments[i] = ptr;
-      segs_free[i] = true;
-    }
-  }
-}
+[[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {}
 
 using namespace beethoven;
 

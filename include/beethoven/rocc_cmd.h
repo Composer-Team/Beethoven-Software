@@ -18,9 +18,9 @@
 #define ROCC_H
 
 #include <cinttypes>
-#include <beethoven/beethoven_consts.h>
-#include <beethoven/util.h>
-#include <beethoven/response_handle.h>
+#include "beethoven_consts.h"
+#include "util.h"
+#include "response_handle.h"
 
 namespace beethoven {
   class fpga_handle_t;

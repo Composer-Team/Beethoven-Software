@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#ifndef BEETHOVEN_ALLOC_H
+#if !defined(BEETHOVEN_ALLOC_H) && !defined(BEETHOVEN_BAREMETAL)
 #define BEETHOVEN_ALLOC_H
 
 #include <cstdint>

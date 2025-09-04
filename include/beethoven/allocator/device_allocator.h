@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <vector>
 #include <set>
+#include <pthread.h>
 
 #include "alloc.h"
 

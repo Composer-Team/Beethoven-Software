@@ -6,7 +6,7 @@
 #define BEETHOVEN_ROCC_RESPONSE_H
 
 #include <cinttypes>
-#include <beethoven/util.h>
+#include "util.h"
 
 namespace beethoven {
   struct rocc_response {

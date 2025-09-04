@@ -1,0 +1,29 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/beethoven_baremetalTargets.cmake")
+
+check_required_components(beethoven_baremetal)
+
+function(beethoven_build_baremetal TARGET)
+
+    cmake_parse_arguments(BEETHOVEN ""
+                                    ""
+                                    "SOURCES;INCLUDE_DIRS"
+                                    ${ARGN} )
+    if (NOT BEETHOVEN_SOURCES)
+        message(FATAL_ERROR "No sources provided to beethoven_build.")
+    endif ()
+
+    if ("$ENV{BEETHOVEN_PATH}" STREQUAL "")
+        message(FATAL_ERROR "Must define the BEETHOVEN_PATH environment variable!")
+    endif()
+
+    if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
+        message(FATAL "Must provide toolchain file for baremetal (e.g., /usr/local/share/beethoven_baremetal/arm-none-eabi.cmake)")
+    endif()
+
+    add_executable(${TARGET} ${BEETHOVEN_SOURCES})
+    target_include_directories(${TARGET} PUBLIC $ENV{BEETHOVEN_PATH}/build/)
+    target_link_libraries(${TARGET} PUBLIC APEX::beethoven_baremetal)
+    target_compile_definitions(${TARGET} PUBLIC BAREMETAL=1)
+endfunction()

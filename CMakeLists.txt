@@ -1,180 +1,197 @@
-cmake_minimum_required(VERSION 3.5.0)
+cmake_minimum_required(VERSION 3.15.0)
 project(beethoven)
-set(version 1.0.6)
-set(CMAKE_CXX_STANDARD 17)
+enable_language(CXX)
+set(VERSION 1.0.0)
 
+set(DISCRETE OFF)
+set(KRIA OFF)
+set(BAREMETAL OFF)
+if ("${PLATFORM}" STREQUAL "baremetal")
+    set(BAREMETAL ON)
+elseif("${PLATFORM}" STREQUAL "discrete")
+    set(DISCRETE ON)
+elseif("${PLATFORM}" STREQUAL "kria")
+    set(KRIA ON)
+endif()
+
+
+if (${BAREMETAL})
+    if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
+        message(FATAL "Must provide toolchain file for baremetal (e.g., cmake/arm-none-eabi.cmake)")
+    endif()
+endif()
+
+set(CMAKE_CXX_STANDARD 20)
 option(PLATFORM "Platform to build for")
 
 message("Build type: ${CMAKE_BUILD_TYPE}")
+set(LINKAGE_TYPE SHARED)
+set(LIBRARY_NAME beethoven)
 
-if (NOT "${PLATFORM}" STREQUAL "baremetal")
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    include(CMakePackageConfigHelpers)
-    include(CMakeDependentOption)
-    include(CheckCXXCompilerFlag)
-    include(GNUInstallDirs)
-    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-    if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
-        set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
-                STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
-    endif ()
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(CMakePackageConfigHelpers)
+include(CMakeDependentOption)
+include(CheckCXXCompilerFlag)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY
+            STRINGS "Release" "Debug" "MinSizeRel" "RelWithDebInfo")
 endif ()
+if (${BAREMETAL})
+    set(LINKAGE_TYPE STATIC)
+    SET(LIBRARY_NAME beethoven_baremetal)
+    set(CMAKE_INSTALL_LIBDIR "/usr/local/lib")
+endif()
+include(GNUInstallDirs)
 
-if ("${PLATFORM}" STREQUAL "discrete" OR "${PLATFORM}" STREQUAL "sim")
+add_library(${LIBRARY_NAME} ${LINKAGE_TYPE}
+        src/rocc_cmd.cc
+        src/util.cc
+        src/rocc_response.cc
+        include/beethoven/response_handle.h
+        include/beethoven/rocc_cmd.h
+        include/beethoven/allocator/device_allocator.h)
+
+if (${DISCRETE})
+    target_sources(${LIBRARY_NAME} PRIVATE
+            src/fpga_handle_impl/fpga_handle_discrete.cc
+            src/response_handle.cc
+            src/allocator/alloc.cc
+            src/verilator_server.cc)
     add_definitions(-DDiscrete)
     set(BUILD_SHARED ON)
-elseif ("${PLATFORM}" STREQUAL "kria")
+elseif (${KRIA})
     add_definitions(-DKria)
     set(BUILD_SHARED ON)
-elseif ("${PLATFORM}" STREQUAL "baremetal")
+    target_sources(${LIBRARY_NAME} PRIVATE
+            src/fpga_handle_impl/fpga_handle_kria.cc
+            src/response_handle.cc
+            src/allocator/alloc.cc
+            src/verilator_server.cc
+    )
+elseif (${BAREMETAL})
     message(STATUS "Running in baremetal mode")
+    set(LINKAGE_TYPE STATIC)
+    set(LIBRARY_NAME beethoven_baremetal)
     add_definitions(-DBAREMETAL)
     set(BUILD_SHARED OFF)
-    if ("${M55_SRC}" STREQUAL "")
+    if ("$ENV{M55_SRC}" STREQUAL "")
         message(FATAL_ERROR "M55_SRC not set. Please set M55_SRC to the path of the cortex-m55 source code.")
-    endif ()
-    # set M55_INC to M55_SRC/yamin/logical/testbench/execution_tb/tests/
-    set(M55_INC ${M55_SRC}/yamin/logical/testbench/execution_tb/tests/)
-    # ===== added for cortex-m55 =====
-    # Copy CMSIS and Device directories to build directory
-    file(COPY ${M55_INC}/CMSIS DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-    file(COPY ${M55_INC}/Device DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-    # Specify the C compiler
-#    set(CMAKE_C_COMPILER arm-none-eabi-gcc)
-#    set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
-#     IF YOU GET ERRORS ABOUT COLORED DIAGNOSTICS, USE THESE SCRIPTS
-    set(CMAKE_C_COMPILER /home/chriskjellqvist/Code/Composer-Software/m55_bin/gcc_filter)
-    set(CMAKE_CXX_COMPILER /home/chriskjellqvist/Code/Composer-Software/m55_bin/g++_filter)
-    # Compiler flags
-    set(CMAKE_C_FLAGS "-mthumb -march=armv8.1-m.main+mve -mtune=cortex-m55+nomve.fp -mcmse -mfloat-abi=hard -mfpu=fpv5-sp-d16 -fomit-frame-pointer -D__GCC")
-    # Include directories
+    else()
+        set(M55_SRC $ENV{M55_SRC})
+    endif()
     include_directories(
-        ${CMAKE_CURRENT_BINARY_DIR}/CMSIS/Include
-        ${CMAKE_CURRENT_BINARY_DIR}
-        ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Include
+        ${M55_SRC}/AT633-BU-50000-r1p0-00eac0/yamin/logical/testbench/execution_tb/tests
+        ${M55_SRC}/AT633-BU-50000-r1p0-00eac0/yamin/logical/testbench/execution_tb/tests/Device/ARM/exectb_mcu
+        ${M55_SRC}/AT633-BU-50000-r1p0-00eac0/yamin/logical/yamin/pmc_files
+        ${M55_SRC}/AT637-BU-50000-r0p0-00eac0/pmc100/software/api
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${M55_SRC}/yamin/logical/yamin/pmc_files
-        ${M55_SRC}/pmc100/software/api
+        ${CMAKE_CURRENT_BINARY_DIR}
     )
     # Preprocessor definitions
     add_definitions(-D_FPU -D_EPU -D_MVE -D_MVE1 -D_EPU -D_DCACHE_PRESENT -D_ICACHE_PRESENT)
-    # Add startup file separately
-    set(STARTUP_FILE ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Source/GCC/startup_exectb_mcu.S)
-    # Set properties for the startup file
+    # Linker script
+    set(TB_LOC ${M55_SRC}/AT633-BU-50000-r1p0-00eac0/yamin/logical/testbench/execution_tb/tests/)
+    set(STARTUP_FILE ${TB_LOC}/Device/ARM/exectb_mcu/Source/GCC/startup_exectb_mcu.S)
     set_property(SOURCE ${STARTUP_FILE} PROPERTY LANGUAGE C)
     set_property(SOURCE ${STARTUP_FILE} PROPERTY COMPILE_FLAGS "-x assembler-with-cpp")
-    # Linker script
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Source/GCC/mem.ld --specs=nosys.specs")
     set(M55_SOURCES
-        ${CMAKE_CURRENT_BINARY_DIR}/Device/ARM/exectb_mcu/Source/system_exectb_mcu.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/retarget_exectb_mcu.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/EXECTB_tests.c
+        ${TB_LOC}/Device/ARM/exectb_mcu/Source//system_exectb_mcu.c
+        ${TB_LOC}/retarget_exectb_mcu.c
+        ${TB_LOC}/EXECTB_tests.c
+        ${TB_LOC}/Device/ARM/exectb_mcu/Source/system_exectb_mcu.c
+        ${M55_SRC}/TM840-BU-50000-r2p0-00rel0/daplite2/logical/testbench/soc_tb/system/gcc_retarget.c
+        ${STARTUP_FILE}
     )
     # ===== end of added for cortex-m55 =====
-else ()
-    message(FATAL_ERROR "Unsupported device. Supported devices are discrete, sim, kria, and baremetal.")
-endif ()
-
-if (BUILD_SHARED)
-    add_library(beethoven SHARED
-            src/rocc_cmd.cc
-            src/util.cc
-            src/allocator/alloc.cc
-            src/rocc_response.cc
-            include/beethoven/response_handle.h
-            include/beethoven/rocc_cmd.h
-            include/beethoven/allocator/device_allocator.h)
-endif ()
-
-if ("${PLATFORM}" STREQUAL "discrete")
-    target_sources(beethoven PRIVATE
-            src/fpga_handle_impl/fpga_handle_discrete.cc
-            src/response_handle.cc
-            src/verilator_server.cc)
-elseif ("${PLATFORM}" STREQUAL "kria")
-    target_sources(beethoven PRIVATE
-            src/fpga_handle_impl/fpga_handle_kria.cc
-            src/response_handle.cc
-            src/verilator_server.cc
-    )
-elseif ("${PLATFORM}" STREQUAL "baremetal")
-    add_library(beethoven STATIC
-            src/rocc_cmd.cc
-            src/util.cc
-            src/rocc_response.cc
+    add_compile_definitions(BEETHOVEN_BAREMETAL=1)
+    target_sources(${LIBRARY_NAME} PRIVATE
+            ${M55_SOURCES}
             src/allocator/alloc_baremetal.cpp
             src/fpga_handle_impl/fpga_handle_baremetal.cc
-            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/generated_beethoven_src.cc)
-
-    target_include_directories(
-            beethoven
-            PUBLIC
-            $ENV{BEETHOVEN_ROOT}/Beethoven-Hardware/vsim/generated-src/
-            include
+            $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
+    include_directories(
+            $ENV{BEETHOVEN_PATH}/build/
+            ${TB_LOC}/Device/ARM/exectb_mcu/Include/
+            ${TB_LOC}/CMSIS/Include/
+            "include"
     )
 else ()
-    message(FATAL_ERROR "Unsupported device. Supported devices are discrete, kria, and baremetal.")
+    message(FATAL_ERROR "Unsupported device. Supported devices are discrete (aka 'sim'), kria, and baremetal.")
 endif ()
 
 add_executable(merge_sort test/merge_sort.cc)
-target_link_libraries(merge_sort beethoven)
+target_link_libraries(merge_sort ${LIBRARY_NAME})
 add_executable(alloc_sizes test/alloc_sizes.cc)
-target_link_libraries(alloc_sizes beethoven)
+target_link_libraries(alloc_sizes ${LIBRARY_NAME})
 
 
-if (NOT ("${PLATFORM}" STREQUAL "baremetal"))
-    if (APPLE)
-        message(Debug "Building for Darwin/OSX platform")
-    elseif (UNIX)
-        message(Debug "Building for Linux platform")
-        target_link_libraries(beethoven PUBLIC rt pthread)
-    else ()
-        message(FATAL_ERROR "Unsupported platform.")
-    endif ()
-
-    message("install interface is ${CMAKE_INSTALL_PREFIX}/include")
-
-    target_include_directories(beethoven PUBLIC
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:include/beethoven/>
-    )
-
-    set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
-    set(EXPORT_TARGETS beethoven)
-    configure_package_config_file(
-            "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in"
-            "${PROJECT_BINARY_DIR}/cmake/beethovenConfig.cmake"
-            INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
-            PATH_VARS CMAKE_INSTALL_PREFIX CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
-    )
-
-    write_basic_package_version_file(
-            "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
-            VERSION "${version}"
-            COMPATIBILITY AnyNewerVersion
-    )
-
-    install(TARGETS beethoven
-            EXPORT beethovenTargets
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
-            DESTINATION include
-            FILES_MATCHING PATTERN "*.h")
-
-    install(EXPORT beethovenTargets
-            DESTINATION "${CONFIG_EXPORT_DIR}"
-            NAMESPACE APEX::)
-
-
-    install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfig.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/cmake/beethovenConfigVersion.cmake"
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/beethoven
-    )
+if (APPLE)
+    message(Debug "Building for Darwin/OSX platform")
+elseif (UNIX)
+    message(Debug "Building for Linux platform")
+    target_link_libraries(${LIBRARY_NAME} PUBLIC rt pthread)
+elseif ("${PLATFORM}" STREQUAL "baremetal")
+    message(Debug "Build baremetal")
+else()
+    message(FATAL_ERROR "Unsupported platform.")
 endif ()
 
+message("install interface is ${CMAKE_INSTALL_PREFIX}/include")
 
+target_include_directories(${LIBRARY_NAME} PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include/>
+)
+
+set(EXPORT_TARGETS ${LIBRARY_NAME})
+if (${BAREMETAL})
+    set(CONFIG_FILE "${PROJECT_SOURCE_DIR}/cmake/Config_baremetal.cmake.in")
+    set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven_baremetal")
+    set(CONFIG_LIBDIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven_baremetal")
+else ()
+    set(CONFIG_FILE "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in")
+    set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
+    set(CONFIG_LIBDIR "${CMAKE_INSTALL_LIBDIR}/cmake/beethoven")
+endif()
+
+configure_package_config_file(
+        ${CONFIG_FILE}
+        "${PROJECT_BINARY_DIR}/cmake/${LIBRARY_NAME}Config.cmake"
+        INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
+        PATH_VARS CMAKE_INSTALL_PREFIX CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
+)
+
+write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/${LIBRARY_NAME}ConfigVersion.cmake"
+        VERSION "${VERSION}"
+        COMPATIBILITY AnyNewerVersion
+)
+
+install(TARGETS ${LIBRARY_NAME}
+        EXPORT ${LIBRARY_NAME}Targets
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/beethoven/
+        DESTINATION "include/${LIBRARY_NAME}"
+        FILES_MATCHING PATTERN "*.h")
+
+install(EXPORT ${LIBRARY_NAME}Targets
+        DESTINATION "${CONFIG_EXPORT_DIR}"
+        NAMESPACE APEX::)
+
+
+install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/${LIBRARY_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/${LIBRARY_NAME}ConfigVersion.cmake"
+        DESTINATION ${CONFIG_LIBDIR}
+)
+
+if (${BAREMETAL})
+install(FILES
+        cmake/arm-none-eabi.cmake
+        DESTINATION share/beethoven_baremetal)
+endif()

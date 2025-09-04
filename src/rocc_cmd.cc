@@ -19,8 +19,8 @@
 #include <cstring>
 #include <iostream>
 #include <cassert>
-#else
-#include <beethoven_allocator_declaration.h>
+#else // BAREMETAL
+#include <beethoven_hardware.h>
 #endif
 #include "beethoven/fpga_handle.h"
 

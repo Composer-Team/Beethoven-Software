@@ -65,7 +65,7 @@ endif
 
 VPI_LOC = /usr/local/lib/ivl
 VPI_FLAGS = $(VPI_LOC)/system.vpi
-VERILOG_FLAGS = -DCLOCK_PERIOD=500
+VERILOG_FLAGS = -DCLOCK_PERIOD=4
 VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) 
 
 # DEBUG FLAGS
@@ -139,10 +139,14 @@ bin/%: test/%.cc $(SRCS) libdramsim3.so
 
 test: $(TESTS)
 
+lint: $(VERILOG_SRCS)
+	verilator --lint-only -Wno-timescalemod -Wall -top BeethovenTop $(VERILOG_SRCS)
+
+
 ############### VERILATOR ONLY ###################
 ifeq ($(SIMULATOR),verilator)
 
-.PHONY: verilate
+.PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
 	verilator --cc --top BeethovenTop --trace-fst $(VERILOG_SRCS)
 
