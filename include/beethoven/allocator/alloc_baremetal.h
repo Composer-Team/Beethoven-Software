@@ -15,10 +15,11 @@
 
 #ifndef BEETHOVEN_ALLOC_BAREMETAL_H
 #define BEETHOVEN_ALLOC_BAREMETAL_H
+#ifdef BAREMETAL
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <bit>
 
 namespace beethoven {
 
@@ -28,11 +29,13 @@ class remote_ptr {
   friend fpga_handle_t;
 
   intptr_t fpga_addr;
-public:
 
+public:
   [[nodiscard]] uint64_t getFpgaAddr() const { return fpga_addr; }
 
-  [[nodiscard]] void *getHostAddr() const { return reinterpret_cast<void*>(fpga_addr); }
+  [[nodiscard]] void *getHostAddr() const {
+    return reinterpret_cast<void *>(fpga_addr);
+  }
 
   constexpr explicit remote_ptr() : fpga_addr(0) {}
   constexpr ~remote_ptr() {}
@@ -41,7 +44,7 @@ public:
     return fpga_addr == other.fpga_addr;
   }
 
-  remote_ptr(const remote_ptr &other) noexcept
+  constexpr remote_ptr(const remote_ptr &other) noexcept
       : fpga_addr(other.fpga_addr) {};
 
   constexpr explicit remote_ptr(const intptr_t &faddr) noexcept
@@ -57,10 +60,14 @@ public:
     return *this;
   }
 
-  remote_ptr operator+(int q) const;
-
-  remote_ptr operator-(int q) const;
+  constexpr remote_ptr operator+(int q) const {
+    return remote_ptr(this->fpga_addr + q);
+  }
+  constexpr remote_ptr operator-(int q) const {
+    return remote_ptr(this->fpga_addr - q);
+  }
 };
 } // namespace beethoven
 
+#endif
 #endif // BEETHOVEN_ALLOC_BAREMETAL_H

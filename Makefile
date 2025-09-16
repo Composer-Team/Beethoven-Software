@@ -162,7 +162,7 @@ endif
 
 ############ END VERILATOR ONLY ##################
 
-
+.PHONY: beethoven.vvp
 beethoven.vvp: $(VERILOG_SRCS)
 	iverilog $(VERILOG_FLAGS) -s BeethovenTopVCSHarness -o$@ $(VERILOG_SRCS)
 

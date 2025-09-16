@@ -56,7 +56,7 @@ extern void print_str(const char *s);
 extern void print_32bHex(uint32_t q);
 }
 
-rocc_response response_getter::get() { // NOLINT(*-no-recursion)
+std::optional<rocc_response> response_getter::get_help(const bool &block) {
   uint32_t resp_flag = 1 << id;
   if ((valid_resps & resp_flag) == resp_flag) {
     valid_resps ^= resp_flag;
@@ -64,7 +64,7 @@ rocc_response response_getter::get() { // NOLINT(*-no-recursion)
     return resps[id];
   }
   // no fancy error handling or correctness checks here.
-  while (peek_addr(MMIO_BASE + RESP_VALID) == 0) {}
+  while (peek_addr(MMIO_BASE + RESP_VALID) == 0) { if (!block) return {}; }
   uint32_t buf[3];
   buf[0] = peek_addr(MMIO_BASE + RESP_BITS);
   poke_addr(MMIO_BASE + RESP_READY, 1);
@@ -82,5 +82,14 @@ rocc_response response_getter::get() { // NOLINT(*-no-recursion)
     valid_resps |= resp_flag;
     return get();
   }
+}
+
+rocc_response response_getter::get() {
+  return get_help(true).value();
+}
+
+
+std::optional<rocc_response> response_getter::try_get() {
+  return get_help(false);
 }
 

@@ -108,7 +108,6 @@ elseif (${BAREMETAL})
     add_compile_definitions(BEETHOVEN_BAREMETAL=1)
     target_sources(${LIBRARY_NAME} PRIVATE
             ${M55_SOURCES}
-            src/allocator/alloc_baremetal.cpp
             src/fpga_handle_impl/fpga_handle_baremetal.cc
             $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
     include_directories(
@@ -116,6 +115,7 @@ elseif (${BAREMETAL})
             ${TB_LOC}/Device/ARM/exectb_mcu/Include/
             ${TB_LOC}/CMSIS/Include/
             "include"
+            ${CMAKE_}
     )
 else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete (aka 'sim'), kria, and baremetal.")
