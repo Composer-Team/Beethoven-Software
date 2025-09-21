@@ -109,7 +109,7 @@ endif
 ifeq ($(SIMULATOR),vcs)
 SIMULATOR_BACKEND=vpi
 DEPS =
-CXX_FLAGS += -DSIM=vcs
+CXX_FLAGS += -DSIM=vcs -I$(VCS_HOME)/include
 CXX_DEPS = 
 VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
 endif
@@ -139,8 +139,15 @@ runtime/src/%.o: runtime/src/%.cc $(CXX_DEPS)
 src/%.o: src/%.cc 
 	$(CXX) -c ${CXX_FLAGS} $(SW_DEF) -o$@ $^
 
+# for icarus - requires .vpi ending
 sim_BeethovenRuntime.vpi: $(SRCS) lib_beethoven.o libdramsim3.so
 	$(CXX) -shared $(LD_FLAGS) -o$@ $^
+
+# for VCS, allows standard .so ending
+libBeethovenRuntime.so: $(SRCS) lib_beethoven.o libdramsim3.so
+	$(CXX) -shared $(LD_FLAGS) -o$@ $^
+
+
 
 TESTS = bin/alloc_sizes bin/merge_sort
 
@@ -179,8 +186,29 @@ ifeq ($(SIMULATOR),vcs)
 verilate: $(VERILOG_SRCS)
 	verilator --cc --top BeethovenTop --trace-fst $(VERILOG_SRCS)
 
-BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o
-	vcs +vcs+loopreport +v2k -kdb -timescale=1ps/1ps -debug_access $(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a -sverilog +incdir+$(BEETHOVEN_PATH)/build/hw -full64 +vpi+1 -CFLAGS -std=c++17 -P +define+CLOCK_PERIOD=500 -f $(BEETHOVEN_PATH)/build/vcs_srcs.in libBeethovenRuntime.so libdramsim3.so lib_beethoven.o -lrt -L/usr/local/lib64 -lbeethoven -CFLAGS -I$(BEETHOVEN_PATH)/build/hw $(BEETHOVEN_PATH)/build/hw/BeethovenTopVCSHarness.v -o BeethovenTop
+BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
+	vcs +vcs+loopreport \
+		+v2k \
+		-kdb \
+		-timescale=1ps/1ps \
+		-debug_access \
+		$(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a \
+		-P runtime/scripts/tab.tab \
+		-sverilog \
+		+incdir+$(BEETHOVEN_PATH)/build/hw \
+		-full64 \
+		+vpi+1 \
+		+define+CLOCK_PERIOD=500 \
+		-f $(BEETHOVEN_PATH)/build/vcs_srcs.in \
+		libBeethovenRuntime.so \
+		libdramsim3.so \
+		lib_beethoven.o \
+		-lrt \
+		-L/usr/local/lib64 \
+		-LDFLAGS "-Wl,-rpath=/usr/local/lib64" \
+		-lbeethoven \
+		-CFLAGS "-std=c++17 -I$(BEETHOVEN_PATH)/build/hw"\
+		$(BEETHOVEN_PATH)/build/hw/BeethovenTopVCSHarness.v -o BeethovenTop
 
 #	c++ $(CXX_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz
 
