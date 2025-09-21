@@ -28,6 +28,9 @@ CXX = c++
 ifeq ($(SIMULATOR),verilator)
 default: BeethovenSim
 endif
+ifeq ($(SIMULATOR),vcs)
+default: BeethovenSim
+endif
 ifeq ($(SIMULATOR),icarus)
 default: sim_icarus
 endif
@@ -103,6 +106,15 @@ CXX_FLAGS += -DSIM=vcs
 CXX_DEPS = 
 endif
 
+ifeq ($(SIMULATOR),vcs)
+SIMULATOR_BACKEND=vpi
+DEPS =
+CXX_FLAGS += -DSIM=vcs
+CXX_DEPS = 
+VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
+endif
+
+
 ifeq ($(SIMULATOR),verilator)
 SIMULATOR_BACKEND=verilator
 DEPS = obj_dir/VBeethovenTop.cpp
@@ -139,12 +151,12 @@ bin/%: test/%.cc $(SRCS) libdramsim3.so
 
 test: $(TESTS)
 
-lint: $(VERILOG_SRCS)
-	verilator --lint-only -Wno-timescalemod -Wall -top BeethovenTop $(VERILOG_SRCS)
-
 
 ############### VERILATOR ONLY ###################
 ifeq ($(SIMULATOR),verilator)
+
+lint: $(VERILOG_SRCS)
+	verilator --lint-only -Wno-timescalemod -Wall -top BeethovenTop $(VERILOG_SRCS)
 
 .PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
@@ -158,9 +170,22 @@ BeethovenSim: obj_dir/VBeethovenTop__ALL.a $(SRCS) libdramsim3.so lib_beethoven.
 	c++ $(CXX_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz
 
 endif
-	
-
 ############ END VERILATOR ONLY ##################
+
+############### VCS ONLY ###################
+ifeq ($(SIMULATOR),vcs)
+
+.PHONY: verilate lint
+verilate: $(VERILOG_SRCS)
+	verilator --cc --top BeethovenTop --trace-fst $(VERILOG_SRCS)
+
+BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o
+	vcs +vcs+loopreport +v2k -kdb -timescale=1ps/1ps -debug_access $(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a -sverilog +incdir+$(BEETHOVEN_PATH)/build/hw -full64 +vpi+1 -CFLAGS -std=c++17 -P +define+CLOCK_PERIOD=500 -f $(BEETHOVEN_PATH)/build/vcs_srcs.in libBeethovenRuntime.so libdramsim3.so lib_beethoven.o -lrt -L/usr/local/lib64 -lbeethoven -CFLAGS -I$(BEETHOVEN_PATH)/build/hw $(BEETHOVEN_PATH)/build/hw/BeethovenTopVCSHarness.v -o BeethovenTop
+
+#	c++ $(CXX_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz
+
+endif
+############ END VCS ONLY ##################
 
 .PHONY: beethoven.vvp
 beethoven.vvp: $(VERILOG_SRCS)
@@ -179,3 +204,4 @@ clean:
 		`find . -name '*.so'`\
 		`find . -name '*.dylib'` \
 		`find . -name '*.a'`
+	rm -f sim_BeethovenRuntime.vpi
