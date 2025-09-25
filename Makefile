@@ -68,7 +68,7 @@ endif
 
 VPI_LOC = /usr/local/lib/ivl
 VPI_FLAGS = $(VPI_LOC)/system.vpi
-VERILOG_FLAGS = -DCLOCK_PERIOD=4
+VERILOG_FLAGS = -DCLOCK_PERIOD=4 -I${BEETHOVEN_PATH}/build/hw
 VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) 
 
 # DEBUG FLAGS
@@ -158,19 +158,29 @@ bin/%: test/%.cc $(SRCS) libdramsim3.so
 
 test: $(TESTS)
 
+<<<<<<< HEAD
+=======
+lint: $(VERILOG_SRCS)
+	verilator --lint-only -Wno-timescalemod -Wall +incdir+$(BEETHOVEN_PATH)/build/hw -top BeethovenTop $(VERILOG_SRCS)
+
+>>>>>>> 29bc90a (add link cmake to baremetal)
 
 ############### VERILATOR ONLY ###################
 ifeq ($(SIMULATOR),verilator)
 
+<<<<<<< HEAD
 lint: $(VERILOG_SRCS)
 	verilator --lint-only -Wno-timescalemod -Wall -top BeethovenTop $(VERILOG_SRCS)
+=======
+VERILATOR_DISABLE_WARN=-Wno-ascrange -Wno-pinmissing -Wno-widthexpand
+>>>>>>> 29bc90a (add link cmake to baremetal)
 
 .PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
-	verilator --cc --top BeethovenTop --trace-fst $(VERILOG_SRCS)
+	verilator --hierarchical $(VERILATOR_DISABLE_WARN) --cc --top BeethovenTop --trace-fst +incdir+$(BEETHOVEN_PATH)/build/hw $(VERILOG_SRCS)
 
 obj_dir/VBeethovenTop__ALL.a: verilate
-	$(MAKE) -f VBeethovenTop.mk -C obj_dir USER_CPPFLAGS="$(USER_CPPFLAGS)" VM_TRACE_FST=1
+	$(MAKE) -f VBeethovenTop_hier.mk -C obj_dir USER_CPPFLAGS="$(USER_CPPFLAGS)" VM_TRACE_FST=1
 
 	
 BeethovenSim: obj_dir/VBeethovenTop__ALL.a $(SRCS) libdramsim3.so lib_beethoven.o

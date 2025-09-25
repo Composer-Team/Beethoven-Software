@@ -4,8 +4,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/beethoven_baremetalTargets.cmake")
 
 check_required_components(beethoven_baremetal)
 
-function(beethoven_build_baremetal TARGET)
-
+function(beethoven_build TARGET)
     cmake_parse_arguments(BEETHOVEN ""
                                     ""
                                     "SOURCES;INCLUDE_DIRS"
@@ -26,4 +25,19 @@ function(beethoven_build_baremetal TARGET)
     target_include_directories(${TARGET} PUBLIC $ENV{BEETHOVEN_PATH}/build/)
     target_link_libraries(${TARGET} PUBLIC APEX::beethoven_baremetal)
     target_compile_definitions(${TARGET} PUBLIC BAREMETAL=1)
+endfunction()
+
+
+function(link_beethoven_to_target TARGET)
+    cmake_parse_arguments(BEETHOVEN ""
+                                   ""
+                                   ""
+                                   ${ARGN} )
+    if ("$ENV{BEETHOVEN_PATH}" STREQUAL "")
+        message(FATAL_ERROR "Must define the BEETHOVEN_PATH environment variable!")
+    endif()
+
+    target_sources(${TARGET} PRIVATE $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
+    target_include_directories(${TARGET} PUBLIC $ENV{BEETHOVEN_PATH}/build/)
+    target_link_libraries(${TARGET} PUBLIC APEX::beethoven)
 endfunction()
