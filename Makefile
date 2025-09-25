@@ -158,22 +158,14 @@ bin/%: test/%.cc $(SRCS) libdramsim3.so
 
 test: $(TESTS)
 
-<<<<<<< HEAD
-=======
 lint: $(VERILOG_SRCS)
 	verilator --lint-only -Wno-timescalemod -Wall +incdir+$(BEETHOVEN_PATH)/build/hw -top BeethovenTop $(VERILOG_SRCS)
 
->>>>>>> 29bc90a (add link cmake to baremetal)
 
 ############### VERILATOR ONLY ###################
 ifeq ($(SIMULATOR),verilator)
 
-<<<<<<< HEAD
-lint: $(VERILOG_SRCS)
-	verilator --lint-only -Wno-timescalemod -Wall -top BeethovenTop $(VERILOG_SRCS)
-=======
 VERILATOR_DISABLE_WARN=-Wno-ascrange -Wno-pinmissing -Wno-widthexpand
->>>>>>> 29bc90a (add link cmake to baremetal)
 
 .PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
