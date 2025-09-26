@@ -192,7 +192,7 @@ BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 	vcs +vcs+loopreport \
 		+v2k \
 		-kdb \
-		-timescale=1ps/1ps \
+		-timescale=1ns/100ps \
 		-debug_access \
 		$(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a \
 		-P runtime/scripts/tab.tab \
@@ -200,7 +200,8 @@ BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 		+incdir+$(BEETHOVEN_PATH)/build/hw \
 		-full64 \
 		+vpi+1 \
-		+define+CLOCK_PERIOD=500 \
+		+define+CLOCK_PERIOD=2 \
+		+define+ICARUS=1 \
 		-f $(BEETHOVEN_PATH)/build/vcs_srcs.in \
 		libBeethovenRuntime.so \
 		libdramsim3.so \
@@ -211,8 +212,6 @@ BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 		-lbeethoven \
 		-CFLAGS "-std=c++17 -I$(BEETHOVEN_PATH)/build/hw"\
 		$(BEETHOVEN_PATH)/build/hw/BeethovenTopVCSHarness.v -o BeethovenTop
-
-#	c++ $(CXX_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz
 
 endif
 ############ END VCS ONLY ##################
