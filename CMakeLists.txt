@@ -12,6 +12,8 @@ elseif("${PLATFORM}" STREQUAL "discrete")
     set(DISCRETE ON)
 elseif("${PLATFORM}" STREQUAL "kria")
     set(KRIA ON)
+else()
+    message(FATAL_ERROR "platform should be baremetal, discrete, or kria")
 endif()
 
 
