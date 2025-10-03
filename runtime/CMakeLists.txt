@@ -25,6 +25,13 @@ if ("${SIMULATOR}" STREQUAL "")
 endif ()
 
 set(AWS ("${BACKEND}" STREQUAL "F1" OR "${BACKEND}" STREQUAL "F2"))
+if (${AWS})
+	set(AWS ON)
+else()
+	set(AWS OFF)
+endif()
+
+message(STATUS "Is AWS: ${AWS}")
 
 if ("${TARGET}" STREQUAL "sim")
     message("BUILDING FOR SIM")
@@ -108,7 +115,7 @@ elseif ("${TARGET}" STREQUAL "fpga")
         message(FATAL_ERROR "Must define backend for FPGA. F1 or Kria")
     endif ()
     set(BUILD_SIM 0)
-    add_executable(BeethovenRuntime ${SRC} src/response_poller.cc src/fpga_utils.c src/fpga_main.cc src/mmio.cc include/mmio.h)
+    add_executable(BeethovenRuntime ${SRC} src/response_poller.cc src/fpga_utils.c src/fpga_main.cc src/mmio.cc include/mmio.h $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
     if (${AWS})
     	message("BUILDING FOR AWS")
 	message("will include '$ENV{AWS_FPGA_REPO_DIR}/sdk/userspace/include'")
@@ -149,7 +156,7 @@ endif ()
 
 include_directories(${BEETHOVEN_HWDIR}/)
 
-if ("${VERBOSE}" STREQUAL "1")
+if (${VERBOSE})
     target_compile_definitions(BeethovenRuntime PUBLIC VERBOSE)
 endif ()
 

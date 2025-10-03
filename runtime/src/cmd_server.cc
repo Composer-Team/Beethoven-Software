@@ -91,7 +91,9 @@ static void *cmd_server_f(void *) {
   std::cout << "Command server started on file " << cmd_server_file_name() << std::endl;
   pthread_mutex_lock(&addr.server_mut);
   while (true) {
-//    std::cerr << "Got Command in Server" << std::endl << std::endl;
+#ifdef VERBOSE
+    std::cerr << "Got Command in Server" << std::endl << std::endl;
+#endif
     auto start = std::chrono::high_resolution_clock::now();
     // allocate space for response
     int id;

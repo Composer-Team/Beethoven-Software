@@ -16,15 +16,20 @@ extern pthread_mutex_t main_lock;
 #endif
 
 #if defined(F1) || defined(F2)
+
 #define AWS 1
+
 #if defined(F1)
 #define USE_XDMA 1
 #else
 #define USE_XDMA 0
 #endif
+
 #else
+
 #define AWS 0
 #define USE_XDMA 0
+
 #endif
 
 #if AWS || defined(Kria)

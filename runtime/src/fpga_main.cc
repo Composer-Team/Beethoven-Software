@@ -19,7 +19,7 @@ extern "C" void test_main_hook(uint32_t *exit_code)
 int main()
 #endif
 {
-#ifdef AWS
+#if AWS
   fpga_setup(0);
 #endif
   // Kria does local allocations only
@@ -27,7 +27,7 @@ int main()
   data_server::start();
   pthread_mutex_lock(&main_lock);
   pthread_mutex_lock(&main_lock);
-#ifdef AWS
+#if AWS
   fpga_shutdown();
 #endif
 #ifdef VSIM

@@ -230,7 +230,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   }
 
   if (addr == MAP_FAILED)
-    throw std::runtime_error("Error in FPGA malloc. Map failed. Err msg: " + std::string(strerror(errno)));
+    throw std::runtime_error("Error in FPGA malloc. Map failed for alloc of size (" + std::to_string(double(len)/1024/1024) + ") MB. Err msg: " + std::string(strerror(errno)));
 
   if (mlock(addr, sz))
     throw std::runtime_error("Error in FPGA malloc. mlock failed. Err msg: " + std::string(strerror(errno)));
