@@ -74,10 +74,16 @@ static std::vector<uint16_t> available_ids;
 data_server_file *dsf;
 
 [[noreturn]] static void *data_server_f(void *) {
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Starting data server thread" << std::endl;
+  }
   int fd_beethoven = shm_open(data_server_file_name().c_str(), O_CREAT | O_RDWR, file_access_flags);
   if (fd_beethoven < 0) {
     std::cerr << "Failed to open data_server file: '" << data_server_file_name << "'" << std::endl;
     throw std::exception();
+  }
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Opened shared memory: " << data_server_file_name() << std::endl;
   }
 
   struct stat shm_stats{};
@@ -85,6 +91,9 @@ data_server_file *dsf;
   LOG(std::cerr << shm_stats.st_size << std::endl;
       std::cerr << sizeof(data_server_file) << std::endl);
   if (shm_stats.st_size < sizeof(data_server_file)) {
+    if (runtime_verbose) {
+      std::cout << "[DATA_SERVER] Truncating shared memory to " << sizeof(data_server_file) << " bytes" << std::endl;
+    }
     int tr_rc = ftruncate(fd_beethoven, sizeof(data_server_file));
     if (tr_rc) {
       std::cerr << "Failed to truncate data_server file" << std::endl;
@@ -94,39 +103,59 @@ data_server_file *dsf;
 
   auto &addr = *(data_server_file *) mmap(nullptr, sizeof(data_server_file), file_access_prots,
                                           MAP_SHARED, fd_beethoven, 0);
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Memory mapped successfully" << std::endl;
+  }
 
 #ifdef BEETHOVEN_USE_CUSTOM_ALLOC
   LOG(std::cerr << "Constructing allocator" << std::endl);
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Using custom allocator (size: " << ALLOCATOR_SIZE_BYTES << " bytes)" << std::endl;
+  }
   auto allocator = new device_allocator<ALLOCATOR_SIZE_BYTES>();
   LOG(std::cerr << "Allocator constructed - data server ready" << std::endl);
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Allocator constructed" << std::endl;
+  }
 #endif
   data_server_file::init(addr);
   LOG(std::cerr << "Data server file constructed" << std::endl);
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Data server file initialized" << std::endl;
+  }
 
 #if defined(FPGA) && AWS
-  std::cerr << "Running FPGA MemCpy Sanity Checks..." << std::endl;
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Running FPGA MemCpy Sanity Checks..." << std::endl;
+  }
   auto sanity_alloc = (uint8_t *) malloc(1024);
   auto sanity_int = (uint32_t *) sanity_alloc;
   unsigned long sanity_address = 0xDEAD0000L;
   for (int i = 0; i < 1024 / 4; ++i) {
     sanity_int[i] = 0xCAFEBEEF;
   }
-  std::cerr << "Trying to write 1024B to FPGA." << std::endl;
+  if (runtime_verbose) {
+    std::cout << "[DATA_SERVER] Trying to write 1024B to FPGA" << std::endl;
+  }
 
   int sanity_rc = wrapper_fpga_dma_burst_write(xdma_write_fd, sanity_alloc, 1024, sanity_address);
   if (sanity_rc) {
-    std::cerr << "Failed to DMA write to FPGA. Error code: " << sanity_rc << std::endl;
+    std::cerr << "[DATA_SERVER] Failed to DMA write to FPGA. Error code: " << sanity_rc << std::endl;
     throw std::exception();
   } else {
-    std::cerr << "Success 1/3" << std::endl;
+    if (runtime_verbose) {
+      std::cout << "[DATA_SERVER] DMA write sanity check passed (1/3)" << std::endl;
+    }
   }
   memset(sanity_alloc, 0, 1024);
   sanity_rc = wrapper_fpga_dma_burst_read(xdma_read_fd, sanity_alloc, 1024, sanity_address);
   if (sanity_rc) {
-    std::cerr << "Failed to DMA read from FPGA. Error code: " << sanity_rc << std::endl;
+    std::cerr << "[DATA_SERVER] Failed to DMA read from FPGA. Error code: " << sanity_rc << std::endl;
     throw std::exception();
   } else {
-    std::cerr << "Success 2/3" << std::endl;
+    if (runtime_verbose) {
+      std::cout << "[DATA_SERVER] DMA read sanity check passed (2/3)" << std::endl;
+    }
   }
 
   for (int i = 0; i < 1024 / 4; ++i) {
@@ -136,10 +165,12 @@ data_server_file *dsf;
   }
 
   if (sanity_rc) {
-    std::cerr << "While the DMA read operation succeeded, the data we read back was faulty (not 0xCAFEBEEF)." << std::endl;
+    std::cerr << "[DATA_SERVER] While the DMA read operation succeeded, the data we read back was faulty (not 0xCAFEBEEF)." << std::endl;
     throw std::exception();
   } else {
-    std::cerr << "Success 3/3" << std::endl;
+    if (runtime_verbose) {
+      std::cout << "[DATA_SERVER] DMA data verification passed (3/3)" << std::endl;
+    }
   }
 #endif
 
@@ -152,6 +183,9 @@ data_server_file *dsf;
   while (true) {
     //    printf("data server got cmd\n"); fflush(stdout);
     // get file name, descriptor, expand the file, and map it to address space
+    if (runtime_verbose) {
+      std::cout << "[DATA_SERVER] Received operation request" << std::endl;
+    }
     switch (addr.operation) {
       case data_server_op::ALLOC: {
 #if defined(FPGA) && defined(Kria)
@@ -160,6 +194,9 @@ data_server_file *dsf;
         fflush(stderr);
         break;
 #endif
+        if (runtime_verbose) {
+          std::cout << "[DATA_SERVER] ALLOC: Allocating " << addr.op_argument << " bytes" << std::endl;
+        }
         auto fname = "/beethoven_file_" + std::to_string(rand());// NOLINT(cert-msc50-cpp)
         int nfd = shm_open(fname.c_str(), O_CREAT | O_RDWR, file_access_flags);
         if (nfd < 0) {
@@ -200,10 +237,18 @@ data_server_file *dsf;
         // return fpga address
         addr.op_argument = fpga_addr;
         LOG(printf("Allocated %llu bytes at %p. FPGA addr %llx\n", nBytes, naddr, fpga_addr));
+        if (runtime_verbose) {
+          std::cout << "[DATA_SERVER] ALLOC: Allocated " << nBytes << " bytes at host=" << naddr
+                    << ", FPGA addr=0x" << std::hex << fpga_addr << std::dec << std::endl;
+        }
 #else
         auto fpga_addr = (uint64_t) naddr;
         at.add_mapping(fpga_addr, addr.op_argument, naddr);
         addr.op_argument = fpga_addr;
+        if (runtime_verbose) {
+          std::cout << "[DATA_SERVER] ALLOC: Allocated " << nBytes << " bytes at addr=0x"
+                    << std::hex << fpga_addr << std::dec << std::endl;
+        }
 #endif
         // add mapping in server
         break;
@@ -214,10 +259,18 @@ data_server_file *dsf;
 #endif
         LOG(printf("Freeing %llu bytes at %p\n", at.get_mapping(addr.op_argument).second, at.get_mapping(addr.op_argument).first);
             fflush(stdout));
+        if (runtime_verbose) {
+          std::cout << "[DATA_SERVER] FREE: Freeing " << at.get_mapping(addr.op_argument).second
+                    << " bytes at FPGA addr=0x" << std::hex << addr.op_argument << std::dec << std::endl;
+        }
         munmap(at.get_mapping(addr.op_argument).first, at.get_mapping(addr.op_argument).second);
         at.remove_mapping(addr.op_argument);
         break;
       case data_server_op::MOVE_FROM_FPGA: {
+        if (runtime_verbose) {
+          std::cout << "[DATA_SERVER] MOVE_FROM_FPGA: Copying " << addr.op3_argument
+                    << " bytes from FPGA addr=0x" << std::hex << addr.op2_argument << std::dec << std::endl;
+        }
         // std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
 #ifdef SIM
 #ifdef BEETHOVEN_HAS_DMA
@@ -265,6 +318,10 @@ data_server_file *dsf;
         break;
       }
       case data_server_op::MOVE_TO_FPGA: {
+        if (runtime_verbose) {
+          std::cout << "[DATA_SERVER] MOVE_TO_FPGA: Copying " << addr.op3_argument
+                    << " bytes to FPGA addr=0x" << std::hex << addr.op_argument << std::dec << std::endl;
+        }
 #ifdef FPGA
 #ifndef Kria // implied discrete
         auto shaddr = at.translate(addr.op_argument);
@@ -285,7 +342,9 @@ data_server_file *dsf;
         auto ptr1 = (unsigned char *) at.translate(addr.op_argument);
         auto ptr2 = addr.op_argument;
         if (amt_left % 64 != 0) {
-          printf("NOT ALIGNED OOF DATA\n");
+          if (runtime_verbose) {
+            std::cout << "[DATA_SERVER] Warning: Data not aligned to 64-byte boundary" << std::endl;
+          }
         }
         while (amt_left > 0) {
           pthread_mutex_lock(&dma_lock);

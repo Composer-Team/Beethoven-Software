@@ -56,7 +56,13 @@ std::unordered_map<system_core_pair, std::queue<int> *> in_flight;
 constexpr int num_cmd_beats = (int) roundUp((float) (32 * 5) / AXIL_BUS_WIDTH);
 
 static void *cmd_server_f(void *) {
+  if (runtime_verbose) {
+    std::cout << "[CMD_SERVER] Starting command server thread" << std::endl;
+  }
   setup_mmio();
+  if (runtime_verbose) {
+    std::cout << "[CMD_SERVER] MMIO setup completed" << std::endl;
+  }
   // map in the shared file
   int fd_beethoven = shm_open(cmd_server_file_name().c_str(), O_CREAT | O_RDWR, file_access_flags);
   if (fd_beethoven < 0) {
@@ -64,11 +70,17 @@ static void *cmd_server_f(void *) {
     exit(errno);
   } else {
     LOG(printf("Successfully intialized cmd_file at %s\n", cmd_server_file_name().c_str()));
+    if (runtime_verbose) {
+      std::cout << "[CMD_SERVER] Opened shared memory: " << cmd_server_file_name() << std::endl;
+    }
   }
   // check the file size. It might already exist in which case we don't need to truncate it again
   struct stat shm_stats{};
   fstat(fd_beethoven, &shm_stats);
   if (shm_stats.st_size < sizeof(cmd_server_file)) {
+    if (runtime_verbose) {
+      std::cout << "[CMD_SERVER] Truncating shared memory to " << sizeof(cmd_server_file) << " bytes" << std::endl;
+    }
     int tr_rc = ftruncate(fd_beethoven, sizeof(cmd_server_file));
     if (tr_rc) {
       std::cerr << "Failed to truncate cmd_server file" << std::endl;
@@ -79,21 +91,35 @@ static void *cmd_server_f(void *) {
   auto &addr = *(cmd_server_file *) mmap(nullptr, sizeof(cmd_server_file), file_access_prots,
                                          MAP_SHARED, fd_beethoven, 0);
   csf = &addr;
+  if (runtime_verbose) {
+    std::cout << "[CMD_SERVER] Memory mapped successfully" << std::endl;
+  }
   // we need to initialize it! This used to be a race condition, where the cmd_server thread was racing against the
   // poller thread to get to the file. The poller often won, found old dat anad mucked everything up :(
   cmd_server_file::init(addr);
+  if (runtime_verbose) {
+    std::cout << "[CMD_SERVER] Command server file initialized" << std::endl;
+  }
 #ifndef SIM
   response_poller::start_poller(&addr.processes_waiting);
+  if (runtime_verbose) {
+    std::cout << "[CMD_SERVER] Response poller started" << std::endl;
+  }
 #endif
 
   std::vector<std::pair<int, FILE *>> alloc;
   pthread_mutex_lock(&addr.server_mut);
-  std::cout << "Command server started on file " << cmd_server_file_name() << std::endl;
+  if (runtime_verbose) {
+    std::cout << "[CMD_SERVER] Command server ready on file " << cmd_server_file_name() << std::endl;
+  }
   pthread_mutex_lock(&addr.server_mut);
   while (true) {
 #ifdef VERBOSE
     std::cerr << "Got Command in Server" << std::endl << std::endl;
 #endif
+    if (runtime_verbose) {
+      std::cout << "[CMD_SERVER] Received command" << std::endl;
+    }
     auto start = std::chrono::high_resolution_clock::now();
     // allocate space for response
     int id;
@@ -106,14 +132,23 @@ static void *cmd_server_f(void *) {
       addr.free_list_idx--;
       pthread_mutex_unlock(&addr.free_list_lock);
 
+      if (runtime_verbose) {
+        std::cout << "[CMD_SERVER] Allocated response ID: " << id << std::endl;
+      }
       // return response handle to client
       addr.pthread_wait_id = id;
       // end return response handle to client
     } else {
       addr.pthread_wait_id = id = 0xffff;
+      if (runtime_verbose) {
+        std::cout << "[CMD_SERVER] Command does not expect response (fire-and-forget)" << std::endl;
+      }
     }
     pthread_mutex_lock(&cmdserverlock);
     if (addr.quit) {
+      if (runtime_verbose) {
+        std::cout << "[CMD_SERVER] Quit command received, shutting down" << std::endl;
+      }
       pthread_mutex_unlock(&main_lock);
 #ifdef SIM
       kill_sig = true;
@@ -126,11 +161,20 @@ static void *cmd_server_f(void *) {
 #if defined(FPGA) || defined(VSIM)
 #if AWS or defined(Kria)
       // wake up response poller if this command expects a response
-      if (addr.cmd.getXd()) sem_post(&addr.processes_waiting);
+      if (addr.cmd.getXd()) {
+        sem_post(&addr.processes_waiting);
+        if (runtime_verbose) {
+          std::cout << "[CMD_SERVER] Waking response poller" << std::endl;
+        }
+      }
       pthread_mutex_lock(&bus_lock);
 #endif
       uint32_t pack[5];
       addr.cmd.pack(pack_cfg, pack);
+      if (runtime_verbose) {
+        std::cout << "[CMD_SERVER] Packed command: system_id=" << addr.cmd.getSystemId()
+                  << ", core_id=" << addr.cmd.getCoreId() << std::endl;
+      }
       //    if (sizeof(pack[0]) > 64) {
       //      printf("FAILURE - cannot use peek-poke give the current ");
       //      exit(1);
@@ -140,6 +184,9 @@ static void *cmd_server_f(void *) {
         poke_mmio(CMD_BITS, pack[i]);
         poke_mmio(CMD_VALID, 1);
       }
+      if (runtime_verbose) {
+        std::cout << "[CMD_SERVER] Command sent to hardware (" << num_cmd_beats << " beats)" << std::endl;
+      }
 #endif
     LOG(std::cerr << "Successfully delivered command\n"
                   << std::endl);
@@ -148,6 +195,9 @@ static void *cmd_server_f(void *) {
 #else
     // sim only
     cmds.push(addr.cmd);
+    if (runtime_verbose) {
+      std::cout << "[CMD_SERVER] Command queued for simulation" << std::endl;
+    }
 #endif
     // let main thread know how to return result
     if (addr.cmd.getXd()) {
@@ -206,7 +256,11 @@ void register_reponse(uint32_t *r_buffer) {
     pthread_mutex_unlock(&main_lock);
   } else {
     int id = in_flight[pr]->front();
-    fprintf(stderr, "Status: Got response from Sys(%d) Core(%d)\n", r.system_id, r.core_id);
+    if (runtime_verbose) {
+      std::cout << "[CMD_SERVER] Registered response: ID=" << id
+                << ", Sys=" << r.system_id << ", Core=" << r.core_id
+                << ", Data=0x" << std::hex << r.data << std::dec << std::endl;
+    }
     csf->responses[id] = r;
     // allow client thread to access response
     pthread_mutex_unlock(&csf->wait_for_response[id]);

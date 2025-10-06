@@ -11,6 +11,7 @@
 extern "C" {
 #endif
 extern pthread_mutex_t main_lock;
+extern bool runtime_verbose;
 #ifdef __cplusplus
 };
 #endif
