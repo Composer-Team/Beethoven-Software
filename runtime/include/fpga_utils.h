@@ -6,6 +6,9 @@
 #define BEETHOVEN_VERILATOR_FPGA_UTILS_H
 
 #include <pthread.h>
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
