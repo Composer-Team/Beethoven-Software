@@ -257,7 +257,7 @@ data_server_file *dsf;
 #ifdef BEETHOVEN_USE_CUSTOM_ALLOC
         allocator->free(addr.op_argument);
 #endif
-        LOG(printf("Freeing %llu bytes at %p\n", at.get_mapping(addr.op_argument).second, at.get_mapping(addr.op_argument).first);
+        LOG(printf("Freeing %zu bytes at %p\n", at.get_mapping(addr.op_argument).second, at.get_mapping(addr.op_argument).first);
             fflush(stdout));
         if (runtime_verbose) {
           std::cout << "[DATA_SERVER] FREE: Freeing " << at.get_mapping(addr.op_argument).second
