@@ -53,7 +53,7 @@ pthread_mutex_t cmdserverlock = PTHREAD_MUTEX_INITIALIZER;
 std::queue<beethoven::rocc_cmd> cmds;
 std::unordered_map<system_core_pair, std::queue<int> *> in_flight;
 
-constexpr int num_cmd_beats = (int) roundUp((float) (32 * 5) / AXIL_BUS_WIDTH);
+constexpr int num_cmd_beats = (int) roundUp((float) (32 * 5) / 32);
 
 static void *cmd_server_f(void *) {
   if (runtime_verbose) {
@@ -181,6 +181,9 @@ static void *cmd_server_f(void *) {
       //    }
       for (int i = 0; i < num_cmd_beats; ++i) {// command is 5 32-bit payloads
         while (!peek_mmio(CMD_READY)) {}
+	if (runtime_verbose) {
+	  std::cout << "[CMD_SERVER] Wrote payload to hardware: 0x" << std::hex << pack[i] << std::endl;
+	}
         poke_mmio(CMD_BITS, pack[i]);
         poke_mmio(CMD_VALID, 1);
       }
