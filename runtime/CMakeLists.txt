@@ -9,7 +9,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(SRC src/data_server.cc src/cmd_server.cc src/mmio.cc)
 if ("$ENV{BEETHOVEN_PATH}" STREQUAL "")
-    message(FATAL_ERROR "Environment variable $BEETHOVEN_ROOT is not defined")
+	message(FATAL_ERROR "Environment variable $BEETHOVEN_PATH is not defined")
 endif ()
 
 set(BEETHOVEN_DIR "$ENV{BEETHOVEN_PATH}/build/")
