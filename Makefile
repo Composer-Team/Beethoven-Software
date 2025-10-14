@@ -7,6 +7,8 @@ SUDO ?= sudo
 PREFIX ?= /usr/local/
 BUILD_TYPE ?= DEBUG
 
+VPATH=$(BEETHOVEN_PATH)/build/hw/verification
+
 VERILATOR_INC = /opt/homebrew/share/verilator/include/
 
 ifeq ($(PLATFORM),discrete)
@@ -100,7 +102,7 @@ ifeq ($(SIMULATOR),icarus)
 SIMULATOR_BACKEND=vpi
 DEPS = sim_BeethovenRuntime.vpi beethoven.vvp
 
-VERILOG_FLAGS += -DICARUS -g2005-sv -I${BEETHOVEN_PATH}/build/hw/verification/ -DSYNTHESIS
+VERILOG_FLAGS += -DICARUS -g2005-sv -I$(VPATH) -I$(VPATH)/assume -I$(VPATH)/assert -I$(VPATH)/cover -DSYNTHESIS
 VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
 CXX_FLAGS += -DSIM=vcs
 CXX_DEPS = 
@@ -162,12 +164,16 @@ lint: $(VERILOG_SRCS)
 	verilator --lint-only -Wno-timescalemod -Wall +incdir+$(BEETHOVEN_PATH)/build/hw -top BeethovenTop $(VERILOG_SRCS)
 
 
+
+.PHONY: beethoven.vvp
+beethoven.vvp: $(VERILOG_SRCS)
+	iverilog $(VERILOG_FLAGS) -s BeethovenTopVCSHarness -o$@ $(VERILOG_SRCS)
+
 ############### VERILATOR ONLY ###################
 ifeq ($(SIMULATOR),verilator)
 
 VERILATOR_DISABLE_WARN=-Wno-ascrange -Wno-pinmissing -Wno-widthexpand
 
-VPATH=$(BEETHOVEN_PATH)/build/hw/verification
 .PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
 	verilator $(VERILATOR_DISABLE_WARN) --cc --top BeethovenTop --trace-fst +incdir+$(BEETHOVEN_PATH)/build/hw  +incdir+$(VPATH)/cover +incdir+$(VPATH)/assume +incdir+$(VPATH)/assert +incdir+$(VPATH) $(VERILOG_SRCS)
@@ -199,6 +205,10 @@ BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 		-P runtime/scripts/tab.tab \
 		-sverilog \
 		+incdir+$(BEETHOVEN_PATH)/build/hw \
+		+incdir+$(VPATH)/assume \
+		+incdir+$(VPATH)/cover \
+		+incdir+$(VPATH)/assert \
+		+incdir+$(VPATH) \
 		-full64 \
 		+vpi+1 \
 		+define+CLOCK_PERIOD=2 \
@@ -216,10 +226,6 @@ BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 
 endif
 ############ END VCS ONLY ##################
-
-.PHONY: beethoven.vvp
-beethoven.vvp: $(VERILOG_SRCS)
-	iverilog $(VERILOG_FLAGS) -s BeethovenTopVCSHarness -o$@ $(VERILOG_SRCS)
 
 .PHONY: sim_icarus
 sim_icarus: beethoven.vvp sim_BeethovenRuntime.vpi
