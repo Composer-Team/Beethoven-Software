@@ -9,6 +9,7 @@
 #include <beethoven/verilator_server.h>
 
 extern beethoven::cmd_server_file *csf;
+extern bool runtime_verbose;
 
 struct system_core_pair {
   int system;

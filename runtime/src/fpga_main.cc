@@ -9,7 +9,6 @@
 #include <iostream>
 
 pthread_mutex_t main_lock = PTHREAD_MUTEX_INITIALIZER;
-bool runtime_verbose = false;
 
 #ifdef VSIM
 extern "C" {

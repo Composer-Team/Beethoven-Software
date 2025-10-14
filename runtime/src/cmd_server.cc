@@ -47,6 +47,9 @@ system_core_pair::system_core_pair(int system, int core) {
 
 using namespace beethoven;
 
+bool runtime_verbose = false;
+
+
 cmd_server_file *csf;
 
 pthread_mutex_t cmdserverlock = PTHREAD_MUTEX_INITIALIZER;

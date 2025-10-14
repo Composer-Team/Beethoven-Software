@@ -12,6 +12,7 @@
 #include "util.h"
 #include <beethoven/verilator_server.h>
 
+extern bool runtime_verbose;
 #if defined(SIM)
 #if defined(BEETHOVEN_HAS_DMA)
 #include <pthread.h>

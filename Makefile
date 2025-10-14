@@ -68,7 +68,7 @@ endif
 
 VPI_LOC = /usr/local/lib/ivl
 VPI_FLAGS = $(VPI_LOC)/system.vpi
-VERILOG_FLAGS = -DCLOCK_PERIOD=4 -I${BEETHOVEN_PATH}/build/hw
+VERILOG_FLAGS = -DCLOCK_PERIOD=4 -I${BEETHOVEN_PATH}/build/hw -DSIM
 VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) 
 
 # DEBUG FLAGS
@@ -100,7 +100,7 @@ ifeq ($(SIMULATOR),icarus)
 SIMULATOR_BACKEND=vpi
 DEPS = sim_BeethovenRuntime.vpi beethoven.vvp
 
-VERILOG_FLAGS += -DICARUS
+VERILOG_FLAGS += -DICARUS -g2005-sv -I${BEETHOVEN_PATH}/build/hw/verification/ -DSYNTHESIS
 VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
 CXX_FLAGS += -DSIM=vcs
 CXX_DEPS = 
@@ -167,12 +167,13 @@ ifeq ($(SIMULATOR),verilator)
 
 VERILATOR_DISABLE_WARN=-Wno-ascrange -Wno-pinmissing -Wno-widthexpand
 
+VPATH=$(BEETHOVEN_PATH)/build/hw/verification
 .PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
-	verilator --hierarchical $(VERILATOR_DISABLE_WARN) --cc --top BeethovenTop --trace-fst +incdir+$(BEETHOVEN_PATH)/build/hw $(VERILOG_SRCS)
+	verilator $(VERILATOR_DISABLE_WARN) --cc --top BeethovenTop --trace-fst +incdir+$(BEETHOVEN_PATH)/build/hw  +incdir+$(VPATH)/cover +incdir+$(VPATH)/assume +incdir+$(VPATH)/assert +incdir+$(VPATH) $(VERILOG_SRCS)
 
 obj_dir/VBeethovenTop__ALL.a: verilate
-	$(MAKE) -f VBeethovenTop_hier.mk -C obj_dir USER_CPPFLAGS="$(USER_CPPFLAGS)" VM_TRACE_FST=1
+	$(MAKE) -f VBeethovenTop.mk -C obj_dir USER_CPPFLAGS="$(USER_CPPFLAGS)" VM_TRACE_FST=1
 
 	
 BeethovenSim: obj_dir/VBeethovenTop__ALL.a $(SRCS) libdramsim3.so lib_beethoven.o
@@ -232,5 +233,6 @@ clean:
 		`find . -name '*.o'` \
 		`find . -name '*.so'`\
 		`find . -name '*.dylib'` \
-		`find . -name '*.a'`
+		`find . -name '*.a'` \
+		obj_dir
 	rm -f sim_BeethovenRuntime.vpi
