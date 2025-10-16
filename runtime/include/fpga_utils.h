@@ -15,22 +15,8 @@ extern pthread_mutex_t main_lock;
 };
 #endif
 
-#if defined(F1) || defined(F2)
-
-#define AWS 1
-
-#if defined(F1)
-#define USE_XDMA 1
-#else
-#define USE_XDMA 0
-#endif
-
-#else
-
-#define AWS 0
-#define USE_XDMA 0
-
-#endif
+#define AWS (defined(F1) || defined(F2))
+#define USE_XDMA (defined(F1))
 
 #if AWS || defined(Kria)
 extern pthread_mutex_t bus_lock;

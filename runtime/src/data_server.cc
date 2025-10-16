@@ -43,11 +43,9 @@ bool dma_write;
 #endif
 
 #ifdef FPGA
-
 #include "cmd_server.h"
 #include "fpga_utils.h"
 #include "mmio.h"
-
 #endif
 
 #ifdef Kria
