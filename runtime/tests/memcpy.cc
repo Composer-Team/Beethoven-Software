@@ -8,7 +8,6 @@
 #include <iostream>
 using namespace std::chrono_literals;
 int main() {
-  fpga_setup(0);
   auto ntxs = 64;
   poke_mmio(0, 64);
   std::this_thread::sleep_for(5s);

@@ -30,12 +30,6 @@ int main(int argc, char *argv[])
   }
 #endif
 
-#if AWS
-  fpga_setup(0);
-  if (runtime_verbose) {
-    std::cout << "[RUNTIME] AWS FPGA setup completed" << std::endl;
-  }
-#endif
   // Kria does local allocations only
   if (runtime_verbose) {
     std::cout << "[RUNTIME] Starting command server..." << std::endl;
@@ -50,12 +44,6 @@ int main(int argc, char *argv[])
   }
   pthread_mutex_lock(&main_lock);
   pthread_mutex_lock(&main_lock);
-#if AWS
-  fpga_shutdown();
-  if (runtime_verbose) {
-    std::cout << "[RUNTIME] AWS FPGA shutdown completed" << std::endl;
-  }
-#endif
 #ifdef VSIM
   *exit_code = 0;
 #endif

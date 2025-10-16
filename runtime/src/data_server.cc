@@ -66,8 +66,9 @@ static std::vector<uint16_t> available_ids;
 #include "beethoven/allocator/device_allocator.h"
 #endif
 
-
-
+#if AWS
+uint8_t *devmem_aws_dram;
+#endif
 
 data_server_file *dsf;
 
@@ -123,6 +124,17 @@ data_server_file *dsf;
   }
 
 #if defined(FPGA) && AWS
+  int dmfd = open("/dev/mem", O_RDWR | O_SYNC);
+  devmem_aws_dram = (uint8_t*)mmap(nullptr,
+		  1L << 34,
+		  PROT_READ | PROT_WRITE,
+		  MAP_SHARED | MAP_FILE,
+		  dmfd, 
+		  0x52000000000ULL);
+  if (devmem_aws_dram == MAP_FAILED) {
+    printf("%s\n", strerror(errno));
+    exit(0);
+  }
   if (runtime_verbose) {
     std::cout << "[DATA_SERVER] Running FPGA MemCpy Sanity Checks..." << std::endl;
   }
@@ -136,33 +148,17 @@ data_server_file *dsf;
     std::cout << "[DATA_SERVER] Trying to write 1024B to FPGA" << std::endl;
   }
 
-  int sanity_rc = wrapper_fpga_dma_burst_write(xdma_write_fd, sanity_alloc, 1024, sanity_address);
-  if (sanity_rc) {
-    std::cerr << "[DATA_SERVER] Failed to DMA write to FPGA. Error code: " << sanity_rc << std::endl;
-    throw std::exception();
-  } else {
-    if (runtime_verbose) {
-      std::cout << "[DATA_SERVER] DMA write sanity check passed (1/3)" << std::endl;
-    }
-  }
+  memcpy(devmem_aws_dram + sanity_address, sanity_int, 1024);
   memset(sanity_alloc, 0, 1024);
-  sanity_rc = wrapper_fpga_dma_burst_read(xdma_read_fd, sanity_alloc, 1024, sanity_address);
-  if (sanity_rc) {
-    std::cerr << "[DATA_SERVER] Failed to DMA read from FPGA. Error code: " << sanity_rc << std::endl;
-    throw std::exception();
-  } else {
-    if (runtime_verbose) {
-      std::cout << "[DATA_SERVER] DMA read sanity check passed (2/3)" << std::endl;
-    }
-  }
-
+  memcpy(sanity_int, devmem_aws_dram + sanity_address, 1024);
+  bool success = true;
   for (int i = 0; i < 1024 / 4; ++i) {
     if (sanity_int[i] != 0xCAFEBEEF) {
-      sanity_rc = 1;
+      success = false;
     }
   }
 
-  if (sanity_rc) {
+  if (!success) {
     std::cerr << "[DATA_SERVER] While the DMA read operation succeeded, the data we read back was faulty (not 0xCAFEBEEF)." << std::endl;
     throw std::exception();
   } else {
@@ -270,8 +266,7 @@ data_server_file *dsf;
                     << " bytes from FPGA addr=0x" << std::hex << addr.op2_argument << std::dec << std::endl;
         }
         // std::cerr << at.get_mapping(addr.op2_argument).first << std::endl;
-#ifdef SIM
-#ifdef BEETHOVEN_HAS_DMA
+#if defined(SIM) && defined(BEETHOVEN_HAS_DMA)
         auto ptr1 = (unsigned char *) at.translate(addr.op2_argument);
         auto ptr2 = addr.op2_argument;
         auto amt_left = addr.op3_argument;
@@ -290,27 +285,14 @@ data_server_file *dsf;
           ptr1 += 64 * n_beats_here;
           ptr2 += 64 * n_beats_here;
         }
-#endif
-#elif defined(FPGA) // end SIM
-#ifndef Kria
+#elif defined(FPGA) && AWS
         auto shaddr = at.translate(addr.op2_argument);
-        //        std::cout << "from fpga addr: " << addr.op2_argument << std::endl;
-        auto *mem = (uint8_t *) malloc(addr.op3_argument);
-        int rc = wrapper_fpga_dma_burst_read(xdma_read_fd, (uint8_t *) mem, addr.op3_argument, addr.op2_argument);
-        memcpy(shaddr, mem, addr.op3_argument);
-        free(mem);
-        //        for (int i = 0; i < addr.op3_argument / sizeof(int); ++i)
-        //          printf("%d ", ((int *) shaddr)[i]);
-        //        fflush(stdout);
-        if (rc) {
-          fprintf(stderr, "Something failed inside MOVE_FROM_FPGA - %d %p %ld %lx\n", xdma_read_fd, shaddr,
-                  addr.op3_argument, addr.op2_argument);
-          exit(1);
-        }
-#else // end ndef Kria
-        fprintf(stderr, "Kria backend attempting to do unsupported op in data server\n");
-#endif
-#else // end SIM/FPGA
+	auto len = addr.op3_argument;
+	auto fpga_addr = addr.op2_argument;
+        memcpy(shaddr, devmem_aws_dram + fpga_addr, len);
+#elif defined(Kria)
+	// do nothing
+#else
 #error "All cases not covered"
 #endif
         break;
@@ -320,22 +302,14 @@ data_server_file *dsf;
           std::cout << "[DATA_SERVER] MOVE_TO_FPGA: Copying " << addr.op3_argument
                     << " bytes to FPGA addr=0x" << std::hex << addr.op_argument << std::dec << std::endl;
         }
-#ifdef FPGA
-#ifndef Kria // implied discrete
-        auto shaddr = at.translate(addr.op_argument);
-        auto *mem = (uint8_t *) malloc(addr.op3_argument);
-        memcpy(mem, shaddr, addr.op3_argument);
-        int rc = wrapper_fpga_dma_burst_write(xdma_write_fd, (uint8_t *) shaddr, addr.op3_argument, addr.op_argument);
-        if (rc) {
-          fprintf(stderr, "Something failed inside MOVE_TO_FPGA - %d %p %ld %lx\n", xdma_write_fd, shaddr,
-                  addr.op3_argument, addr.op2_argument);
-          exit(1);
-        }
-#else
-        fprintf(stderr, "Kria backend attempting to do unsupported op in data server\n");
-#endif // end Kria
-#else // end FPGA, else SIM
-#if defined(BEETHOVEN_HAS_DMA)
+#if defined(FPGA) && AWS
+	auto fpga_addr = addr.op_argument;
+        auto shaddr = at.translate(fpga_addr);
+	auto len = addr.op3_argument;
+        memcpy(devmem_aws_dram + fpga_addr, shaddr, len);
+#elif Kria
+	// do nothing
+#elif SIM && defined(BEETHOVEN_HAS_DMA)
         auto amt_left = addr.op3_argument;
         auto ptr1 = (unsigned char *) at.translate(addr.op_argument);
         auto ptr2 = addr.op_argument;
@@ -360,8 +334,7 @@ data_server_file *dsf;
           ptr1 += 64 * n_beats_here;
           ptr2 += 64 * n_beats_here;
         }
-#endif // end DMA
-#endif // end SIM
+#endif
         break;
       }
     }

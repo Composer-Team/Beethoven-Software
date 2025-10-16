@@ -7,7 +7,3 @@
 #include <pthread.h>
 pthread_mutex_t bus_lock;
 #endif
-
-#if AWS
-#include "fpga_aws_utils.c"
-#endif
