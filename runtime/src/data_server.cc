@@ -285,6 +285,7 @@ data_server_file *dsf;
           ptr1 += 64 * n_beats_here;
           ptr2 += 64 * n_beats_here;
         }
+#elif defined(SIM)
 #elif defined(FPGA) && AWS
         auto shaddr = at.translate(addr.op2_argument);
 	auto len = addr.op3_argument;

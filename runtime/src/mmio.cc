@@ -40,10 +40,19 @@ void setup_mmio() {
 
 
 void poke_mmio(uint64_t addr, uint32_t val) {
+#if defined(Kria) || AWS
   *((volatile uint32_t *)(devmem_map + addr)) = val;
+#else
+  throw std::runtime_error("Poking inside unexpected platform");
+#endif
 }
 
 
 uint32_t peek_mmio(uint32_t addr) {
+#if defined(Kria) || AWS
   return *((volatile uint32_t *)(devmem_map + addr));
+#else
+  throw std::runtime_error("Poking inside unexpected platform");
+  return 0;
+#endif
 }

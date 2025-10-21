@@ -172,7 +172,7 @@ beethoven.vvp: $(VERILOG_SRCS)
 ############### VERILATOR ONLY ###################
 ifeq ($(SIMULATOR),verilator)
 
-VERILATOR_DISABLE_WARN=-Wno-ascrange -Wno-pinmissing -Wno-widthexpand
+VERILATOR_DISABLE_WARN=-Wno-ascrange -Wno-pinmissing -Wno-widthexpand -Wno-widthtrunc
 
 .PHONY: verilate lint
 verilate: $(VERILOG_SRCS)
