@@ -56,7 +56,7 @@ pthread_mutex_t cmdserverlock = PTHREAD_MUTEX_INITIALIZER;
 std::queue<beethoven::rocc_cmd> cmds;
 std::unordered_map<system_core_pair, std::queue<int> *> in_flight;
 
-constexpr int num_cmd_beats = (int) roundUp((float) (32 * 5) / AXIL_BUS_WIDTH);
+constexpr int num_cmd_beats = 5;
 
 static void *cmd_server_f(void *) {
   if (runtime_verbose) {
@@ -175,8 +175,8 @@ static void *cmd_server_f(void *) {
       uint32_t pack[5];
       addr.cmd.pack(pack_cfg, pack);
       if (runtime_verbose) {
-        std::cout << "[CMD_SERVER] Packed command: system_id=" << addr.cmd.getSystemId()
-                  << ", core_id=" << addr.cmd.getCoreId() << std::endl;
+	printf("[CMD_SERVER] Packed command: system_id=%d, core_id=%d\n", addr.cmd.getSystemId(), addr.cmd.getCoreId());
+	fflush(stdout);
       }
       //    if (sizeof(pack[0]) > 64) {
       //      printf("FAILURE - cannot use peek-poke give the current ");
