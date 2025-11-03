@@ -5,7 +5,7 @@ SIMULATOR ?= icarus
 
 SUDO ?= sudo
 PREFIX ?= /usr/local/
-BUILD_TYPE ?= DEBUG
+BUILD_MODE ?= DEBUG
 
 VPATH=$(BEETHOVEN_PATH)/build/hw/verification
 
@@ -54,6 +54,16 @@ CXX_FLAGS = --std=c++17 -fPIC \
 	    -IDRAMsim3/ext/headers/ \
 	    -Iinclude -Iruntime/include -Iruntime/DRAMsim3/src \
 	    -Iruntime/DRAMsim3/ext/headers -I$(BEETHOVEN_PATH)/build/
+
+ifeq ($(BUILD_MODE),Debug)
+CXX_FLAGS += -O0 -g3 
+VCS_FLAGS =
+endif
+
+ifeq ($(BUILD_MODE),Release)
+CXX_FLAGS += -O3
+VCS_FLAGS = +rad -CFLAGS "-O3"
+endif
 PWD = $(shell pwd)
 
 UNAME_S:=$(shell uname -s)
@@ -73,10 +83,7 @@ VPI_FLAGS = $(VPI_LOC)/system.vpi
 VERILOG_FLAGS = -DCLOCK_PERIOD=4 -I${BEETHOVEN_PATH}/build/hw -DSIM
 VERILOG_SRCS = $(shell cat ${BEETHOVEN_PATH}/build/vcs_srcs.in) 
 
-# DEBUG FLAGS
-CXX_FLAGS += -O0 -g3 
-# RELEASE FLAGS
-#CXX_FLAGS += -O2
+
 FRONTBUS=axi
 
 libdramsim3.so:
@@ -197,10 +204,7 @@ verilate: $(VERILOG_SRCS)
 
 BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 	vcs +vcs+loopreport \
-		+v2k \
-		-kdb \
 		-timescale=1ns/100ps \
-		-debug_access \
 		$(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a \
 		-P runtime/scripts/tab.tab \
 		-sverilog \
@@ -222,6 +226,7 @@ BeethovenSim:  $(SRCS) libdramsim3.so lib_beethoven.o libBeethovenRuntime.so
 		-LDFLAGS "-Wl,-rpath=/usr/local/lib64" \
 		-lbeethoven \
 		-CFLAGS "-std=c++17 -I$(BEETHOVEN_PATH)/build/hw"\
+		$(VCS_FLAGS) \
 		$(BEETHOVEN_PATH)/build/hw/BeethovenTopVCSHarness.v -o BeethovenTop
 
 endif

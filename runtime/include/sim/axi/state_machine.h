@@ -280,9 +280,6 @@ struct AXIControlIntf : public ControlIntf {
         break;
       case RESPT_READY_WRITE:
         w_valid.set(1);
-#if AXIL_BUS_WIDTH > 64
-#error "AXIL_BUS_WIDTH > 64 not supported"
-#endif
         w_data.set(1);
         if (w_ready.get(0)) {
           ongoing_rsp.state = RESPT_READY_WRITE_B;
