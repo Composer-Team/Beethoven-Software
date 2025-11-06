@@ -111,7 +111,7 @@ elseif (${BAREMETAL})
     target_sources(${LIBRARY_NAME} PRIVATE
             ${M55_SOURCES}
             src/fpga_handle_impl/fpga_handle_baremetal.cc
-            $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
+    )
     include_directories(
             $ENV{BEETHOVEN_PATH}/build/
             ${TB_LOC}/Device/ARM/exectb_mcu/Include/
@@ -123,10 +123,12 @@ else ()
     message(FATAL_ERROR "Unsupported device. Supported devices are discrete (aka 'sim'), kria, and baremetal.")
 endif ()
 
-add_executable(merge_sort test/merge_sort.cc)
-target_link_libraries(merge_sort ${LIBRARY_NAME})
-add_executable(alloc_sizes test/alloc_sizes.cc)
-target_link_libraries(alloc_sizes ${LIBRARY_NAME})
+if (NOT ${BAREMETAL})
+    add_executable(merge_sort test/merge_sort.cc)
+    target_link_libraries(merge_sort ${LIBRARY_NAME})
+    add_executable(alloc_sizes test/alloc_sizes.cc)
+    target_link_libraries(alloc_sizes ${LIBRARY_NAME})
+endif()
 
 
 if (APPLE)

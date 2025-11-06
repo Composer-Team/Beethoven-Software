@@ -39,5 +39,5 @@ function(link_beethoven_to_target TARGET)
 
     target_sources(${TARGET} PRIVATE $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
     target_include_directories(${TARGET} PUBLIC $ENV{BEETHOVEN_PATH}/build/)
-    target_link_libraries(${TARGET} PUBLIC APEX::beethoven)
+    target_link_libraries(${TARGET} PUBLIC APEX::beethoven_baremetal)
 endfunction()

@@ -20,7 +20,9 @@
 #include <iostream>
 #include <cassert>
 #else // BAREMETAL
-#include <beethoven_hardware.h>
+#define SW_BUILD
+#include "beethoven_hardware.h"
+#undef SW_BUILD
 #endif
 #include "beethoven/fpga_handle.h"
 
