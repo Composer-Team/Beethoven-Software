@@ -184,6 +184,11 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
   axi4_mems[0].b.init(VCSShortHandle(getHandle("M00_AXI_bready")),
                       VCSShortHandle(getHandle("M00_AXI_bvalid")),
                       VCSShortHandle(getHandle("M00_AXI_bid")));
+
+  value.value.integer = 0;
+  vpi_put_value(getHandle("M00_AXI_rvalid"), &value, nullptr, vpiNoDelay);
+  vpi_put_value(getHandle("M00_AXI_bvalid"), &value, nullptr, vpiNoDelay);
+
 #if NUM_DDR_CHANNELS >= 2
 #error "not implemented yet"
 #endif
@@ -259,6 +264,8 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
   value.value.integer = 0;
   vpi_put_value(getHandle("S00_AXI_wvalid"), &value, nullptr, vpiNoDelay);
   vpi_put_value(getHandle("S00_AXI_rready"), &value, nullptr, vpiNoDelay);
+  vpi_put_value(getHandle("S00_AXI_bvalid"), &value, nullptr, vpiNoDelay);
+
 
   ctrl.set_ar(
     VCSShortHandle(getHandle("S00_AXI_arvalid")),
