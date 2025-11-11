@@ -236,6 +236,8 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
   vpi_put_value(getHandle("S00_AXI_arprot"), &value, nullptr, vpiNoDelay);
   vpi_put_value(getHandle("S00_AXI_arqos"), &value, nullptr, vpiNoDelay);
   vpi_put_value(getHandle("S00_AXI_arregion"), &value, nullptr, vpiNoDelay);
+  vpi_put_value(getHandle("S00_AXI_arvalid"), &value, nullptr, vpiNoDelay);
+  
   value.value.integer = 2;
   vpi_put_value(getHandle("S00_AXI_arsize"), &value, nullptr, vpiNoDelay);
   value.value.integer = 0;
@@ -247,12 +249,16 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
   vpi_put_value(getHandle("S00_AXI_awprot"), &value, nullptr, vpiNoDelay);
   vpi_put_value(getHandle("S00_AXI_awqos"), &value, nullptr, vpiNoDelay);
   vpi_put_value(getHandle("S00_AXI_awregion"), &value, nullptr, vpiNoDelay);
+  vpi_put_value(getHandle("S00_AXI_awvalid"), &value, nullptr, vpiNoDelay);
   value.value.integer = 2;
   vpi_put_value(getHandle("S00_AXI_awsize"), &value, nullptr, vpiNoDelay);
   value.value.integer = 1;
   vpi_put_value(getHandle("S00_AXI_wlast"), &value, nullptr, vpiNoDelay);
   value.value.integer = 0xF;
   vpi_put_value(getHandle("S00_AXI_wstrb"), &value, nullptr, vpiNoDelay);
+  value.value.integer = 0;
+  vpi_put_value(getHandle("S00_AXI_wvalid"), &value, nullptr, vpiNoDelay);
+  vpi_put_value(getHandle("S00_AXI_rready"), &value, nullptr, vpiNoDelay);
 
   ctrl.set_ar(
     VCSShortHandle(getHandle("S00_AXI_arvalid")),
