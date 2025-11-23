@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
+set(VERSION 0.0.0)
 project(dramsim3)
 
 set(default_build_type "Release")
@@ -41,42 +42,10 @@ add_library(dramsim3 SHARED
     src/memory_system.cc
 )
 
-if (THERMAL)
-    # dependency check
-    # sudo apt-get install libatlas-base-dev on ubuntu
-    find_package(BLAS REQUIRED)
-    find_package(OpenMP REQUIRED)
-    # YOU need to build superlu on your own. Do the following:
-    # git submodule update --init
-    # cd ext/SuperLU_MT_3.1 && make lib
-    find_library(SUPERLU
-        NAME superlu_mt_OPENMP libsuperlu_mt_OPENMP
-        HINTS ${PROJECT_SOURCE_DIR}/ext/SuperLU_MT_3.1/lib/
-    )
-
-    target_link_libraries(dramsim3
-        PRIVATE ${SUPERLU} f77blas atlas m ${OpenMP_C_FLAGS}
-    )
-    target_sources(dramsim3
-        PRIVATE src/thermal.cc src/sp_ienv.c src/thermal_solver.c
-    )
-    target_compile_options(dramsim3 PRIVATE -DTHERMAL -D_LONGINT -DAdd_ ${OpenMP_C_FLAGS})
-
-    add_executable(thermalreplay src/thermal_replay.cc)
-    target_link_libraries(thermalreplay dramsim3 inih)
-    target_compile_options(thermalreplay PRIVATE -DTHERMAL -D_LONGINT -DAdd_ ${OpenMP_C_FLAGS})
-endif (THERMAL)
-
-if (CMD_TRACE)
-    target_compile_options(dramsim3 PRIVATE -DCMD_TRACE)
-endif (CMD_TRACE)
-
-if (ADDR_TRACE)
-    target_compile_options(dramsim3 PRIVATE -DADDR_TRACE)
-endif (ADDR_TRACE)
-
-
-target_include_directories(dramsim3 INTERFACE src)
+target_include_directories(dramsim3 PUBLIC
+ $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+ $<INSTALL_INTERFACE:include/>
+)
 target_compile_options(dramsim3 PRIVATE -Wall)
 target_link_libraries(dramsim3 PRIVATE inih format)
 set_target_properties(dramsim3 PROPERTIES
@@ -116,4 +85,48 @@ add_custom_command(
     COMMAND dramsim3test
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     DEPENDS dramsim3test dramsim3
+)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(CMakePackageConfigHelpers)
+include(CMakeDependentOption)
+include(CheckCXXCompilerFlag)
+include(GNUInstallDirs)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CONFIG_FILE "${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in")
+set(CONFIG_EXPORT_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/dramsim3")
+ set(CONFIG_LIBDIR "${CMAKE_INSTALL_LIBDIR}/cmake/dramsime3")
+
+configure_package_config_file(
+        ${CONFIG_FILE}
+        "${PROJECT_BINARY_DIR}/cmake/dramsim3Config.cmake"
+        INSTALL_DESTINATION "${CONFIG_EXPORT_DIR}"
+        PATH_VARS CMAKE_INSTALL_PREFIX CMAKE_INSTALL_LIBDIR CONFIG_EXPORT_DIR
+)
+
+write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/dramsim3ConfigVersion.cmake"
+        VERSION "${VERSION}"
+        COMPATIBILITY AnyNewerVersion
+)
+
+install(TARGETS dramsim3
+        EXPORT dramsim3Targets
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dramsim3/
+        DESTINATION "include/dramsim3"
+        FILES_MATCHING PATTERN "*.h")
+
+install(EXPORT dramsim3Targets
+        DESTINATION "${CONFIG_EXPORT_DIR}")
+
+
+install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/dramsim3Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake/dramsim3ConfigVersion.cmake"
+        DESTINATION ${CONFIG_LIBDIR}
 )

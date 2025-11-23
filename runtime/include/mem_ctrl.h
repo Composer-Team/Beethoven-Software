@@ -11,17 +11,17 @@
 
 #include "data_server.h"
 #include "ddr_macros.h"
-#include "dram_system.h"
-#include <dramsim3.h>
+#include "dramsim3/dram_system.h"
+#include <dramsim3/dramsim3.h>
 #include <memory>
 #include <queue>
-#include "sim/axi/address_channel.h"
-#include "sim/axi/data_channel.h"
-#include "sim/axi/response_channel.h"
+#include "address_channel.h"
+#include "data_channel.h"
+#include "response_channel.h"
 
 extern uint64_t main_time;
 
-#include "sim/axi/vpi_handle.h"
+#include "vpi_handle.h"
 
 #define RLOCK pthread_mutex_lock(&axi4_mem.read_queue_lock);
 #define WLOCK pthread_mutex_lock(&axi4_mem.write_queue_lock);
@@ -174,7 +174,7 @@ namespace mem_ctrl {
 
 #ifdef VERILATOR
 #include "VBeethovenTop.h"
-#include "sim/DataWrapper.h"
+#include "DataWrapper.h"
 
 using mem_intf_t = mem_ctrl::mem_interface<
         GetSetWrapper<prep(VBeethovenTop::M00_AXI_arid)>,

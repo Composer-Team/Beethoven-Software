@@ -1,4 +1,4 @@
-#include "controller.h"
+#include "dramsim3/controller.h"
 #include <iomanip>
 #include <iostream>
 #include <limits>

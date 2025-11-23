@@ -1,4 +1,4 @@
-#include "command_queue.h"
+#include "dramsim3/command_queue.h"
 
 namespace dramsim3 {
 

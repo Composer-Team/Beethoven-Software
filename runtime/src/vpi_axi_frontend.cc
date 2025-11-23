@@ -4,10 +4,10 @@
 
 //#include "vcs_vpi_user.h"
 //#include "sv_vpi_user.h"
-#include "sim/mem_ctrl.h"
-#include "sim/axi/state_machine.h"
-#include "sim/tick.h"
-#include "sim/axi/vpi_handle.h"
+#include "mem_ctrl.h"
+#include "state_machine.h"
+#include "tick.h"
+#include "vpi_handle.h"
 #include "cmd_server.h"
 #include "data_server.h"
 #include <pthread.h>
@@ -135,6 +135,8 @@ vpiHandle getHandle(const std::string &name) {
 
 PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
   std::cout << "init structures: " << std::endl;
+  s_vpi_value value;
+  value.format = vpiIntVal;
   // at this point, we have all the inputs and outputs, and we have to tie them into the interfaces
 #if NUM_DDR_CHANNELS >= 1
 #ifdef DRAMSIM_CONFIG
@@ -230,7 +232,6 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
 
   auto aw_id_handle = getHandle("S00_AXI_awid");
   auto ar_id_handle = getHandle("S00_AXI_arid");
-  s_vpi_value value;
   value.format = vpiIntVal;
   value.value.integer = 0;
   vpi_put_value(getHandle("S00_AXI_arburst"), &value, nullptr, vpiNoDelay);

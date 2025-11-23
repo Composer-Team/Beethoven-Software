@@ -76,11 +76,10 @@ if ("${TARGET}" STREQUAL "sim")
     endif ()
 
     if ("${SIMULATOR}" STREQUAL "verilator")
-        add_subdirectory(DRAMsim3)
         find_package(verilator REQUIRED VERSION 5.0.0)
         add_executable(BeethovenRuntime ${SRC})
         message("Building with srcs: ${SRC}")
-
+        find_package(dramsim3)
         target_link_libraries(BeethovenRuntime PRIVATE dramsim3 args)
         add_compile_definitions(VERILATOR=1)
     elseif ("${SIMULATOR}" STREQUAL "vcs" OR "${SIMULATOR}" STREQUAL "icarus")
@@ -90,15 +89,13 @@ if ("${TARGET}" STREQUAL "sim")
             add_compile_definitions(USE_VCS=1)
         endif ()
         # NOTE: YOU ARE RESPONSIBLE FOR BUILDING AND LINKING DRAMSIM3
-        add_subdirectory(DRAMsim3)
-        install(TARGETS dramsim3
-                DESTINATION $ENV{BEETHOVEN_PATH}/lib/)
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/tab.tab
                 DESTINATION $ENV{BEETHOVEN_PATH}/inc/)
         add_library(BeethovenRuntime SHARED ${SRC})
 
         add_compile_definitions(VCS=1)
         target_include_directories(BeethovenRuntime PUBLIC $ENV{VCS_HOME}/include)
+        find_package(dramsim3)
         target_link_libraries(BeethovenRuntime PRIVATE dramsim3 args)
     else ()
         message(FATAL_ERROR "Unsupported simulator")

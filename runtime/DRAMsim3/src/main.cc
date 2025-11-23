@@ -1,6 +1,6 @@
 #include <iostream>
-#include "./../ext/headers/args.hxx"
-#include "cpu.h"
+#include "dramsim3/args.h"
+#include "dramsim3/cpu.h"
 
 using namespace dramsim3;
 

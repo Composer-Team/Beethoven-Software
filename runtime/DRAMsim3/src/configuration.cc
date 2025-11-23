@@ -1,4 +1,4 @@
-#include "configuration.h"
+#include "dramsim3/configuration.h"
 
 #include <vector>
 

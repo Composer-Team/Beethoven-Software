@@ -2,12 +2,12 @@
 // Created by Chris Kjellqvist on 8/9/23.
 //
 
-#include "sim/axi/front_bus_ctrl_axi.h"
+#include "front_bus_ctrl_axi.h"
 #include "beethoven_hardware.h"
-#include "sim/mem_ctrl.h"
+#include "mem_ctrl.h"
 #include "util.h"
 #include "cmd_server.h"
-#include "sim/axi/state_machine.h"
+#include "state_machine.h"
 #include <csignal>
 
 #ifdef VERILATOR

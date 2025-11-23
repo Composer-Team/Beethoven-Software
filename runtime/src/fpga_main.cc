@@ -1,8 +1,8 @@
 //
 // Created by Chris Kjellqvist on 10/29/22.
 //
-#include "../include/cmd_server.h"
-#include "../include/data_server.h"
+#include "data_server.h"
+#include "cmd_server.h"
 #include <pthread.h>
 #include "fpga_utils.h"
 #include <cstring>

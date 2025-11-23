@@ -1,4 +1,4 @@
-#include "timing.h"
+#include <dramsim3/timing.h>
 #include <algorithm>
 #include <utility>
 

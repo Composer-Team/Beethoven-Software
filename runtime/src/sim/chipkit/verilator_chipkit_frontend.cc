@@ -377,6 +377,7 @@ int main(int argc, char **argv) {
     assert(argv[i][0] == '-');
     if (strcmp(argv[i] + 1, "dramconfig") == 0) {
       dram_file = std::string(argv[i + 1]);
+      printf("Have file: %s\n", dram_file->c_str());
     } else if (strcmp(argv[i] + 1, "tracefile") == 0) {
       trace_file = std::string(argv[i + 1]);
     } else if (strcmp(argv[i] + 1, "dmafile") == 0) {

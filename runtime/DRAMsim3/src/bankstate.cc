@@ -1,4 +1,4 @@
-#include "bankstate.h"
+#include "dramsim3/bankstate.h"
 
 namespace dramsim3 {
 

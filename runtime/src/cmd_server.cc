@@ -2,8 +2,8 @@
 // Created by Chris Kjellqvist on 9/27/22.
 //
 
-#include "../include/cmd_server.h"
-#include "../include/data_server.h"
+#include "cmd_server.h"
+#include "data_server.h"
 #include "fpga_utils.h"
 #include "mmio.h"
 #include <beethoven/verilator_server.h>
