@@ -17,18 +17,41 @@ class MyAccelerator(dWidthBytes: Int)(implicit p: Parameters) extends Accelerato
   vec_out_request.valid := false.B
   vec_in_request.bits := DontCare
   vec_out_request.bits := DontCare
-  println("")
   val io = BeethovenIO(
     new AccelCommand("my_accel") {
-      val addend = UInt(dWidthBytes.W)
       val vec_addr = Address()
       val n_eles = UInt(20.W)
     },
     EmptyAccelResponse()
   )
+
+  val addend_io = BeethovenIO(
+    new AccelCommand("set_addend") {
+      val addend = UInt((dWidthBytes*8).W)
+    }
+  )
+
+  val ping_io = BeethovenIO(
+    new AccelCommand("ping") {
+      val my_val = UInt(8.W)
+    }, new AccelResponse("ping_t") {
+      val my_resp = UInt(8.W)
+    }
+  )
+
+  ping_io.req.ready := ping_io.resp.ready
+  ping_io.resp.valid := ping_io.req.valid
+  ping_io.resp.bits.my_resp := ping_io.req.bits.my_val
+
+  addend_io.req.ready := true.B
   io.req.ready := false.B
   io.resp.valid := false.B
   val addendReg = Reg(UInt(32.W))
+  when (addend_io.req.fire) {
+    addendReg := addend_io.req.bits.addend
+  }
+  
+
   val s_idle :: s_active :: s_response :: Nil = Enum(3)
   val state = RegInit(s_idle)
   io.req.ready := false.B
@@ -37,7 +60,6 @@ class MyAccelerator(dWidthBytes: Int)(implicit p: Parameters) extends Accelerato
     when(io.req.fire) {
       vec_in_request.valid := true.B
       vec_out_request.valid := true.B
-      addendReg := io.req.bits.addend
       state := s_active
     }
   }.elsewhen(state === s_active) {

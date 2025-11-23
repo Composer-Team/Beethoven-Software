@@ -37,9 +37,12 @@ int main(int argc, char* argv[]) {
     }
     printf("\n");
 
+    TestSystem::set_addend(0, addend);
     // Run accelerator: add 'addend' to all elements
     // TestSystem is defined in CMakeUnifiedTest.scala
-    TestSystem::my_accel(0, addend, vec_len, vec).get();
+    TestSystem::my_accel(0, vec_len, vec).get();
+
+    TestSystem::ping(0, 3).get();
 
     // Verify results
     printf("Output: ");
