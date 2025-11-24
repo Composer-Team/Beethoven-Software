@@ -25,3 +25,4 @@ dramsim3.txt
 bin/
 test/alloc_sizes
 test/merge_sort
+.cache/clangd/
