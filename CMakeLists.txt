@@ -4,16 +4,27 @@ enable_language(CXX)
 set(VERSION 1.0.0)
 
 set(DISCRETE OFF)
-set(KRIA OFF)
+set(ZYNQ OFF)
 set(BAREMETAL OFF)
 if ("${PLATFORM}" STREQUAL "baremetal")
     set(BAREMETAL ON)
 elseif("${PLATFORM}" STREQUAL "discrete")
     set(DISCRETE ON)
-elseif("${PLATFORM}" STREQUAL "kria")
-    set(KRIA ON)
+elseif("${PLATFORM}" STREQUAL "zynq" OR "${PLATFORM}" STREQUAL "kria")
+    set(ZYNQ ON)
+    if ("${PLATFORM}" STREQUAL "kria")
+        message(WARNING "Platform 'kria' is deprecated. Use 'zynq' instead.")
+    endif()
 else()
-    message(FATAL_ERROR "platform should be baremetal, discrete, or kria")
+    message(FATAL_ERROR "platform should be baremetal, discrete, or zynq")
+endif()
+
+# Optional: Enable software cache flushing for Zynq platforms
+option(ENABLE_CACHE_FLUSH "Enable software cache flushing (ARM64 only, requires ZYNQ platform)" OFF)
+
+# Validate ENABLE_CACHE_FLUSH usage
+if (ENABLE_CACHE_FLUSH AND NOT ZYNQ)
+    message(FATAL_ERROR "ENABLE_CACHE_FLUSH requires PLATFORM=zynq. Cache flushing is only supported on Zynq platforms.")
 endif()
 
 
@@ -68,11 +79,15 @@ if (${DISCRETE})
             src/verilator_server.cc)
     add_definitions(-DDiscrete)
     set(BUILD_SHARED ON)
-elseif (${KRIA})
-    add_definitions(-DKria)
+elseif (${ZYNQ})
+    add_definitions(-DZYNQ)
     set(BUILD_SHARED ON)
+    if (ENABLE_CACHE_FLUSH)
+        add_definitions(-DENABLE_CACHE_FLUSH)
+        message(STATUS "Software cache flushing enabled for Zynq platform")
+    endif()
     target_sources(${LIBRARY_NAME} PRIVATE
-            src/fpga_handle_impl/fpga_handle_kria.cc
+            src/fpga_handle_impl/fpga_handle_zynq.cc
             src/response_handle.cc
             src/allocator/alloc.cc
             src/verilator_server.cc
