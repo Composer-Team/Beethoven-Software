@@ -51,11 +51,14 @@ if (${BUILD_LOCALLY})
   set(BEETH_ENV "export BEETHOVEN_PATH=${CMAKE_SOURCE_DIR}")
 endif()
 
+file(GLOB_RECURSE SCALA_SOURCES "${CMAKE_SOURCE_DIR}/src/*.scala")
+message(STATUS "SCALA_SOURCES: ${SCALA_SOURCES}")
+
 
 function(beethoven_hardware TARGET)
   cmake_parse_arguments(BH
     ""                              # Boolean options
-    "MAIN_CLASS;PLATFORM;BUILD_MODE" # Single-value args
+    "MAIN_CLASS" # Single-value args
     "SCALA_ARGS"                     # Multi-value args
     ${ARGN}
   )
@@ -83,27 +86,11 @@ function(beethoven_hardware TARGET)
     message(FATAL_ERROR "beethoven_hardware: MAIN_CLASS is required")
   endif()
 
-  # Set defaults
-  if(NOT BH_PLATFORM)
-    set(BH_PLATFORM "discrete")
-  endif()
-  if(NOT BH_BUILD_MODE)
-    set(BH_BUILD_MODE "Simulation")
-  endif()
-
-  # Create local BEETHOVEN_PATH for this target
-  set(LOCAL_BEETHOVEN_PATH "${CMAKE_SOURCE_DIR}")
-  set(LOCAL_BUILD_DIR "${LOCAL_BEETHOVEN_PATH}/build")
-  set(LOCAL_HW_DIR "${LOCAL_BUILD_DIR}/gen")
-
   # Generated output files
-  set(GENERATED_HEADER "${LOCAL_BUILD_DIR}/beethoven_hardware.h")
-  set(GENERATED_SOURCE "${LOCAL_BUILD_DIR}/beethoven_hardware.cc")
   set(GENERATED_CMAKE_SRCS "${LOCAL_BUILD_DIR}/cmake_srcs.cmake")
   set(GENERATED_VCS_SRCS "${LOCAL_BUILD_DIR}/vcs_srcs.in")
 
   # Create output directories
-  file(MAKE_DIRECTORY "${LOCAL_BUILD_DIR}")
   file(MAKE_DIRECTORY "${LOCAL_HW_DIR}")
 
   # Build the sbt command
@@ -120,39 +107,35 @@ function(beethoven_hardware TARGET)
       "Set BEETHOVEN_HARDWARE_PATH environment variable to the correct location.")
   endif()
 
-  # Create stamp file to track successful generation
-  set(STAMP_FILE "${LOCAL_BUILD_DIR}/.beethoven_generated_${TARGET}")
-
-
   # Export variables for use by beethoven_testbench()
-  set(${TARGET}_BEETHOVEN_PATH "${LOCAL_HW_DIR}/${TARGET}_HW_DIR/" PARENT_SCOPE)
+  set(LOCAL_BEETHOVEN_PATH "${CMAKE_SOURCE_DIR}/build/gen/${TARGET}_HW_DIR")
+  set(${TARGET}_BEETHOVEN_PATH ${LOCAL_BEETHOVEN_PATH} PARENT_SCOPE)
+  message(STATUS "TARGET_PATH: ${LOCAL_BEETHOVEN_PATH}   ${TARGET}_BEETHOVEN_PATH")
+  set(GENERATED_HEADER "${LOCAL_BEETHOVEN_PATH}/build/beethoven_hardware.h")
+  set(GENERATED_SOURCE "${LOCAL_BEETHOVEN_PATH}/build/beethoven_hardware.cc")
+  message(STATUS "GENERATED_SRC: ${GENERATED_SOURCE}")
+
+  file(MAKE_DIRECTORY "${LOCAL_BEETHOVEN_PATH}")
   # Custom command to generate hardware
   # Sets BEETHOVEN_PATH locally for this invocation only
   add_custom_command(
-    OUTPUT "${STAMP_FILE}"
+    OUTPUT ${GENERATED_SOURCE} ${GENERATED_HEADER}
     COMMAND ${CMAKE_COMMAND} -E echo "Generating Beethoven hardware: ${TARGET}"
     COMMAND ${CMAKE_COMMAND} -E echo "  Main class: ${BH_MAIN_CLASS}"
-    COMMAND ${CMAKE_COMMAND} -E echo "  Platform: ${BH_PLATFORM}"
-    COMMAND ${CMAKE_COMMAND} -E echo "  Build mode: ${BH_BUILD_MODE}"
     COMMAND ${CMAKE_COMMAND} -E echo "  Output: ${LOCAL_BEETHOVEN_PATH}"
     COMMAND ${CMAKE_COMMAND} -E env
-    "BEETHOVEN_PATH=${LOCAL_HW_DIR}/${TARGET}_HW_DIR/"
+    "BEETHOVEN_PATH=${LOCAL_BEETHOVEN_PATH}/"
     sbt "${SBT_RUN_CMD}"
-    COMMAND ${CMAKE_COMMAND} -E touch "${STAMP_FILE}"
     WORKING_DIRECTORY "${BEETHOVEN_HARDWARE_DIR}"
     COMMENT "Generating Beethoven hardware for ${TARGET} (${BH_MAIN_CLASS})"
+    DEPENDS ${SCALA_SOURCES}
     VERBATIM
   )
-
-  # Create a custom target for the hardware generation
-  add_custom_target(${TARGET}_hw
-    DEPENDS "${STAMP_FILE}"
-  )
-
 
   message(STATUS "Configured Beethoven hardware target: ${TARGET}")
   message(STATUS "  Main class: ${BH_MAIN_CLASS}")
   message(STATUS "  Output directory: ${LOCAL_BEETHOVEN_PATH}")
+  message(STATUS "  Generated Src: ${GENERATED_SOURCE}")
 endfunction()
 
 
@@ -263,7 +246,7 @@ function(beethoven_testbench TARGET)
     # Check that the hardware target exists
     if(NOT DEFINED ${BT_HARDWARE}_BEETHOVEN_PATH)
         message(FATAL_ERROR
-            "beethoven_testbench: '${BT_HARDWARE}' is not a valid beethoven_hardware target.\n"
+            "beethoven_testbench: '${BT_HARDWARE}' is not a valid beethoven_hardware target. ${${BT_HARDWARE}_BEETHOVEN_PATH} . \n"
             "Make sure to call beethoven_hardware(${BT_HARDWARE} ...) before beethoven_testbench().")
     endif()
 
@@ -288,11 +271,9 @@ function(beethoven_testbench TARGET)
       COMMAND make -f ${_BEETHOVEN_PREFIX}/share/beethoven/runtime/Makefile SIMULATOR=${BT_SIMULATOR} RUNTIME_DIR=${_BEETHOVEN_PREFIX}/share/beethoven/runtime STATIC_LIB=0 BEETHOVEN_PATH=${HW_BEETHOVEN_PATH}
       COMMAND mv BeethovenSim ${TARGET}_sim
       WORKING_DIRECTORY "${CMAKE_BUILD_DIR}"
+      DEPENDS ${HW_BEETHOVEN_PATH}/build/beethoven_hardware.h ${HW_BEETHOVEN_PATH}/build/beethoven_hardware.cc
       VERBATIM
     )
-
-    add_dependencies(${TARGET}_sim
-      ${BT_HARDWARE}_hw)
 
    beethoven_build(${TARGET}
       SOURCES ${BT_SOURCES}

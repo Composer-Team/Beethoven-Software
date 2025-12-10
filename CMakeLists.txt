@@ -218,12 +218,6 @@ install(FILES
 
 # Install unified build system modules
 if (NOT ${BAREMETAL})
-    install(FILES
-            "${PROJECT_SOURCE_DIR}/cmake/BeethovenHardware.cmake"
-            "${PROJECT_SOURCE_DIR}/cmake/BeethovenSimulator.cmake"
-            DESTINATION ${CONFIG_LIBDIR}
-    )
-
     # Install runtime sources for unified CMake build system
     # These are needed by beethoven_testbench() to build simulators
     set(BEETHOVEN_SHARE_DIR "share/beethoven")

@@ -42,7 +42,9 @@ int main(int argc, char* argv[]) {
     // TestSystem is defined in CMakeUnifiedTest.scala
     TestSystem::my_accel(0, vec_len, vec).get();
 
-    TestSystem::ping(0, 3).get();
+    TestSystem::ping(0, 4);
+
+    // TestSystem::ping(0, 3).get();
 
     // Verify results
     printf("Output: ");

@@ -15,8 +15,6 @@ message(STATUS "==============================================")
 # This sets BEETHOVEN_PATH to a local directory for this sbt invocation
 beethoven_hardware(test_accel
     MAIN_CLASS basic.CMakeUnifiedTestBuild
-    PLATFORM discrete
-    BUILD_MODE Simulation
 )
 
 # Build testbench with Verilator simulator
