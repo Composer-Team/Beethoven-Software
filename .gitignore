@@ -26,3 +26,13 @@ bin/
 test/alloc_sizes
 test/merge_sort
 .cache/clangd/
+*.swp
+build/
+project
+.memories
+.bloop
+.bsp
+.metals
+.project
+SRs
+target
