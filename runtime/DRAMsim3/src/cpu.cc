@@ -1,4 +1,4 @@
-#include "cpu.h"
+#include "dramsim3/cpu.h"
 
 namespace dramsim3 {
 

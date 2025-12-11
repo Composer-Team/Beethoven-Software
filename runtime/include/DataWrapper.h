@@ -5,8 +5,13 @@
 #include <cstddef>
 #include <memory>
 
+struct CanBasicSetGet {
+  virtual void set(uint64_t value) = 0;
+  virtual uint64_t get() const = 0;
+};
+
 template<typename T>
-struct GetSetWrapper {
+struct GetSetWrapper: CanBasicSetGet {
   T *ptr = nullptr;
   size_t l = sizeof(T);
 
@@ -16,13 +21,15 @@ struct GetSetWrapper {
 
   GetSetWrapper() = default;
 
-  T get(int idx) const;
+  T get(int idx) const {
+    return this->get(idx);
+  }
 
-  T get() const {
+  uint64_t get() const override {
     return this->get(0);
   }
 
-  void set(int64_t value) {
+  void set(uint64_t value) override {
     if (sizeof(uint8_t) >= 8) {
       memcpy(ptr, &value, 8);
     } else {
@@ -32,7 +39,7 @@ struct GetSetWrapper {
 };
 
 template<typename T, int l>
-struct GetSetDataWrapper {
+struct GetSetDataWrapper: CanBasicSetGet {
   T *ptr = nullptr;
   int len = l;
 
@@ -46,18 +53,23 @@ struct GetSetDataWrapper {
     return ptr[idx];
   }
 
-  std::unique_ptr<uint8_t[]> get() const {
+  uint64_t get() const override {
+    return get(0);
+  }
+
+  std::unique_ptr<uint8_t[]> get_array() const {
     std::unique_ptr<uint8_t[]> alloc(new uint8_t[l]);
     memcpy(alloc.get(), ptr, l);
     return alloc;
   }
-  void set(uint64_t value) {
+  void set(uint64_t value) override {
     if (l >= 8) {
       memcpy(ptr, &value, 8);
     } else {
       memcpy(ptr, &value, l);
     }
   }
+
 
   void set(uint32_t payload, uint32_t idx) {
     uint32_t *dst = (uint32_t *) ptr;

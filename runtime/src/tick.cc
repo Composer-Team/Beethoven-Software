@@ -1,9 +1,9 @@
 //
 // Created by Christopher Kjellqvist on 8/5/24.
 //
-#include "sim/tick.h"
+#include "tick.h"
 #include "beethoven_hardware.h"
-#include "sim/mem_ctrl.h"
+#include "mem_ctrl.h"
 
 #ifdef VERILATOR
 #ifdef USE_VCD

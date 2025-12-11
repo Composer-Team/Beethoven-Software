@@ -1,4 +1,4 @@
-#include "thermal.h"
+#include <dramsim3/thermal.h>
 
 extern "C" double *steady_thermal_solver(double ***powerM, double W, double Lc,
                                          int numP, int dimX, int dimZ,

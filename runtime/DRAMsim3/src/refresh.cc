@@ -1,4 +1,4 @@
-#include "refresh.h"
+#include "dramsim3/refresh.h"
 
 namespace dramsim3 {
 Refresh::Refresh(const Config &config, ChannelState &channel_state)

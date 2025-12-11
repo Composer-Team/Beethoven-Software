@@ -1,4 +1,4 @@
-#include "thermal_replay.h"
+#include <dramsim3/thermal_replay.h>
 #include "./../ext/headers/args.hxx"
 
 // this will not be used in a library file so it's ok to do this

@@ -1,4 +1,4 @@
-#include "hmc.h"
+#include "dramsim3/hmc.h"
 
 namespace dramsim3 {
 

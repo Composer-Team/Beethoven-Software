@@ -1,5 +1,5 @@
-#include "common.h"
-#include "fmt/format.h"
+#include "dramsim3/common.h"
+#include "dramsim3/fmt/format.h"
 #include <sstream>
 #include <unordered_set>
 #include <sys/stat.h>

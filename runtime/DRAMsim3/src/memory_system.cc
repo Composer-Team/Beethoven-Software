@@ -1,4 +1,4 @@
-#include "memory_system.h"
+#include "dramsim3/memory_system.h"
 
 namespace dramsim3 {
 MemorySystem::MemorySystem(const std::string &config_file,

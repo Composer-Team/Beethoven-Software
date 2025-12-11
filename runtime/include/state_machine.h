@@ -10,10 +10,10 @@
 #include <pthread.h>
 #include <map>
 #include <queue>
-#include "sim/tick.h"
+#include "tick.h"
 #include "cmd_server.h"
-#include "sim/DataWrapper.h"
-#include "sim/mem_ctrl.h"
+#include "DataWrapper.h"
+#include "mem_ctrl.h"
 #include "util.h"
 
 extern pthread_mutex_t cmdserverlock;

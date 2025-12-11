@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "fmt/format.h"
-#include "simple_stats.h"
+#include "dramsim3/fmt/format.h"
+#include <dramsim3/simple_stats.h>
 
 namespace dramsim3 {
 

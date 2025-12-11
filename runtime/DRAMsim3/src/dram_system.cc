@@ -1,4 +1,4 @@
-#include "dram_system.h"
+#include "dramsim3/dram_system.h"
 
 #include <assert.h>
 

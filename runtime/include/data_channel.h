@@ -6,6 +6,7 @@
 #define BEETHOVENRUNTIME_DATA_CHANNEL_H
 
 #include <cinttypes>
+#include "DataWrapper.h"
 
 template<typename id_t, typename strb_t, typename byte_t, typename data_t>
 struct data_channel {
@@ -61,7 +62,7 @@ public:
   }
 
   std::unique_ptr<uint8_t[]> getData() const {
-    return data.get();
+    return data.get_array();
   }
 
   uint64_t getId() const {

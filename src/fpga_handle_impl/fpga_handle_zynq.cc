@@ -10,13 +10,14 @@
 #include <stdexcept>
 #include <cstring>
 #include "beethoven/allocator/alloc.h"
+#include "beethoven/arm_cache.h"
 #include <sys/mman.h>
 #include <pthread.h>
 
-const unsigned kria_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};
-const unsigned kria_huge_page_flags[] = {21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
+const unsigned zynq_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};
+const unsigned zynq_huge_page_flags[] = {21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
                                          30 << MAP_HUGE_SHIFT};
-const unsigned kria_n_page_sizes = 4;
+const unsigned zynq_n_page_sizes = 4;
 
 
 using namespace beethoven;
@@ -52,7 +53,7 @@ fpga_handle_t *beethoven::current_handle_context;
 #include "beethoven/verilator_server.h"
 #include "beethoven/response_handle.h"
 #include <unistd.h>
-#ifndef Kria
+#ifndef ZYNQ
 #include <pthread.h>
 #endif
 
@@ -213,20 +214,20 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS,
                 -1, 0);
   } else {
-    // Kria only uses local mappings via OS
+    // Zynq only uses local mappings via OS
     // see if allocation fits inside size classes
     int fit = -1;
-    for (int i = 0; i < kria_n_page_sizes && fit == -1; ++i) {
-      if (len <= kria_huge_page_sizes[i])
+    for (int i = 0; i < zynq_n_page_sizes && fit == -1; ++i) {
+      if (len <= zynq_huge_page_sizes[i])
         fit = i;
     }
     if (fit == -1)
       throw std::runtime_error("Error in FPGA malloc: no huge page size available for allocation of size "
                                 + std::to_string(len) + "B");
-    addr = mmap(nullptr, kria_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_HUGETLB | kria_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
+    addr = mmap(nullptr, zynq_huge_page_sizes[fit], PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_HUGETLB | zynq_huge_page_flags[fit] | MAP_LOCKED | MAP_ANONYMOUS,
                 -1, 0);
-    sz = kria_huge_page_sizes[fit];
+    sz = zynq_huge_page_sizes[fit];
   }
 
   if (addr == MAP_FAILED)
@@ -237,9 +238,15 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
   return remote_ptr(vtop((intptr_t) addr), addr, sz);
 }
 
-[[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {}
+[[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
+  // Flush CPU cache to ensure FPGA reads latest data from RAM
+  arm_dcache_flush(dst.getHostAddr(), dst.getLen());
+}
 
-[[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {}
+[[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
+  // Invalidate CPU cache to force re-read from RAM after FPGA writes
+  arm_dcache_invalidate(src.getHostAddr(), src.getLen());
+}
 
 [[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
   // erase ptr from allocated regions vector

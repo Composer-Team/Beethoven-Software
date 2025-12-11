@@ -9,9 +9,9 @@
 #include <queue>
 #include <verilated.h>
 
-#include "sim/mem_ctrl.h"
-#include "sim/verilator.h"
-#include "sim/tick.h"
+#include "mem_ctrl.h"
+#include "verilator.h"
+#include "tick.h"
 
 #include <beethoven_hardware.h>
 #include "util.h"
@@ -27,10 +27,10 @@ uint64_t main_time = 0;
 
 #if HW_IS_RESET_ACTIVE_HIGH
 bool active_reset = true;
-#define RESET_NAME top.reset
+#define RESET_NAME top.areset
 #else
 bool active_reset = false;
-#define RESET_NAME top.RESETn
+#define RESET_NAME top.ARESETn
 #endif
 
 VBeethovenTop top;
@@ -87,7 +87,7 @@ void tick(VBeethovenTop *top) {
   }
 }
 
-#include "sim/axi/state_machine.h"
+#include "state_machine.h"
 
 #if NUM_DDR_CHANNELS >= 1
 extern int writes_emitted;
@@ -319,7 +319,15 @@ void run_verilator(const std::string &dram_config_file) {
   RESET_NAME = !active_reset;
   top.clock = 0;
 
-  auto ctrl = new AXIControlIntf<GetSetWrapper<uint8_t>, GetSetWrapper<BeethovenFrontBusAddr_t>, GetSetWrapper<uint32_t>>();
+  auto ctrl = new AXIControlIntf<
+    GetSetWrapper<uint8_t>, 
+    GetSetWrapper<BeethovenFrontBusAddr_t>, 
+#if AXIL_BUS_WIDTH <= 64
+    GetSetWrapper<uint32_t>
+#else
+    GetSetDataWrapper<char, (AXIL_BUS_WIDTH/8)>
+#endif
+      >();
   ctrl->set_aw(
           GetSetWrapper(top.S00_AXI_awvalid),
           GetSetWrapper(top.S00_AXI_awready),
@@ -328,6 +336,7 @@ void run_verilator(const std::string &dram_config_file) {
           GetSetWrapper(top.S00_AXI_arvalid),
           GetSetWrapper(top.S00_AXI_arready),
           GetSetWrapper(top.S00_AXI_araddr));
+#if AXIL_BUS_WIDTH <= 64
   ctrl->set_w(
           GetSetWrapper(top.S00_AXI_wvalid),
           GetSetWrapper(top.S00_AXI_wready),
@@ -336,6 +345,17 @@ void run_verilator(const std::string &dram_config_file) {
           GetSetWrapper(top.S00_AXI_rready),
           GetSetWrapper(top.S00_AXI_rvalid),
           GetSetWrapper(top.S00_AXI_rdata));
+#else
+  ctrl->set_w(
+          GetSetWrapper(top.S00_AXI_wvalid),
+          GetSetWrapper(top.S00_AXI_wready),
+          GetSetDataWrapper<char, AXIL_BUS_WIDTH/8>(&top.S00_AXI_wdata));
+  ctrl->set_r(
+          GetSetWrapper(top.S00_AXI_rready),
+          GetSetWrapper(top.S00_AXI_rvalid),
+          GetSetDataWrapper<char, AXIL_BUS_WIDTH/8>(&top.S00_AXI_rdata));
+#endif
+
   ctrl->set_b(
           GetSetWrapper(top.S00_AXI_bready),
           GetSetWrapper(top.S00_AXI_bvalid));
@@ -412,8 +432,7 @@ int main(int argc, char **argv) {
 
   std::optional<std::string> dram_file = {};
   for (int i = 1; i < argc; ++i) {
-    assert(argv[i][0] == '-');
-    if (strcmp(argv[i] + 1, "dramconfig") == 0) {
+    if (strcmp(argv[i], "-dramconfig") == 0) {
       dram_file = std::string(argv[i + 1]);
       std::cerr << "dramconfig is " << *dram_file << std::endl;
     }

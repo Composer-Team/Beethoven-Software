@@ -80,7 +80,7 @@ public:
     }
   }
 
-  [[nodiscard]] std::unique_ptr<uint8_t[]> get() const {
+  [[nodiscard]] std::unique_ptr<uint8_t[]> get_array() const {
     s_vpi_value value;
     value.format = vpiVectorVal;
     vpi_get_value(handle, &value);

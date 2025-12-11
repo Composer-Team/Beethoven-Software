@@ -1,7 +1,7 @@
 #ifndef SIM_DATAWRAPPER_H
 #define SIM_DATAWRAPPER_H
 
-#include "sim/DataWrapper.h"
+#include "DataWrapper.h"
 #include <cstring>
 
 #define default_get return *ptr

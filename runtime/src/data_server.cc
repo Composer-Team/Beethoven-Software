@@ -16,11 +16,11 @@
 #include <beethoven/verilator_server.h>
 #include <beethoven_hardware.h>
 
-#include "../include/data_server.h"
+#include "data_server.h"
 
 #ifdef SIM
 #ifdef VERILATOR
-#include "sim/verilator.h"
+#include "verilator.h"
 #else
 #include <vpi_user.h>
 #endif

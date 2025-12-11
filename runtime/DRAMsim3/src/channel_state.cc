@@ -1,4 +1,4 @@
-#include "channel_state.h"
+#include "dramsim3/channel_state.h"
 
 namespace dramsim3 {
 ChannelState::ChannelState(const Config& config, const Timing& timing)

@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "../ext/SuperLU_MT_3.1/SRC/slu_mt_ddefs.h"
-#include "thermal_config.h"
+#include <dramsim3/thermal_config.h>
 
 //#define DEBUG
 //#define DEBUGMIDX
