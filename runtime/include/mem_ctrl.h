@@ -21,7 +21,9 @@
 
 extern uint64_t main_time;
 
+#ifndef VERILATOR
 #include "vpi_handle.h"
+#endif
 
 #define RLOCK pthread_mutex_lock(&axi4_mem.read_queue_lock);
 #define WLOCK pthread_mutex_lock(&axi4_mem.write_queue_lock);
