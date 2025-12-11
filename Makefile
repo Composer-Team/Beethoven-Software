@@ -70,7 +70,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifeq ($(UNAME_S),Darwin)
-	LD_FLAGS += -rpath /usr/local/lib -undefined suppress
+	LD_FLAGS += -rpath /usr/local/lib
 	LIB_EXPORT="export LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(RUNTIME_DIR)/DRAMsim3/"
 endif
 
