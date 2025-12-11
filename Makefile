@@ -17,7 +17,7 @@ STATIC_LIB ?= 1
 
 VPATH=$(BEETHOVEN_PATH)/build/hw/verification
 
-VERILATOR_INC = /opt/homebrew/share/verilator/include/
+VERILATOR_INC = $(shell verilator --getenv VERILATOR_ROOT)/include/
 
 CXX = c++
 
