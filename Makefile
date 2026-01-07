@@ -189,7 +189,7 @@ obj_dir/VBeethovenTop__ALL.a: verilate
 
 	
 BeethovenSim: obj_dir/VBeethovenTop__ALL.a $(SRCS) lib_beethoven.o
-	c++ $(CXX_FLAGS) $(LD_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz
+	c++ $(CXX_FLAGS) -o $@ $^ obj_dir/libVBeethovenTop.a obj_dir/libverilated.a obj_dir/VBeethovenTop__ALL.a -lz $(LD_FLAGS)
 
 endif
 ############ END VERILATOR ONLY ##################
