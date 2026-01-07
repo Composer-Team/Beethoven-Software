@@ -439,8 +439,12 @@ int main(int argc, char **argv) {
     ++i;
   }
 
+  #ifndef DRAM_CONFIG
+  #define DRAM_CONFIG "/usr/local/share/beethoven/runtime/configs/DDR4_8Gb_x16_3200.ini"
+  #endif
+
   if (!dram_file.has_value()) {
-    dram_file = std::string("runtime/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini");
+    dram_file = std::string(DRAM_CONFIG);
   }
 
   data_server::start();
