@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0.0)
+cmake_minimum_required(VERSION 3.28.0)
 project(beethoven)
 enable_language(CXX)
 set(VERSION 1.0.0)
