@@ -147,11 +147,11 @@ $(OBJDIR)/%.o: $(SRC_PREFIX)src/%.cc
 
 # for icarus - requires .vpi ending
 sim_BeethovenRuntime.vpi: $(SRCS) lib_beethoven.o
-	$(CXX) -shared $(LD_FLAGS) -o$@ $^
+	$(CXX) -shared -o$@ $^ $(LD_FLAGS)
 
 # for VCS, allows standard .so ending
 libBeethovenRuntime.so: $(SRCS) lib_beethoven.o
-	$(CXX) -shared $(LD_FLAGS) -o$@ $^
+	$(CXX) -shared -o$@ $^ $(LD_FLAGS)
 
 
 
@@ -160,7 +160,7 @@ TESTS = bin/alloc_sizes bin/merge_sort
 bin/%: test/%.cc $(SRCS)
 	mkdir -p bin
 	$(CXX) -c ${CXX_FLAGS} $< -o $(basename $<)
-	$(CXX) $(LD_FLAGS) -o $@ $(SRCS) $(basename $<)
+	$(CXX) -o $@ $(SRCS) $(basename $<) $(LD_FLAGS)
 
 test: $(TESTS)
 
