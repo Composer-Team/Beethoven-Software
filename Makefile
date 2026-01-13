@@ -70,7 +70,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifeq ($(UNAME_S),Darwin)
-	LD_FLAGS += -rpath /usr/local/lib
+	LD_FLAGS += -rpath /usr/local/lib -undefined suppress
 	LIB_EXPORT="export LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(RUNTIME_DIR)/DRAMsim3/"
 endif
 
@@ -103,6 +103,7 @@ endif
 ifeq ($(SIMULATOR),icarus)
 SIMULATOR_BACKEND=vpi
 DEPS = sim_BeethovenRuntime.vpi beethoven.vvp
+LD_FLAGS += -lvpi
 
 VERILOG_FLAGS += -DICARUS -g2005-sv -I$(VPATH) -I$(VPATH)/assume -I$(VPATH)/assert -I$(VPATH)/cover -DSYNTHESIS
 VERILOG_SRCS += ${BEETHOVEN_PATH}/build/hw/BeethovenTopVCSHarness.v
@@ -147,7 +148,7 @@ $(OBJDIR)/%.o: $(SRC_PREFIX)src/%.cc
 
 # for icarus - requires .vpi ending
 sim_BeethovenRuntime.vpi: $(SRCS) lib_beethoven.o
-	$(CXX) -shared -o$@ $^ $(LD_FLAGS)
+	$(CXX) -shared -o$@  $^ $(LD_FLAGS) -lveriuser -lvpi
 
 # for VCS, allows standard .so ending
 libBeethovenRuntime.so: $(SRCS) lib_beethoven.o
@@ -242,6 +243,6 @@ clean:
 		`find . -name '*.o'` \
 		`find . -name '*.so'`\
 		`find . -name '*.dylib'` \
-		`find . -name '*.a'` \
-		obj_dir
+		`find . -name '*.a'`
+	rm -rf obj_dir
 	rm -f sim_BeethovenRuntime.vpi

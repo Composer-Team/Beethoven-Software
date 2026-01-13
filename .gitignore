@@ -36,3 +36,4 @@ project
 .project
 SRs
 target
+*dylib
