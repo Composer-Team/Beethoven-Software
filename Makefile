@@ -72,7 +72,7 @@ endif
 ifeq ($(UNAME_S),Darwin)
 	LD_FLAGS += -rpath /usr/local/lib -undefined suppress
 	LIB_EXPORT="export LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(RUNTIME_DIR)/DRAMsim3/"
-	CXX_FLAGS += -I/opt/homembrew/include/iverilog
+	CXX_FLAGS += -I/opt/homebrew/include/iverilog
 endif
 
 VPI_LOC = /usr/local/lib/ivl
