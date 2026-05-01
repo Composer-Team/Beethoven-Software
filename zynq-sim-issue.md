@@ -5,18 +5,100 @@ they were uncovered while validating Phase 1–5 of the SW refactor.
 
 ---
 
-## Issue 1: zynq + simulation + verilator end-to-end run hangs
+## Issue 1: zynq + simulation hangs — libbeethoven-zynq malloc path
 
-## Status
+## Status (updated after Icarus retest)
 
-Build chain works. Daemon launches. Shmem channels open. Testbench
-connects. But `vector_add(...).get()` doesn't complete within several
-minutes — daemon is at 99% CPU (Verilator simulating), testbench at 0%
-CPU (blocked on shmem response).
+Confirmed: the hang is in `libbeethoven-zynq.so`, not in the runtime
+daemon, not Verilator-specific. Same hang reproduces with
+**Icarus** — but Icarus surfaces a clear error message that pinpoints
+the cause:
 
-Either Verilator is just very slow at this design, or there's a
-deadlock between cmd_server / data_server / verilator's eval loop.
-Cannot tell without instrumentation.
+```
+enqueueing command: 0
+enqueueing command: 1
+BAD ADDRESS IN TRANSLATION FROM FPGA -> CPU: 0. You might be running outside of your allocated segment...
+Existing Mappings:    [empty]
+```
+
+The data_server's `address_translator` has **no mappings registered**
+when the FPGA-side simulator tries to read from a host buffer. So the
+RTL fires the right command, gets the right address, but the
+daemon's translation table is empty.
+
+## Root cause
+
+`src/fpga_handle_impl/fpga_handle_zynq.cc::malloc()` uses host-only
+`mmap` + `vtop()` (virtual→physical via `/proc/self/pagemap`):
+
+```cpp
+remote_ptr fpga_handle_t::malloc(size_t len) {
+    void *addr = mmap(...MAP_HUGETLB...);
+    mlock(addr, sz);
+    return remote_ptr(vtop((intptr_t) addr), addr, sz);
+}
+```
+
+This is correct for real Zynq silicon — the FPGA reads the same
+DDR pages the kernel just locked, and `vtop()` gives the physical
+address the FPGA needs to DMA against.
+
+It is **wrong for sim mode**. In simulation, the FPGA-side memory
+is separate from host memory (DRAMsim3 maintains its own array), and
+the *only* way the daemon knows where a host buffer maps to in the
+simulator's address space is via an explicit `ALLOC` op through the
+data_server, which calls `address_translator::add_mapping(...)`.
+
+`fpga_handle_discrete.cc::malloc()` does this correctly — it sends
+`ALLOC` to the data_server, gets back an fpga_addr + a shmem
+filename, and maps the buffer through that shmem. The daemon's `at`
+gets populated; subsequent FPGA reads/writes translate cleanly.
+
+`fpga_handle_zynq.cc::malloc()` never sends `ALLOC` and never
+populates the AT. In sim, the AT stays empty and the first FPGA
+read/write crashes.
+
+## Fix sketch
+
+`fpga_handle_zynq.cc` needs a sim-mode branch that mirrors the
+discrete path. The `BEETHOVEN_USE_CUSTOM_ALLOC` define (set by the
+binding header when `SIM` is defined) is the natural switch:
+
+```cpp
+remote_ptr fpga_handle_t::malloc(size_t len) {
+#ifdef BEETHOVEN_USE_CUSTOM_ALLOC
+    // Sim mode — go through the data_server (same as discrete).
+    return malloc_via_data_server(len);
+#else
+    // Real silicon — host mmap + vtop.
+    return malloc_via_vtop(len);
+#endif
+}
+
+void copy_to_fpga(const remote_ptr &dst) {
+#ifdef BEETHOVEN_USE_CUSTOM_ALLOC
+    // Sim mode — data is already in the shmem-mapped buffer; the daemon
+    // sees it directly. No-op (or a barrier).
+#else
+    arm_dcache_flush(dst.getHostAddr(), dst.getLen());
+#endif
+}
+```
+
+Same branch needed in `copy_from_fpga` and `free`. The cache-flush
+calls are real-silicon-only.
+
+This is a small code change but a meaningful design decision: Zynq
+silicon and Zynq-sim use fundamentally different memory paths. The
+cleanest expression is probably to factor the shared-memory ALLOC
+logic out of `fpga_handle_discrete.cc` into a helper and call it
+from both `_discrete` (always) and `_zynq` (under `BEETHOVEN_USE_CUSTOM_ALLOC`).
+
+## Workaround for now
+
+Use `target = "simulation"` (BEETHOVEN_PLATFORM=discrete) when running
+in sim. The discrete path is fully working with Icarus end-to-end.
+Switch back to a Zynq target for real-silicon synthesis runs.
 
 ## Repro
 
