@@ -9,7 +9,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
-#include <beethoven/verilator_server.h>
+#include <beethoven/runtime_ipc.h>
 #include <thread>
 
 extern beethoven::cmd_server_file *csf;

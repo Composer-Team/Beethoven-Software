@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "util.h"
-#include <beethoven/verilator_server.h>
+#include <beethoven/runtime_ipc.h>
 #include <beethoven_hardware.h>
 
 #include "data_server.h"

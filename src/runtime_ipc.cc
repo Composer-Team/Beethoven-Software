@@ -2,7 +2,7 @@
 // Created by Chris Kjellqvist on 11/14/22.
 //
 
-#include "beethoven/verilator_server.h"
+#include "beethoven/runtime_ipc.h"
 #include <pthread.h>
 #include <cstring>
 #include <unistd.h>

@@ -21,7 +21,7 @@
 #include <cstddef>
 
 #ifndef BAREMETAL
-#include <beethoven/verilator_server.h>
+#include <beethoven/runtime_ipc.h>
 #include <map>
 #include <vector>
 #include "beethoven/allocator/alloc.h"

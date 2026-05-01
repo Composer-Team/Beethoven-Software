@@ -6,7 +6,7 @@
 
 #include <queue>
 #include <unordered_map>
-#include <beethoven/verilator_server.h>
+#include <beethoven/runtime_ipc.h>
 
 extern beethoven::cmd_server_file *csf;
 extern bool runtime_verbose;

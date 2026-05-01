@@ -6,7 +6,7 @@
 #include "data_server.h"
 #include "fpga_utils.h"
 #include "mmio.h"
-#include <beethoven/verilator_server.h>
+#include <beethoven/runtime_ipc.h>
 #include <beethoven_hardware.h>
 #include <sys/stat.h>
 

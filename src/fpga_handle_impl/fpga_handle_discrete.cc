@@ -43,7 +43,7 @@ fpga_handle_t *beethoven::current_handle_context;
  * limitations under the License.
  */
 
-#include "beethoven/verilator_server.h"
+#include "beethoven/runtime_ipc.h"
 #include "beethoven/response_handle.h"
 #include <unistd.h>
 #ifndef ZYNQ

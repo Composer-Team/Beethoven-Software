@@ -12,7 +12,7 @@ set(_core_sources
     ${_root}/src/rocc_response.cc
     ${_root}/src/response_handle.cc
     ${_root}/src/allocator/alloc.cc
-    ${_root}/src/verilator_server.cc)
+    ${_root}/src/runtime_ipc.cc)
 
 option(ENABLE_CACHE_FLUSH "Enable software cache flushing on Zynq (ARM64 only)" OFF)
 
