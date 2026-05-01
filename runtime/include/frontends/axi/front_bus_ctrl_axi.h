@@ -6,7 +6,7 @@
 #define BEETHOVENRUNTIME_FRONT_BUS_CTRL_AXI_H
 
 #include <cinttypes>
-#include "trace_read.h"
+#include "core/trace_read.h"
 
 extern Trace *trace;
 

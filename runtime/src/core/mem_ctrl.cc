@@ -3,7 +3,7 @@
 //
 
 
-#include "mem_ctrl.h"
+#include "core/mem_ctrl.h"
 
 #if NUM_DDR_CHANNELS >= 1
 #ifdef VERILATOR

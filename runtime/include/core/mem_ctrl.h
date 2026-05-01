@@ -9,20 +9,20 @@
 
 #if NUM_DDR_CHANNELS >= 1
 
-#include "data_server.h"
-#include "ddr_macros.h"
+#include "core/data_server.h"
+#include "core/ddr_macros.h"
 #include "dramsim3/dram_system.h"
 #include <dramsim3/dramsim3.h>
 #include <memory>
 #include <queue>
-#include "address_channel.h"
-#include "data_channel.h"
-#include "response_channel.h"
+#include "core/address_channel.h"
+#include "core/data_channel.h"
+#include "core/response_channel.h"
 
 extern uint64_t main_time;
 
 #ifndef VERILATOR
-#include "vpi_handle.h"
+#include "frontends/axi/vpi_handle.h"
 #endif
 
 #define RLOCK pthread_mutex_lock(&axi4_mem.read_queue_lock);
@@ -176,7 +176,7 @@ namespace mem_ctrl {
 
 #ifdef VERILATOR
 #include "VBeethovenTop.h"
-#include "DataWrapper.h"
+#include "core/data_wrapper.h"
 
 using mem_intf_t = mem_ctrl::mem_interface<
         GetSetWrapper<prep(VBeethovenTop::M00_AXI_arid)>,

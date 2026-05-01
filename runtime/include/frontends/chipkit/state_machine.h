@@ -5,8 +5,8 @@
 #ifndef BEETHOVENRUNTIME_STATE_MACHINE_H
 #define BEETHOVENRUNTIME_STATE_MACHINE_H
 
-#include "sim/tick.h"
-#include "sim/DataWrapper.h"
+#include "core/tick.h"
+#include "core/data_wrapper.h"
 
 const int baud_table[] = {1302, 217, 108, 54, 27, 22, 20, 19, 16, 15, 10, 8, 6, 5, 4, 2};
 extern unsigned int baud_sel;

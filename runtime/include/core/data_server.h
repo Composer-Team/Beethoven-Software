@@ -9,7 +9,7 @@
 #include <beethoven_hardware.h>
 #include <queue>
 #include <set>
-#include "util.h"
+#include "core/util.h"
 #include <beethoven/runtime_ipc.h>
 
 extern bool runtime_verbose;

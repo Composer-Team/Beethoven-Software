@@ -1,5 +1,5 @@
-#ifndef DATAWRAPPER_H
-#define DATAWRAPPER_H
+#ifndef DATA_WRAPPER_H
+#define DATA_WRAPPER_H
 
 #include <cinttypes>
 #include <cstddef>

@@ -10,11 +10,11 @@
 #include <pthread.h>
 #include <map>
 #include <queue>
-#include "tick.h"
-#include "cmd_server.h"
-#include "DataWrapper.h"
-#include "mem_ctrl.h"
-#include "util.h"
+#include "core/tick.h"
+#include "core/cmd_server.h"
+#include "core/data_wrapper.h"
+#include "core/mem_ctrl.h"
+#include "core/util.h"
 
 extern pthread_mutex_t cmdserverlock;
 extern std::queue<beethoven::rocc_cmd> cmds;

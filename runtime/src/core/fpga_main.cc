@@ -1,10 +1,10 @@
 //
 // Created by Chris Kjellqvist on 10/29/22.
 //
-#include "data_server.h"
-#include "cmd_server.h"
+#include "core/data_server.h"
+#include "core/cmd_server.h"
 #include <pthread.h>
-#include "fpga_utils.h"
+#include "fpga/fpga_utils.h"
 #include <cstring>
 #include <iostream>
 

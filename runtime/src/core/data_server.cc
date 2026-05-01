@@ -12,15 +12,15 @@
 #include <unistd.h>
 #include <vector>
 
-#include "util.h"
+#include "core/util.h"
 #include <beethoven/runtime_ipc.h>
 #include <beethoven_hardware.h>
 
-#include "data_server.h"
+#include "core/data_server.h"
 
 #ifdef SIM
 #ifdef VERILATOR
-#include "verilator.h"
+#include "frontends/axi/verilator.h"
 #else
 #include <vpi_user.h>
 #endif
@@ -43,9 +43,9 @@ bool dma_write;
 #endif
 
 #ifdef FPGA
-#include "cmd_server.h"
-#include "fpga_utils.h"
-#include "mmio.h"
+#include "core/cmd_server.h"
+#include "fpga/fpga_utils.h"
+#include "core/mmio.h"
 #endif
 
 #ifdef ZYNQ

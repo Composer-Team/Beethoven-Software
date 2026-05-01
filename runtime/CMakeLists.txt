@@ -51,7 +51,7 @@ set(_core
     src/core/mmio.cc
     src/core/tick.cc
     src/core/mem_ctrl.cc
-    src/core/DataWrapper.cc)
+    src/core/data_wrapper.cc)
 
 # === Frontend sources (axi or chipkit) ===
 if(BEETHOVEN_FRONTEND STREQUAL "axi")
@@ -237,7 +237,3 @@ if(TARGET BeethovenRuntime AND NOT BEETHOVEN_SIMULATOR STREQUAL "icarus")
     endif()
 endif()
 
-# === brt-kill: small utility to shut down a running daemon ===
-add_executable(brt-kill src/kill.cc)
-target_link_libraries(brt-kill PRIVATE APEX::beethoven-${BEETHOVEN_PLATFORM})
-set_target_properties(brt-kill PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${_out})

@@ -54,7 +54,7 @@ to "the FPGA":
   `fpga_mgmt`. `BEETHOVEN_PLATFORM=discrete`.
 - **zynq-silicon** — real Zynq SoC (FPGA fabric + CPU on one chip sharing
   DDR). `BEETHOVEN_PLATFORM=zynq` in synth, `discrete` in sim (the runtime
-  daemon mediates allocations in sim — see `verilator-widebus-issue.md`
+  daemon mediates allocations in sim — see `issues/verilator-widebus.md`
   caveat for `target = "simulation"` specifically with Verilator).
 
 ### `target = "simulation"`
@@ -197,7 +197,7 @@ There's a still-open issue: building the runtime daemon for
 because `SimulationPlatform`'s wider strb signals trip a template
 specialization gap in `runtime/include/data_channel.h`. Workaround: use
 **Icarus** with `target = "simulation"`, or use any non-sim target with
-Verilator. See `verilator-widebus-issue.md` for the full diagnosis.
+Verilator. See `issues/verilator-widebus.md` for the full diagnosis.
 
 ## Developer-mode override
 

@@ -2,8 +2,8 @@
 // Created by Chris Kjellqvist on 12/2/22.
 //
 
-#include "fpga_utils.h"
-#include "mmio.h"
+#include "fpga/fpga_utils.h"
+#include "core/mmio.h"
 #include <iostream>
 
 #if (defined(ZYNQ) || AWS) && !defined(SIM)

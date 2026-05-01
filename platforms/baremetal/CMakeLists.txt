@@ -78,6 +78,7 @@ write_basic_package_version_file(
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/beethoven_baremetalConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/beethoven_baremetalConfigVersion.cmake
+    ${_root}/cmake/BeethovenBuildHelpers.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/beethoven_baremetal)
 
 install(FILES ${_root}/cmake/arm-none-eabi.cmake

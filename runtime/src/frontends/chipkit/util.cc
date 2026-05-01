@@ -2,7 +2,7 @@
 // Created by Christopher Kjellqvist on 8/27/24.
 //
 
-#include "sim/chipkit/util.h"
+#include "frontends/chipkit/util.h"
 #include <cassert>
 
 static void push_val(const char buf[4], std::queue<unsigned char> &vec) {

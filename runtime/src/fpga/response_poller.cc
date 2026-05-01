@@ -2,17 +2,17 @@
 // Created by Chris Kjellqvist on 11/6/22.
 //
 
-#include "response_poller.h"
-#include "fpga_utils.h"
-#include "mmio.h"
+#include "fpga/response_poller.h"
+#include "fpga/fpga_utils.h"
+#include "core/mmio.h"
 #ifdef VSIM
 #include "sh_dpi_tasks.h"
 #endif
 
-#include "cmd_server.h"
+#include "core/cmd_server.h"
 #include <beethoven_hardware.h>
 #include <thread>
-#include "util.h"
+#include "core/util.h"
 
 using namespace std::chrono_literals;
 

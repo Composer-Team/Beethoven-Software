@@ -3,9 +3,9 @@
 //
 
 #include "beethoven_allocator_declaration.h"
-#include "front_bus_ctrl_axi.h"
-#include "mem_ctrl.h"
-#include "sim/chipkit/state_machine.h"
+#include "frontends/axi/front_bus_ctrl_axi.h"
+#include "core/mem_ctrl.h"
+#include "frontends/chipkit/state_machine.h"
 
 unsigned int baud_sel = 14;
 int baud_div = baud_table[baud_sel]*4;

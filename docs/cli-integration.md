@@ -24,13 +24,21 @@ ${CMAKE_INSTALL_PREFIX}/
 │       ├── beethoven/
 │       │   ├── beethovenConfig.cmake
 │       │   ├── beethovenConfigVersion.cmake
+│       │   ├── BeethovenBuildHelpers.cmake          # internal — shared by both Configs
 │       │   ├── beethoven-discrete-targets.cmake
 │       │   └── beethoven-zynq-targets.cmake
 │       └── beethoven_baremetal/
 │           ├── beethoven_baremetalConfig.cmake
 │           └── ...
 ├── include/beethoven/                              # public headers
-└── share/beethoven_baremetal/arm-none-eabi.cmake   # baremetal toolchain
+└── share/
+    ├── beethoven/runtime-src/                      # source-package: per-project
+    │   ├── CMakeLists.txt                           runtime daemon's cmake project
+    │   ├── DRAMsim3/                                (vendored)
+    │   ├── include/{core,frontends/{axi,chipkit},fpga}/
+    │   ├── src/{core,frontends/{axi,chipkit},fpga}/
+    │   └── scripts/{tab.tab, kria_alloc_pages.py}
+    └── beethoven_baremetal/arm-none-eabi.cmake     # baremetal toolchain
 ```
 
 A breadcrumb is also written to the CMake user package registry:
@@ -45,9 +53,12 @@ This means `find_package(beethoven)` works from any project with no
 
 ## 2. `~/.config/beethoven/config.toml` schema
 
-The CLI maintains this file. It is the single source of truth for where
-Beethoven is installed and where the source repos live (for the runtime
-cmake project, which is per-project).
+The CLI maintains this file. After Option B (runtime installed to
+`share/`), the only persistent state the CLI needs to remember is the
+install prefix — the runtime source path is discoverable through
+`beethovenConfig.cmake`'s exported `BEETHOVEN_RUNTIME_SRC_DIR`. A
+`[source]` section is now optional; populate it only for developer-mode
+overrides (path = "../some-checkout").
 
 ```toml
 [install]
@@ -115,14 +126,20 @@ beethoven build                                 (cwd = project root)
   3. sbt run                                    → target/binding/, target/<mode>/hw/
   │    - main class is beethoven.cli.Run; toml feeds it via env/sys-props
   │
-  4. cmake on Beethoven-Software/runtime        → target/<mode>/runtime/BeethovenRuntime
-  │    - cmake -S ${beethoven-software}/runtime
+  4. cmake on the installed runtime source-package
+  │   →  target/<mode>/runtime/BeethovenRuntime
+  │    - $BEETHOVEN_RUNTIME_SRC_DIR is exposed by beethovenConfig.cmake;
+  │      the CLI reads it via `find_package(beethoven)` and passes:
+  │    - cmake -S ${BEETHOVEN_RUNTIME_SRC_DIR}        # ~/.local/share/beethoven/runtime-src
   │           -B target/<mode>/runtime/_cmake
   │           -DBEETHOVEN_PROJECT_ROOT=$PWD
   │           -DBEETHOVEN_BUILD_MODE=<mode>
   │           -DBEETHOVEN_PLATFORM=<platform>
   │           -DBEETHOVEN_SIMULATOR=<simulator>   (simulation only)
   │    - cmake --build ... -j
+  │    - Developer-mode override: if Beethoven.toml has
+  │      [software.beethoven-software] path = "../checkout", the CLI
+  │      uses <checkout>/runtime instead of $BEETHOVEN_RUNTIME_SRC_DIR.
   │
   5. cmake on <project>/sw                      → target/sw/<testbench>
   │    - cmake -S sw -B target/sw
@@ -168,7 +185,9 @@ beethoven run
   │
   3. Exec target/sw/<testbench>
   │
-  4. When testbench exits, signal daemon (target/<mode>/runtime/brt-kill)
+  4. Testbench calls handle.shutdown() before exit; daemon's cmd_server
+  │    sees the quit op and exits cleanly. CLI may also send SIGTERM
+  │    as a fallback.
 ```
 
 Baremetal is the exception: there is no daemon. The user binary links

@@ -1,7 +1,7 @@
 //
 // Created by Chris Kjellqvist on 10/29/22.
 //
-#include "fpga_utils.h"
+#include "fpga/fpga_utils.h"
 
 #if AWS || defined(ZYNQ)
 #include <pthread.h>

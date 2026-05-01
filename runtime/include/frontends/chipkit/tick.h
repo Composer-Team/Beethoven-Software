@@ -11,7 +11,7 @@
 #define FPGA_CLOCK DEFAULT_PL_CLOCK
 #endif
 
-#include "sim/chipkit/util.h"
+#include "frontends/chipkit/util.h"
 #include "sim/tick.h"
 
 bool has_moved_memory = false;

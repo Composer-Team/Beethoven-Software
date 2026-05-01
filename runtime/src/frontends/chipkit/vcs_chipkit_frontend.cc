@@ -4,16 +4,16 @@
 
 //#include "vcs_vpi_user.h"
 //#include "sv_vpi_user.h"
-#include "mem_ctrl.h"
-#include "sim/chipkit/state_machine.h"
-#include "tick.h"
-#include "vpi_handle.h"
-#include "cmd_server.h"
-#include "data_server.h"
+#include "core/mem_ctrl.h"
+#include "frontends/chipkit/state_machine.h"
+#include "core/tick.h"
+#include "frontends/axi/vpi_handle.h"
+#include "core/cmd_server.h"
+#include "core/data_server.h"
 #include <pthread.h>
-#include "sim/chipkit/tick.h"
+#include "frontends/chipkit/tick.h"
 #include "beethoven_allocator_declaration.h"
-#include "front_bus_ctrl_uart.h"
+#include "frontends/chipkit/front_bus_ctrl_uart.h"
 
 #include <cstring>
 #include <vector>
@@ -209,7 +209,7 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
   return 0;
 }
 
-#include "sim/chipkit/util.h"
+#include "frontends/chipkit/util.h"
 
 PLI_INT32 tick_calltf(PLI_BYTE8 * /*user_data*/) {
   main_time += fpga_clock_inc;;

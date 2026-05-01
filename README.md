@@ -147,8 +147,8 @@ both invoked by the `beethoven` CLI:
    <project>/target/<mode>/runtime/_cmake -DBEETHOVEN_PROJECT_ROOT=...
    -DBEETHOVEN_BUILD_MODE=... -DBEETHOVEN_PLATFORM=...
    -DBEETHOVEN_SIMULATOR=...`
-   Produces `<project>/target/<mode>/runtime/BeethovenRuntime` plus
-   `brt-kill` (a small utility for shutting down a running daemon).
+   Produces `<project>/target/<mode>/runtime/BeethovenRuntime`.
+   Testbenches signal shutdown via `handle.shutdown()` from libbeethoven.
 2. **user sw** — `cmake -S <project>/sw -B
    <project>/target/<mode>/sw -DBEETHOVEN_PROJECT_ROOT=...
    -DBEETHOVEN_PLATFORM=...`

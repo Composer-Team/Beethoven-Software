@@ -2,10 +2,10 @@
 // Created by Chris Kjellqvist on 9/27/22.
 //
 
-#include "cmd_server.h"
-#include "data_server.h"
-#include "fpga_utils.h"
-#include "mmio.h"
+#include "core/cmd_server.h"
+#include "core/data_server.h"
+#include "fpga/fpga_utils.h"
+#include "core/mmio.h"
 #include <beethoven/runtime_ipc.h>
 #include <beethoven_hardware.h>
 #include <sys/stat.h>
@@ -18,10 +18,10 @@
 #include <tuple>
 #include <unistd.h>
 
-#include "response_poller.h"
+#include "fpga/response_poller.h"
 
 // for shared memory
-#include "util.h"
+#include "core/util.h"
 #include <cmath>
 #include <fcntl.h>
 #if defined(USE_VCS) || defined(ICARUS)

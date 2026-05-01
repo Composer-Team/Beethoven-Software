@@ -1,20 +1,20 @@
 #include <iostream>
 
 #include "VBeethovenTop.h"
-#include "cmd_server.h"
-#include "data_server.h"
+#include "core/cmd_server.h"
+#include "core/data_server.h"
 #include <csignal>
 #include <chrono>
 #include <pthread.h>
 #include <queue>
 #include <verilated.h>
 
-#include "mem_ctrl.h"
-#include "verilator.h"
-#include "tick.h"
+#include "core/mem_ctrl.h"
+#include "frontends/axi/verilator.h"
+#include "core/tick.h"
 
 #include <beethoven_hardware.h>
-#include "util.h"
+#include "core/util.h"
 
 
 #ifndef DEFAULT_PL_CLOCK
@@ -87,7 +87,7 @@ void tick(VBeethovenTop *top) {
   }
 }
 
-#include "state_machine.h"
+#include "core/state_machine.h"
 
 #if NUM_DDR_CHANNELS >= 1
 extern int writes_emitted;

@@ -1,23 +1,23 @@
 #include <iostream>
 
 #include "BeethovenTop.h"
-#include "cmd_server.h"
+#include "core/cmd_server.h"
 #include <csignal>
 #include <pthread.h>
 #include <queue>
 #include <verilated.h>
 
-#include "front_bus_ctrl_uart.h"
-#include "mem_ctrl.h"
-#include "verilator.h"
-#include "sim/chipkit/state_machine.h"
+#include "frontends/chipkit/front_bus_ctrl_uart.h"
+#include "core/mem_ctrl.h"
+#include "frontends/axi/verilator.h"
+#include "frontends/chipkit/state_machine.h"
 
-#include "util.h"
+#include "core/util.h"
 #include <beethoven_allocator_declaration.h>
 
-#include "sim/chipkit/tick.h"
-#include "tick.h"
-#include "sim/chipkit/util.h"
+#include "frontends/chipkit/tick.h"
+#include "core/tick.h"
+#include "frontends/chipkit/util.h"
 
 uint64_t main_time = 0;
 

@@ -6,7 +6,7 @@
 #define BEETHOVENRUNTIME_DATA_CHANNEL_H
 
 #include <cinttypes>
-#include "DataWrapper.h"
+#include "core/data_wrapper.h"
 
 template<typename id_t, typename strb_t, typename byte_t, typename data_t>
 struct data_channel {

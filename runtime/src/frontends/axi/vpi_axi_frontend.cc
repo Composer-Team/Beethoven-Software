@@ -4,12 +4,12 @@
 
 //#include "vcs_vpi_user.h"
 //#include "sv_vpi_user.h"
-#include "mem_ctrl.h"
-#include "state_machine.h"
-#include "tick.h"
-#include "vpi_handle.h"
-#include "cmd_server.h"
-#include "data_server.h"
+#include "core/mem_ctrl.h"
+#include "core/state_machine.h"
+#include "core/tick.h"
+#include "frontends/axi/vpi_handle.h"
+#include "core/cmd_server.h"
+#include "core/data_server.h"
 #include <pthread.h>
 
 #include "beethoven_hardware.h"

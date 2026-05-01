@@ -3,7 +3,7 @@
 `target = "simulation"` + `build-mode = "simulation"` + `BEETHOVEN_SIMULATOR=verilator`
 fails to compile the runtime daemon. The SimulationPlatform's wider bus
 widths cause Verilator to emit `VlWide<N>` types for some signals, and
-`runtime/include/data_channel.h` doesn't know how to decode them.
+`runtime/include/core/data_channel.h` doesn't know how to decode them.
 
 ## Repro
 
@@ -28,7 +28,7 @@ cmake --build target/simulation/runtime/_cmake -j
 ## Error
 
 ```
-runtime/include/data_channel.h:91:32:
+runtime/include/core/data_channel.h:91:32:
   error: invalid user-defined conversion from 'VlWide<4>' to 'uint32_t'
 
 verilated_types.h:431:

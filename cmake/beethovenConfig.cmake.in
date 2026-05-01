@@ -1,6 +1,9 @@
 @PACKAGE_INIT@
 
-set_and_check(BEETHOVEN_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set_and_check(BEETHOVEN_INCLUDE_DIR     "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+# Source-package location of the runtime cmake project. The CLI passes
+# this to `cmake -S ...` to build the per-project BeethovenRuntime daemon.
+set_and_check(BEETHOVEN_RUNTIME_SRC_DIR "@PACKAGE_CMAKE_INSTALL_DATAROOTDIR@/beethoven/runtime-src")
 
 # Default to discrete if no components requested
 if(NOT beethoven_FIND_COMPONENTS)
@@ -25,19 +28,12 @@ endforeach()
 
 check_required_components(beethoven)
 
-function(beethoven_build TARGET)
-    cmake_parse_arguments(BL "" "" "SOURCES" ${ARGN})
+# Shared body for beethoven_build() — defines _beethoven_build_common().
+include("${CMAKE_CURRENT_LIST_DIR}/BeethovenBuildHelpers.cmake")
 
-    if(NOT BEETHOVEN_PROJECT_ROOT)
-        message(FATAL_ERROR
-            "beethoven_build: BEETHOVEN_PROJECT_ROOT is not set. "
-            "This macro is meant to be invoked via the `beethoven` CLI.")
-    endif()
+function(beethoven_build TARGET)
     if(NOT BEETHOVEN_PLATFORM)
         message(FATAL_ERROR "beethoven_build: BEETHOVEN_PLATFORM is not set.")
-    endif()
-    if(NOT BL_SOURCES)
-        message(FATAL_ERROR "beethoven_build: SOURCES is required.")
     endif()
 
     # Auto-load the platform's targets file if find_package didn't already
@@ -53,16 +49,5 @@ function(beethoven_build TARGET)
         include("${_targets}")
     endif()
 
-    set(_binding ${BEETHOVEN_PROJECT_ROOT}/target/binding)
-
-    add_executable(${TARGET}
-        ${BL_SOURCES}
-        ${_binding}/beethoven_hardware.cc)
-
-    set_target_properties(${TARGET} PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED YES)
-
-    target_include_directories(${TARGET} PRIVATE ${_binding})
-    target_link_libraries(${TARGET} PRIVATE APEX::beethoven-${BEETHOVEN_PLATFORM})
+    _beethoven_build_common(${TARGET} APEX::beethoven-${BEETHOVEN_PLATFORM} ${ARGN})
 endfunction()
