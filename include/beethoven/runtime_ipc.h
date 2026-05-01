@@ -83,6 +83,15 @@ namespace beethoven {
     uint64_t op2_argument{};
     uint64_t op3_argument{};
 
+    // Set by the runtime daemon at startup. libbeethoven is built once
+    // globally (no SIM/non-SIM split), so platform-specific code paths that
+    // need to behave differently in sim vs real silicon — notably
+    // fpga_handle_zynq.cc::malloc(), which uses host mmap+vtop on real
+    // hardware but must go through the data_server in sim — branch on this
+    // flag at runtime. Placed at the end of the struct so the shmem ABI
+    // stays stable for any client built against an older header.
+    bool is_simulation = false;
+
     static void init(data_server_file &dsf);
   };
 

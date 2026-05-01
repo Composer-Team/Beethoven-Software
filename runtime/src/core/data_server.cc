@@ -118,6 +118,16 @@ data_server_file *dsf;
   }
 #endif
   data_server_file::init(addr);
+  // Publish whether this daemon is sim-backed or silicon-backed. Clients
+  // (libbeethoven) read this via the shmem region and pick a malloc / DMA
+  // path accordingly. The daemon's compile context is the only place the
+  // SIM define is reliable — libbeethoven itself is built once globally
+  // without SIM, so its data_server_file::init can't decide this.
+#ifdef SIM
+  addr.is_simulation = true;
+#else
+  addr.is_simulation = false;
+#endif
   LOG(std::cerr << "Data server file constructed" << std::endl);
   if (runtime_verbose) {
     std::cout << "[DATA_SERVER] Data server file initialized" << std::endl;
@@ -182,7 +192,12 @@ data_server_file *dsf;
     }
     switch (addr.operation) {
       case data_server_op::ALLOC: {
-#if defined(FPGA) && defined(ZYNQ)
+#if defined(FPGA) && defined(ZYNQ) && !defined(SIM)
+        // On real Zynq silicon the FPGA fabric shares DDR with the CPU, so
+        // libbeethoven-zynq does its own host mmap+vtop and never asks the
+        // daemon to allocate. In sim, however, the simulator's "DDR" is a
+        // separate array (DRAMsim3) and the daemon must mediate — so we
+        // only refuse this op for FPGA && ZYNQ && not SIM.
         fprintf(stderr, "In Embedded FPGA runtime, client is attempting to allocate memory from"
                         "server. Allocations should only happen locally except for discrete boards.");
         fflush(stderr);

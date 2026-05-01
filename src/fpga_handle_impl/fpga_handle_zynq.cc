@@ -206,7 +206,65 @@ response_handle<rocc_response> fpga_handle_t::send(const rocc_cmd &c) {
   return response_handle<rocc_response>(c.getXd(), handle, *this);
 }
 
+// =====================================================================
+// Two memory paths: real Zynq silicon vs simulation
+// =====================================================================
+// Real silicon: the FPGA fabric and the CPU share the same DDR controller
+// on-chip. We allocate a host buffer, lock it so the kernel can't page
+// it out, look up its physical address (vtop, see /proc/self/pagemap
+// reader above), and hand the FPGA that physical address. The runtime
+// daemon never touches the data path; it only ferries commands.
+//
+// Simulation: there is no FPGA. The "FPGA" is a software model
+// (Verilator / Icarus / VCS) and its "DDR" is DRAMsim3's internal
+// byte array — separate from host RAM. So a host pointer + a
+// /proc/self/pagemap-derived physical address means nothing to the
+// simulator. Instead, every allocation is registered with the runtime
+// daemon's data_server, which maintains an address translator (AT)
+// mapping fpga_addr <-> a shmem region that both client and daemon
+// (and the simulator, via the AT) see. This is exactly what
+// fpga_handle_discrete.cc already does.
+//
+// libbeethoven-zynq.so is built once globally (no SIM/non-SIM split),
+// so we cannot decide which path to take at compile time. The runtime
+// daemon publishes its mode via data_server->is_simulation (set by
+// runtime/src/core/data_server.cc on startup). We branch on that flag
+// at the start of each public method.
+// =====================================================================
+
 remote_ptr fpga_handle_t::malloc(size_t len) {
+  if (data_server->is_simulation) {
+    // Sim: ask the daemon to carve out a shmem-backed region and add it
+    // to the address translator. Mirrors fpga_handle_discrete.cc::malloc.
+    pthread_mutex_lock(&data_server->data_cmd_send_lock);
+    data_server->op_argument = len;
+    data_server->operation = ALLOC;
+    pthread_mutex_unlock(&data_server->server_mut);
+    // wait for the daemon to populate fname + the chosen fpga_addr
+    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+    uint64_t fpga_addr = data_server->op_argument;
+
+    int fd = shm_open(data_server->fname, O_RDWR, file_access_flags);
+    if (fd < 0) {
+      throw std::runtime_error("Failed to open shmem file " +
+                               std::string(data_server->fname) + " - " +
+                               std::string(strerror(errno)));
+    }
+    void *ptr = mmap(nullptr, len, file_access_prots, MAP_SHARED, fd, 0);
+    if (ptr == MAP_FAILED) {
+      throw std::runtime_error("Failed to map shmem file " +
+                               std::string(data_server->fname) + " - " +
+                               std::string(strerror(errno)));
+    }
+    // Track for the destructor's cleanup pass (munmap + shm_unlink).
+    device2virtual[fpga_addr] =
+        std::make_tuple(fd, ptr, len, std::string(data_server->fname));
+    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+    return remote_ptr(fpga_addr, ptr, len);
+  }
+
+  // Real silicon: host mmap + lock + vtop. The FPGA reads straight from
+  // the locked page; the daemon plays no role in the data path.
   void *addr;
   size_t sz;
   if (len <= 1 << 12) {
@@ -214,8 +272,7 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     addr = mmap(nullptr, sz, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS,
                 -1, 0);
   } else {
-    // Zynq only uses local mappings via OS
-    // see if allocation fits inside size classes
+    // pick the smallest huge-page size class that fits the request
     int fit = -1;
     for (int i = 0; i < zynq_n_page_sizes && fit == -1; ++i) {
       if (len <= zynq_huge_page_sizes[i])
@@ -239,17 +296,52 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
 }
 
 [[maybe_unused]] void fpga_handle_t::copy_to_fpga(const remote_ptr &dst) {
-  // Flush CPU cache to ensure FPGA reads latest data from RAM
+  if (data_server->is_simulation) {
+    // Sim: tell the daemon to register the move (the buffer is already
+    // shmem-mapped, so the simulator reads through the AT — this op
+    // just synchronizes the bookkeeping).
+    pthread_mutex_lock(&data_server->data_cmd_send_lock);
+    data_server->operation = data_server_op::MOVE_TO_FPGA;
+    data_server->op_argument = dst.getFpgaAddr();
+    data_server->op3_argument = dst.getLen();
+    pthread_mutex_unlock(&data_server->server_mut);
+    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+    return;
+  }
+  // Real silicon: flush CPU cache so the FPGA sees fresh data in DDR.
   arm_dcache_flush(dst.getHostAddr(), dst.getLen());
 }
 
 [[maybe_unused]] void fpga_handle_t::copy_from_fpga(const remote_ptr &src) {
-  // Invalidate CPU cache to force re-read from RAM after FPGA writes
+  if (data_server->is_simulation) {
+    // Sim: same idea — the buffer is shmem-mapped, just synchronize.
+    pthread_mutex_lock(&data_server->data_cmd_send_lock);
+    data_server->operation = data_server_op::MOVE_FROM_FPGA;
+    data_server->op2_argument = src.getFpgaAddr();
+    data_server->op3_argument = src.getLen();
+    pthread_mutex_unlock(&data_server->server_mut);
+    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+    return;
+  }
+  // Real silicon: invalidate CPU cache so we re-read from DDR.
   arm_dcache_invalidate(src.getHostAddr(), src.getLen());
 }
 
 [[maybe_unused]] void fpga_handle_t::free(remote_ptr ptr) {
-  // erase ptr from allocated regions vector
+  if (data_server->is_simulation) {
+    // Sim: ask the daemon to drop the AT entry. The destructor still
+    // does the munmap + shm_unlink for entries in device2virtual.
+    pthread_mutex_lock(&data_server->data_cmd_send_lock);
+    data_server->op_argument = ptr.getFpgaAddr();
+    data_server->operation = FREE;
+    pthread_mutex_unlock(&data_server->server_mut);
+    pthread_mutex_lock(&data_server->data_cmd_recieve_resp_lock);
+    pthread_mutex_unlock(&data_server->data_cmd_send_lock);
+    return;
+  }
+  // Real silicon: just unmap the host page.
   munmap(ptr.getHostAddr(), ptr.getLen());
 }
 
