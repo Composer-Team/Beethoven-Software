@@ -17,7 +17,7 @@ extern pthread_mutex_t main_lock;
 
 #define AWS (defined(F1) || defined(F2))
 
-#if AWS || defined(ZYNQ)
+#if (AWS || defined(ZYNQ)) && !defined(SIM)
 extern pthread_mutex_t bus_lock;
 #endif
 

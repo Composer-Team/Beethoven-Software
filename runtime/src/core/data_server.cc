@@ -212,7 +212,10 @@ data_server_file *dsf;
         }
         memset(naddr, 0, addr.op_argument);
         auto nBytes = addr.op_argument;
-#ifdef ZYNQ
+#if defined(ZYNQ) && defined(__aarch64__) && !defined(SIM)
+        // Only flush caches when actually running on Zynq silicon. In sim
+        // mode we're on the host; in synth mode we are on Zynq (ARM64) since
+        // we don't cross-compile.
         unsigned int cacheLineSz = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
         char *ptr = (char *) naddr;
         for (uint64_t i = 0; i < addr.op_argument / cacheLineSz; ++i) {

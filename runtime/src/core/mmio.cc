@@ -6,7 +6,7 @@
 #include "mmio.h"
 #include <iostream>
 
-#if defined(ZYNQ) || AWS
+#if (defined(ZYNQ) || AWS) && !defined(SIM)
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <cerrno>
@@ -18,7 +18,7 @@ volatile char *devmem_map;
 
 void setup_mmio() {
   // Kria specific initialization
-#if defined(ZYNQ) || AWS
+#if (defined(ZYNQ) || AWS) && !defined(SIM)
 #ifdef ZYNQ
   unsigned long long devmem_off = 0x2000000000ULL;
 #elif AWS
@@ -40,7 +40,7 @@ void setup_mmio() {
 
 
 void poke_mmio(uint64_t addr, uint32_t val) {
-#if defined(ZYNQ) || AWS
+#if (defined(ZYNQ) || AWS) && !defined(SIM)
   *((volatile uint32_t *)(devmem_map + addr)) = val;
 #else
   throw std::runtime_error("Poking inside unexpected platform");
@@ -49,7 +49,7 @@ void poke_mmio(uint64_t addr, uint32_t val) {
 
 
 uint32_t peek_mmio(uint32_t addr) {
-#if defined(ZYNQ) || AWS
+#if (defined(ZYNQ) || AWS) && !defined(SIM)
   return *((volatile uint32_t *)(devmem_map + addr));
 #else
   throw std::runtime_error("Poking inside unexpected platform");
