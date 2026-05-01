@@ -124,13 +124,18 @@ beethoven build                                 (cwd = project root)
   │           -DBEETHOVEN_SIMULATOR=<simulator>   (simulation only)
   │    - cmake --build ... -j
   │
-  5. cmake on <project>/sw                      → target/<mode>/sw/<testbench>
-  │    - cmake -S sw -B target/<mode>/sw
+  5. cmake on <project>/sw                      → target/sw/<testbench>
+  │    - cmake -S sw -B target/sw
   │           -DBEETHOVEN_PROJECT_ROOT=$PWD
   │           -DBEETHOVEN_PLATFORM=<platform>
+  │    - No -DBEETHOVEN_BUILD_MODE — the testbench is mode-agnostic
+  │      (libbeethoven's IPC layer is what it talks to; sim and synth
+  │      daemons present the same shmem interface).
   │    - <project>/sw/CMakeLists.txt is just:
-  │           find_package(beethoven REQUIRED COMPONENTS <platform>)
+  │           find_package(beethoven REQUIRED)
   │           beethoven_build(my_tb SOURCES my_tb.cc)
+  │      The platform component is auto-loaded by beethoven_build()
+  │      based on -DBEETHOVEN_PLATFORM — no COMPONENTS needed.
   │    - links libbeethoven only — NOT runtime (separate processes)
 ```
 
@@ -161,7 +166,7 @@ beethoven run
   │
   2. Wait for daemon to bind shmem channels
   │
-  3. Exec target/<mode>/sw/<testbench>
+  3. Exec target/sw/<testbench>
   │
   4. When testbench exits, signal daemon (target/<mode>/runtime/brt-kill)
 ```
@@ -227,7 +232,7 @@ test -f $HOME/.local/lib/libbeethoven-discrete.so
 test -f $HOME/.config/beethoven/config.toml
 test -f target/binding/beethoven_hardware.h
 test -f target/simulation/runtime/BeethovenRuntime
-test -f target/simulation/sw/vector_tb
+test -f target/sw/vector_tb
 
 # Run end-to-end
 beethoven run                      # daemon up, testbench passes, exits 0
