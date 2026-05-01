@@ -40,6 +40,19 @@ function(beethoven_build TARGET)
         message(FATAL_ERROR "beethoven_build: SOURCES is required.")
     endif()
 
+    # Auto-load the platform's targets file if find_package didn't already
+    # bring it in. Lets users write `find_package(beethoven REQUIRED)` without
+    # having to thread COMPONENTS through their CMakeLists.
+    if(NOT TARGET APEX::beethoven-${BEETHOVEN_PLATFORM})
+        set(_targets "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/beethoven-${BEETHOVEN_PLATFORM}-targets.cmake")
+        if(NOT EXISTS "${_targets}")
+            message(FATAL_ERROR
+                "beethoven_build: platform '${BEETHOVEN_PLATFORM}' is not in this libbeethoven install. "
+                "Reinstall Beethoven-Software with -DBEETHOVEN_PLATFORMS containing '${BEETHOVEN_PLATFORM}'.")
+        endif()
+        include("${_targets}")
+    endif()
+
     set(_binding ${BEETHOVEN_PROJECT_ROOT}/target/binding)
 
     add_executable(${TARGET}
