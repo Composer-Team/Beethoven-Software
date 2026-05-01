@@ -1,0 +1,55 @@
+@PACKAGE_INIT@
+
+set_and_check(BEETHOVEN_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+
+# Default to discrete if no components requested
+if(NOT beethoven_FIND_COMPONENTS)
+    set(beethoven_FIND_COMPONENTS discrete)
+endif()
+
+foreach(_comp ${beethoven_FIND_COMPONENTS})
+    set(_targets "${CMAKE_CURRENT_LIST_DIR}/beethoven-${_comp}-targets.cmake")
+    if(EXISTS "${_targets}")
+        include("${_targets}")
+        set(beethoven_${_comp}_FOUND TRUE)
+    else()
+        set(beethoven_${_comp}_FOUND FALSE)
+        if(beethoven_FIND_REQUIRED_${_comp})
+            set(beethoven_FOUND FALSE)
+            set(beethoven_NOT_FOUND_MESSAGE
+                "beethoven component '${_comp}' was not installed. "
+                "Available targets: ${CMAKE_CURRENT_LIST_DIR}/beethoven-*-targets.cmake")
+        endif()
+    endif()
+endforeach()
+
+check_required_components(beethoven)
+
+function(beethoven_build TARGET)
+    cmake_parse_arguments(BL "" "" "SOURCES" ${ARGN})
+
+    if(NOT BEETHOVEN_PROJECT_ROOT)
+        message(FATAL_ERROR
+            "beethoven_build: BEETHOVEN_PROJECT_ROOT is not set. "
+            "This macro is meant to be invoked via the `beethoven` CLI.")
+    endif()
+    if(NOT BEETHOVEN_PLATFORM)
+        message(FATAL_ERROR "beethoven_build: BEETHOVEN_PLATFORM is not set.")
+    endif()
+    if(NOT BL_SOURCES)
+        message(FATAL_ERROR "beethoven_build: SOURCES is required.")
+    endif()
+
+    set(_binding ${BEETHOVEN_PROJECT_ROOT}/target/binding)
+
+    add_executable(${TARGET}
+        ${BL_SOURCES}
+        ${_binding}/beethoven_hardware.cc)
+
+    set_target_properties(${TARGET} PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES)
+
+    target_include_directories(${TARGET} PRIVATE ${_binding})
+    target_link_libraries(${TARGET} PRIVATE APEX::beethoven-${BEETHOVEN_PLATFORM})
+endfunction()

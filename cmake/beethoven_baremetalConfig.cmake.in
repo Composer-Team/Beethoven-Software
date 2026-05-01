@@ -1,0 +1,34 @@
+@PACKAGE_INIT@
+
+set_and_check(BEETHOVEN_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+
+include("${CMAKE_CURRENT_LIST_DIR}/beethoven_baremetalTargets.cmake")
+check_required_components(beethoven_baremetal)
+
+function(beethoven_build TARGET)
+    cmake_parse_arguments(BL "" "" "SOURCES" ${ARGN})
+
+    if(NOT BEETHOVEN_PROJECT_ROOT)
+        message(FATAL_ERROR "beethoven_build: BEETHOVEN_PROJECT_ROOT is not set.")
+    endif()
+    if(NOT BL_SOURCES)
+        message(FATAL_ERROR "beethoven_build: SOURCES is required.")
+    endif()
+    if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
+        message(FATAL_ERROR
+            "Baremetal build requires -DCMAKE_TOOLCHAIN_FILE=...arm-none-eabi.cmake")
+    endif()
+
+    set(_binding ${BEETHOVEN_PROJECT_ROOT}/target/binding)
+
+    add_executable(${TARGET}
+        ${BL_SOURCES}
+        ${_binding}/beethoven_hardware.cc)
+
+    set_target_properties(${TARGET} PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES)
+
+    target_include_directories(${TARGET} PRIVATE ${_binding})
+    target_link_libraries(${TARGET} PRIVATE APEX::beethoven_baremetal)
+endfunction()
