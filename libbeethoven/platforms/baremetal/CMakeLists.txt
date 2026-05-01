@@ -4,7 +4,7 @@ include(CMakePackageConfigHelpers)
 if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
     message(FATAL_ERROR
         "Baremetal build requires a toolchain file. Use "
-        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_SOURCE_DIR}/cmake/arm-none-eabi.cmake")
+        "-DCMAKE_TOOLCHAIN_FILE=${LIBBEETHOVEN_SOURCE_DIR}/cmake/arm-none-eabi.cmake")
 endif()
 
 if("$ENV{M55_SRC}" STREQUAL "")
@@ -24,7 +24,7 @@ set(M55_SOURCES
     ${M55_SRC}/TM840-BU-50000-r2p0-00rel0/daplite2/logical/testbench/soc_tb/system/gcc_retarget.c
     ${STARTUP_FILE})
 
-set(_root ${CMAKE_SOURCE_DIR})
+set(_root ${LIBBEETHOVEN_SOURCE_DIR})
 
 add_library(beethoven_baremetal STATIC
     ${_root}/src/rocc_cmd.cc

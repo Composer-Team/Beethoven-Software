@@ -4,7 +4,7 @@ set(BEETHOVEN_PLATFORMS "discrete;zynq" CACHE STRING
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-set(_root ${CMAKE_SOURCE_DIR})
+set(_root ${LIBBEETHOVEN_SOURCE_DIR})
 
 set(_core_sources
     ${_root}/src/rocc_cmd.cc
@@ -66,7 +66,7 @@ install(DIRECTORY ${_root}/include/beethoven/
 # its cmake project can be cmake'd per project against this installed
 # tree. The CLI invokes `cmake -S ${BEETHOVEN_RUNTIME_SRC_DIR} ...`
 # (BEETHOVEN_RUNTIME_SRC_DIR is exported by beethovenConfig.cmake).
-install(DIRECTORY ${_root}/runtime/
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/runtime/
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/beethoven/runtime-src
         # Don't ship build artifacts or VCS metadata.
         PATTERN ".git"   EXCLUDE

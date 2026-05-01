@@ -42,11 +42,30 @@ Default prefix is `~/.local`. The CMake user package registry takes care
 of discovery — downstream `find_package(beethoven)` works with no env
 vars and no `CMAKE_PREFIX_PATH`.
 
+The simplest path is the wrapper script:
+
+```bash
+./install.sh                       # ~/.local, Release
+./install.sh --prefix /opt/foo     # different prefix
+./install.sh --debug               # debug build
+./install.sh --platforms "zynq"    # restrict the host platforms built
+./install.sh --clean               # wipe the build dir first
+./install.sh --help
+```
+
+Or the cmake commands directly:
+
 ```bash
 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 cmake --install build
 ```
+
+To remove an install: `./uninstall.sh` (lists what would be removed,
+asks for confirmation; `--yes` skips the prompt, `--dry-run` skips the
+removal). It removes the libs, headers, cmake configs, the runtime
+source-package, and the matching cmake user-package-registry entry,
+but only entries that point inside the prefix you pass.
 
 The exact file layout depends on your distro's `GNUInstallDirs`
 convention (`lib/` on Debian/macOS, `lib64/` on RHEL/Fedora):
@@ -205,25 +224,32 @@ flow.
 
 ```
 Beethoven-Software/
-├── CMakeLists.txt                          # ~10-line dispatcher
-├── include/beethoven/                      # public headers (libbeethoven)
-├── src/                                    # libbeethoven sources
-├── platforms/
-│   ├── host/CMakeLists.txt                 # discrete + zynq COMPONENTS loop
-│   └── baremetal/CMakeLists.txt            # Cortex-M55 variant
-├── cmake/
-│   ├── beethovenConfig.cmake.in            # find_package template
-│   ├── beethoven_baremetalConfig.cmake.in
-│   ├── BeethovenBuildHelpers.cmake         # shared body of beethoven_build()
-│   └── arm-none-eabi.cmake                 # baremetal toolchain
+├── CMakeLists.txt                          # ~5-line dispatcher: add_subdirectory(libbeethoven)
+├── install.sh / uninstall.sh               # convenience wrappers around cmake
+│
+├── libbeethoven/                           # the installed library
+│   ├── CMakeLists.txt                      #   selects host vs baremetal subtree
+│   ├── include/beethoven/                  #   public headers
+│   ├── src/                                #   libbeethoven sources
+│   ├── platforms/
+│   │   ├── host/CMakeLists.txt             #   discrete + zynq COMPONENTS loop
+│   │   └── baremetal/CMakeLists.txt        #   Cortex-M55 variant
+│   ├── cmake/
+│   │   ├── beethovenConfig.cmake.in
+│   │   ├── beethoven_baremetalConfig.cmake.in
+│   │   ├── BeethovenBuildHelpers.cmake     #   shared body of beethoven_build()
+│   │   └── arm-none-eabi.cmake             #   baremetal toolchain
+│   └── test/                               #   libbeethoven host tests
+│
 ├── runtime/                                # per-project daemon (cmake project,
-│   ├── CMakeLists.txt                      #   installed to share/ — see "What's
-│   ├── DRAMsim3/                           #   installed" above)
+│   ├── CMakeLists.txt                      #   installed under share/ as a
+│   ├── DRAMsim3/                           #   source package; cmake'd per
+│   ├── custom_dram_configs/                #   project by the CLI)
 │   ├── include/{core,frontends/{axi,chipkit},fpga}/
 │   ├── src/{core,frontends/{axi,chipkit},fpga}/
-│   ├── scripts/                            # tab.tab (VCS), kria_alloc_pages.py
+│   ├── scripts/                            #   tab.tab (VCS), kria_alloc_pages.py
 │   └── verilog_resources/BUFG.v
-├── test/                                   # libbeethoven host tests
+│
 └── docs/
     ├── cli-integration.md                  # CLI <-> SW build contract
     ├── beethoven-toml-reference.md         # full Beethoven.toml schema
