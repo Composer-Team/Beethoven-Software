@@ -1,191 +1,237 @@
-cmake_minimum_required(VERSION 3.5.0)
-project(BeethovenRuntime)
+cmake_minimum_required(VERSION 3.20)
+project(beethoven_runtime LANGUAGES C CXX VERSION 0.0.0)
 
-set(CMAKE_CXX_STANDARD 17)
+# === Required inputs (provided by the CLI) ===
+foreach(_var BEETHOVEN_PROJECT_ROOT BEETHOVEN_BUILD_MODE BEETHOVEN_PLATFORM)
+    if(NOT DEFINED ${_var})
+        message(FATAL_ERROR "${_var} is required.")
+    endif()
+endforeach()
 
-find_package(beethoven REQUIRED)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-
-set(SRC src/data_server.cc src/cmd_server.cc src/mmio.cc $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
-if ("$ENV{BEETHOVEN_PATH}" STREQUAL "")
-    message(FATAL_ERROR "Environment variable $BEETHOVEN_ROOT is not defined")
-endif ()
-
-set(BEETHOVEN_DIR "$ENV{BEETHOVEN_PATH}/build/")
-
-if (NOT EXISTS ${BEETHOVEN_DIR}/beethoven_hardware.h)
-    message(FATAL_ERROR "${BEETHOVEN_DIR}/beethoven_hardware.h does not exist. Try building your project or moving this file into the directory.")
-endif ()
-
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-if ("${SIMULATOR}" STREQUAL "")
-    set(SIMULATOR "verilator")
-endif ()
-
-set(AWS ("${BACKEND}" STREQUAL "F1" OR "${BACKEND}" STREQUAL "F2"))
-if (${AWS})
-	set(AWS ON)
-else()
-	set(AWS OFF)
+if(NOT DEFINED BEETHOVEN_SIMULATOR AND BEETHOVEN_BUILD_MODE STREQUAL "simulation")
+    set(BEETHOVEN_SIMULATOR "verilator")
 endif()
 
-message(STATUS "Is AWS: ${AWS}")
+# === Frontend selection (inferred from platform) ===
+if(BEETHOVEN_PLATFORM STREQUAL "baremetal")
+    set(BEETHOVEN_FRONTEND chipkit)
+else()
+    set(BEETHOVEN_FRONTEND axi)
+endif()
 
-if ("${TARGET}" STREQUAL "sim")
-    message("BUILDING FOR SIM")
-    set(SRC ${SRC} src/sim/tick.cc)
-    if ("${FRONTEND}" STREQUAL "axi" OR "${FRONTEND}" STREQUAL "")
-        message("BUILDING FOR AXI FRONTEND")
-        set(SRC ${SRC} src/sim/axi/front_bus_ctrl_axi.cc)
-        if ("${SIMULATOR}" STREQUAL "verilator")
-            message("BUILDING FOR VERILATOR")
-            set(SRC ${SRC} src/sim/axi/verilator_axi_frontend.cc)
-            find_package(verilator REQUIRED VERSION 5.0.0)
-            add_compile_definitions(USE_VERILATOR=1)
-            #            add_link_options(-latomic)
-        elseif ("${SIMULATOR}" STREQUAL "vcs")
-            message("BUILDING FOR VCS")
-	    option(VCS_INCLUDE_DIR "")
-            if (NOT "${VCS_INCLUDE_DIR}" STREQUAL "")
-            endif()
-            set(SRC ${SRC} src/sim/axi/vpi_axi_frontend.cc)
-            add_compile_definitions(USE_VCS=1)
-        endif ()
-    endif ()
-    if ("${FRONTEND}" STREQUAL "chipkit")
-        set(SRC ${SRC} src/sim/chipkit/util.cc)
-        if ("${SIMULATOR}" STREQUAL "verilator")
-            set(SRC ${SRC}
-                    src/sim/chipkit/verilator_chipkit_frontend.cc
-                    src/sim/chipkit/front_bus_ctrl_chipkit.cc)
-        elseif ("${SIMULATOR}" STREQUAL "vcs")
-            set(SRC ${SRC} src/sim/chipkit/vcs_chipkit_frontend.cc)
-        endif ()
-    endif ()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_EXTENSIONS NO)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-    set(SRC ${SRC} src/sim/mem_ctrl.cc)
-    if (NOT DEFINED FRONTEND)
-        set(FRONTEND "axi")
-    endif ()
+# === Version-pinned dep on libbeethoven ===
+find_package(beethoven 0.0.0 REQUIRED COMPONENTS ${BEETHOVEN_PLATFORM})
 
+# === DRAMsim3 (vendored) ===
+add_subdirectory(DRAMsim3 EXCLUDE_FROM_ALL)
 
-    if ("${USE_WAVES}" STREQUAL "")
-        set(vargs "${vargs} --trace")
-    endif ()
+# === Project-derived paths ===
+set(_proj    ${BEETHOVEN_PROJECT_ROOT})
+set(_binding ${_proj}/target/binding)
+set(_hw      ${_proj}/target/${BEETHOVEN_BUILD_MODE}/hw)
+set(_out     ${_proj}/target/${BEETHOVEN_BUILD_MODE}/runtime)
 
-    if ("${SIMULATOR}" STREQUAL "verilator")
-        find_package(verilator REQUIRED VERSION 5.0.0)
-        add_executable(BeethovenRuntime ${SRC})
-        message("Building with srcs: ${SRC}")
-        target_link_libraries(BeethovenRuntime PRIVATE dramsim3 args)
-        add_compile_definitions(VERILATOR=1)
-    elseif ("${SIMULATOR}" STREQUAL "vcs" OR "${SIMULATOR}" STREQUAL "icarus")
-        if (NOT "${DRAMSIM_CONFIG}" STREQUAL "")
-            message("SET TO ${DRAMSIM_CONFIG}")
-            add_compile_definitions(DRAMSIM_CONFIG="${DRAMSIM_CONFIG}")
-            add_compile_definitions(USE_VCS=1)
-        endif ()
-        # NOTE: YOU ARE RESPONSIBLE FOR BUILDING AND LINKING DRAMSIM3
-        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/scripts/tab.tab
-                DESTINATION $ENV{BEETHOVEN_PATH}/inc/)
-        add_library(BeethovenRuntime SHARED ${SRC})
+if(NOT EXISTS ${_binding}/beethoven_hardware.cc)
+    message(FATAL_ERROR
+        "Cannot find generated binding at ${_binding}/beethoven_hardware.cc. "
+        "Run sbt to generate the hardware first.")
+endif()
 
-        add_compile_definitions(VCS=1)
-        target_include_directories(BeethovenRuntime PUBLIC $ENV{VCS_HOME}/include)
-        target_link_libraries(BeethovenRuntime PRIVATE dramsim3 args)
-    else ()
-        message(FATAL_ERROR "Unsupported simulator")
-    endif ()
+# === Daemon core (always compiled) ===
+# Note: fpga_main.cc supplies main() only for synthesis (real FPGA) builds.
+# Verilator and VPI frontends each provide their own entry point.
+set(_core
+    src/core/cmd_server.cc
+    src/core/data_server.cc
+    src/core/mmio.cc
+    src/core/tick.cc
+    src/core/mem_ctrl.cc
+    src/core/DataWrapper.cc)
 
-    if (NOT "${KILL_SIM_AFTER}" STREQUAL "")
-        add_compile_definitions(KILL_SIM=${KILL_SIM_AFTER})
-    endif ()
+# === Frontend sources (axi or chipkit) ===
+if(BEETHOVEN_FRONTEND STREQUAL "axi")
+    list(APPEND _core src/frontends/axi/front_bus_ctrl_axi.cc)
+elseif(BEETHOVEN_FRONTEND STREQUAL "chipkit")
+    list(APPEND _core
+        src/frontends/chipkit/front_bus_ctrl_chipkit.cc
+        src/frontends/chipkit/util.cc
+        src/frontends/chipkit/state_machine.cc)
+endif()
 
-    add_compile_definitions(SIM)
-    set(BUILD_SIM 1)
-elseif ("${TARGET}" STREQUAL "fpga")
-    if ("${BACKEND}" STREQUAL "")
-        message(FATAL_ERROR "Must define backend for FPGA. F1 or Kria")
-    endif ()
-    set(BUILD_SIM 0)
-    add_executable(BeethovenRuntime ${SRC} src/response_poller.cc src/fpga_utils.c src/fpga_main.cc src/mmio.cc include/mmio.h $ENV{BEETHOVEN_PATH}/build/beethoven_hardware.cc)
-    if (${AWS})
-    	message("BUILDING FOR AWS")
-	message("will include '$ENV{AWS_FPGA_REPO_DIR}/sdk/userspace/include'")
-	if (NOT EXISTS $ENV{AWS_FPGA_REPO_DIR})
-		message(FATAL_ERROR "Could not find SDK. Make sure you source the sdk_setup.sh in the aws-fpga repo")
-	endif()
-	include_directories($ENV{AWS_FPGA_REPO_DIR}/sdk/userspace/include)
-        target_link_libraries(BeethovenRuntime PUBLIC pthread fpga_mgmt)
-    endif ()
-    add_compile_definitions(FPGA=1 ${BACKEND})
-    set(BUILD_FPGA 1)
-else ()
-    message(FATAL_ERROR "Must define build target: 'sim', or 'fpga'. Got '${TARGET}'. -DTARGET=<opt>")
-endif ()
+# === Synth-mode FPGA glue ===
+if(BEETHOVEN_BUILD_MODE STREQUAL "synthesis")
+    list(APPEND _core src/fpga/fpga_utils.c src/fpga/response_poller.cc)
+endif()
 
-# Tie in beethoven
-set_target_properties(BeethovenRuntime PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-target_link_libraries(BeethovenRuntime PUBLIC APEX::beethoven)
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fpermissive -Wno-attributes")
+# === Simulator-specific paths ===
+if(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "verilator")
+    # === Verilator path ===
+    find_package(verilator REQUIRED VERSION 5.0.0)
 
+    file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
+    if(_verilog_srcs STREQUAL "")
+        message(FATAL_ERROR "No verilog sources found under ${_hw}/. Did sbt run?")
+    endif()
 
-set(BEETHOVEN_HWDIR $ENV{BEETHOVEN_PATH}/build/)
+    if(BEETHOVEN_FRONTEND STREQUAL "axi")
+        list(APPEND _core
+            src/frontends/axi/verilator_axi_frontend.cc
+            src/frontends/axi/verilator.cc)
+    else()
+        list(APPEND _core src/frontends/chipkit/verilator_chipkit_frontend.cc)
+    endif()
 
-if (APPLE)
-    message("Building for Apple")
-    set(verilator_args "-undefined dynamic_lookup ")
-elseif (UNIX)
-    message("Building for Linux")
-    target_link_libraries(BeethovenRuntime PRIVATE rt)
-else ()
-    message(FATAL_ERROR "Unsupported platform")
-endif ()
+    add_executable(BeethovenRuntime
+        ${_core}
+        ${_binding}/beethoven_hardware.cc)
 
-include_directories(${BEETHOVEN_HWDIR}/)
+    verilate(BeethovenRuntime
+        SOURCES ${_verilog_srcs}
+        TOP_MODULE BeethovenTop
+        PREFIX VBeethovenTop
+        TRACE_FST
+        INCLUDE_DIRS ${_hw}
+        VERILATOR_ARGS --timescale 1ps/1ps --x-assign fast
+                       -Wno-context -Wno-lint -Wno-style
+                       -Wno-symrsvdword -Wno-multidriven -Wno-combdly
+                       -Wno-moddup -Wno-unoptflat -Wno-stmtdly)
 
-if (${VERBOSE})
-    target_compile_definitions(BeethovenRuntime PUBLIC VERBOSE)
-endif ()
+    target_compile_definitions(BeethovenRuntime PRIVATE VERILATOR=1 SIM=1)
 
-if ("${VTOP}" STREQUAL "")
-    set(VTOP ${BEETHOVEN_HWIR}/hw/BeethovenTop.v)
-endif ()
+    if(NOT "${KILL_SIM_AFTER}" STREQUAL "")
+        target_compile_definitions(BeethovenRuntime PRIVATE KILL_SIM=${KILL_SIM_AFTER})
+    endif()
 
-if ("${TOP}" STREQUAL "")
-    set(TOP BeethovenTop)
-endif ()
+elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "icarus")
+    # === Icarus Verilog path ===
+    find_program(IVERILOG iverilog REQUIRED)
+    find_program(VVP      vvp      REQUIRED)
 
-if ("${CONTROL_LITE}" STREQUAL "1")
-    add_compile_definitions(CONTROL_LITE)
-endif ()
+    if(NOT BEETHOVEN_FRONTEND STREQUAL "axi")
+        message(FATAL_ERROR "Icarus + chipkit is not currently supported.")
+    endif()
+    list(APPEND _core src/frontends/axi/vpi_axi_frontend.cc)
 
-if ("${FRONTEND}" STREQUAL "chipkit")
-    add_compile_definitions(BAREMETAL_RUNTIME=1)
-    message("Building for chipkit")
-endif ()
+    add_library(sim_BeethovenRuntime MODULE
+        ${_core}
+        ${_binding}/beethoven_hardware.cc)
+    set_target_properties(sim_BeethovenRuntime PROPERTIES
+        SUFFIX ".vpi"
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${_out})
+    target_compile_definitions(sim_BeethovenRuntime PRIVATE ICARUS=1 SIM=1 USE_VCS=1)
+    target_include_directories(sim_BeethovenRuntime PRIVATE
+        include ${_binding} ${_hw})
+    target_link_libraries(sim_BeethovenRuntime PRIVATE
+        APEX::beethoven-${BEETHOVEN_PLATFORM} dramsim3)
 
-if (${BUILD_SIM})
-    include(${BEETHOVEN_DIR}/cmake_srcs.cmake)
-    if ("${SIMULATOR}" STREQUAL "verilator")
-        verilate(BeethovenRuntime
-                SOURCES ${SRCS}
-                INCLUDE_DIRS ${BEETHOVEN_DIR} $ENV{BEETHOVEN_PATH}/build/ ${BEETHOVEN_DIR}/beethoven.build/ ${ADDITIONAL_SEARCH}
-                TOP_MODULE ${TOP}
-                PREFIX ${TOP}
-                TRACE_FST
-                VERILATOR_ARGS --timescale 1ps/1ps --x-assign fast
-                -Wno-context -Wno-lint -Wno-style -Wno-symrsvdword -Wno-multidriven -Wno-combdly
-                -Wno-moddup -Wno-unoptflat -Wno-stmtdly
-        )
-      endif()
-endif ()
+    file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
+    if(EXISTS ${_hw}/BeethovenTopVCSHarness.v)
+        list(APPEND _verilog_srcs ${_hw}/BeethovenTopVCSHarness.v)
+    endif()
+    add_custom_command(
+        OUTPUT ${_out}/beethoven.vvp
+        COMMAND ${IVERILOG}
+                -DCLOCK_PERIOD=4 -DICARUS -DSYNTHESIS -DENABLE_TRACE
+                -g2005-sv -I${_hw}
+                -s BeethovenTopVCSHarness
+                -o ${_out}/beethoven.vvp
+                ${_verilog_srcs}
+        DEPENDS ${_verilog_srcs}
+        VERBATIM)
+    add_custom_target(BeethovenRuntime ALL
+        DEPENDS ${_out}/beethoven.vvp sim_BeethovenRuntime)
 
+elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "vcs")
+    # === VCS path ===
+    find_program(VCS vcs REQUIRED)
+
+    if(BEETHOVEN_FRONTEND STREQUAL "axi")
+        list(APPEND _core src/frontends/axi/vpi_axi_frontend.cc)
+    else()
+        list(APPEND _core src/frontends/chipkit/vcs_chipkit_frontend.cc)
+    endif()
+
+    add_library(BeethovenRuntime SHARED
+        ${_core}
+        ${_binding}/beethoven_hardware.cc)
+    set_target_properties(BeethovenRuntime PROPERTIES
+        OUTPUT_NAME "BeethovenRuntime"
+        LIBRARY_OUTPUT_DIRECTORY ${_out})
+    target_compile_definitions(BeethovenRuntime PRIVATE VCS=1 SIM=1 USE_VCS=1)
+
+    file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
+    if(EXISTS ${_hw}/BeethovenTopVCSHarness.v)
+        list(APPEND _verilog_srcs ${_hw}/BeethovenTopVCSHarness.v)
+    endif()
+    add_custom_command(
+        OUTPUT ${_out}/BeethovenTop
+        COMMAND ${VCS} +vcs+loopreport -timescale=1ns/100ps
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/tab.tab -sverilog
+                +incdir+${_hw} -full64 +vpi+1
+                +define+CLOCK_PERIOD=2
+                $<TARGET_FILE:BeethovenRuntime>
+                -lrt -lbeethoven-${BEETHOVEN_PLATFORM} -ldramsim3
+                ${_verilog_srcs}
+                -o ${_out}/BeethovenTop
+        DEPENDS BeethovenRuntime ${_verilog_srcs}
+        WORKING_DIRECTORY ${_out}
+        VERBATIM)
+    add_custom_target(BeethovenRuntimeBin ALL
+        DEPENDS ${_out}/BeethovenTop)
+
+elseif(BEETHOVEN_BUILD_MODE STREQUAL "synthesis")
+    # === Synthesis (FPGA) path — daemon talks to real silicon ===
+    add_executable(BeethovenRuntime
+        ${_core}
+        src/core/fpga_main.cc
+        ${_binding}/beethoven_hardware.cc)
+    target_compile_definitions(BeethovenRuntime PRIVATE FPGA=1)
+
+    string(TOUPPER ${BEETHOVEN_PLATFORM} _PLAT_UPPER)
+    target_compile_definitions(BeethovenRuntime PRIVATE ${_PLAT_UPPER})
+
+    if(BEETHOVEN_PLATFORM STREQUAL "discrete")
+        if(NOT EXISTS "$ENV{AWS_FPGA_REPO_DIR}")
+            message(FATAL_ERROR
+                "BEETHOVEN_PLATFORM=discrete + synthesis requires AWS_FPGA_REPO_DIR. "
+                "Source the aws-fpga sdk_setup.sh first.")
+        endif()
+        target_include_directories(BeethovenRuntime PRIVATE
+            $ENV{AWS_FPGA_REPO_DIR}/sdk/userspace/include)
+        target_link_libraries(BeethovenRuntime PRIVATE pthread fpga_mgmt)
+    endif()
+
+else()
+    message(FATAL_ERROR
+        "Unsupported BEETHOVEN_BUILD_MODE=${BEETHOVEN_BUILD_MODE} / "
+        "BEETHOVEN_SIMULATOR=${BEETHOVEN_SIMULATOR} combination.")
+endif()
+
+# === Common settings for the executable variants (verilator + synthesis) ===
+if(TARGET BeethovenRuntime AND NOT BEETHOVEN_SIMULATOR STREQUAL "icarus")
+    target_include_directories(BeethovenRuntime PRIVATE
+        include ${_binding} ${_hw})
+    target_link_libraries(BeethovenRuntime PRIVATE
+        APEX::beethoven-${BEETHOVEN_PLATFORM}
+        dramsim3 pthread)
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(BeethovenRuntime PRIVATE rt)
+    endif()
+    set_target_properties(BeethovenRuntime PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${_out}
+        LIBRARY_OUTPUT_DIRECTORY ${_out})
+    if(${VERBOSE})
+        target_compile_definitions(BeethovenRuntime PRIVATE VERBOSE)
+    endif()
+endif()
+
+# === brt-kill: small utility to shut down a running daemon ===
 add_executable(brt-kill src/kill.cc)
-target_link_libraries(brt-kill PUBLIC APEX::beethoven)
+target_link_libraries(brt-kill PRIVATE APEX::beethoven-${BEETHOVEN_PLATFORM})
+set_target_properties(brt-kill PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${_out})

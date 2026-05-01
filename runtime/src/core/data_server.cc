@@ -48,7 +48,7 @@ bool dma_write;
 #include "mmio.h"
 #endif
 
-#ifdef Kria
+#ifdef ZYNQ
 #include <unistd.h>
 #endif
 
@@ -58,7 +58,7 @@ using namespace beethoven;
 
 address_translator at;
 
-#if defined(Kria)
+#if defined(ZYNQ)
 static std::vector<uint16_t> available_ids;
 #endif
 
@@ -182,7 +182,7 @@ data_server_file *dsf;
     }
     switch (addr.operation) {
       case data_server_op::ALLOC: {
-#if defined(FPGA) && defined(Kria)
+#if defined(FPGA) && defined(ZYNQ)
         fprintf(stderr, "In Embedded FPGA runtime, client is attempting to allocate memory from"
                         "server. Allocations should only happen locally except for discrete boards.");
         fflush(stderr);
@@ -212,7 +212,7 @@ data_server_file *dsf;
         }
         memset(naddr, 0, addr.op_argument);
         auto nBytes = addr.op_argument;
-#ifdef Kria
+#ifdef ZYNQ
         unsigned int cacheLineSz = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
         char *ptr = (char *) naddr;
         for (uint64_t i = 0; i < addr.op_argument / cacheLineSz; ++i) {
@@ -291,7 +291,7 @@ data_server_file *dsf;
 	auto len = addr.op3_argument;
 	auto fpga_addr = addr.op2_argument;
         memcpy(shaddr, devmem_aws_dram + fpga_addr, len);
-#elif defined(Kria)
+#elif defined(ZYNQ)
 	// do nothing
 #else
 #error "All cases not covered"
@@ -308,7 +308,7 @@ data_server_file *dsf;
         auto shaddr = at.translate(fpga_addr);
 	auto len = addr.op3_argument;
         memcpy(devmem_aws_dram + fpga_addr, shaddr, len);
-#elif Kria
+#elif defined(ZYNQ)
 	// do nothing
 #elif SIM && defined(BEETHOVEN_HAS_DMA)
         auto amt_left = addr.op3_argument;

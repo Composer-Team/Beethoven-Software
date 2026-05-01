@@ -4,16 +4,16 @@
 
 //#include "vcs_vpi_user.h"
 //#include "sv_vpi_user.h"
-#include "sim/mem_ctrl.h"
+#include "mem_ctrl.h"
 #include "sim/chipkit/state_machine.h"
-#include "sim/tick.h"
-#include "sim/axi/vcs_handle.h"
+#include "tick.h"
+#include "vpi_handle.h"
 #include "cmd_server.h"
 #include "data_server.h"
 #include <pthread.h>
 #include "sim/chipkit/tick.h"
 #include "beethoven_allocator_declaration.h"
-#include "sim/front_bus_ctrl_uart.h"
+#include "front_bus_ctrl_uart.h"
 
 #include <cstring>
 #include <vector>

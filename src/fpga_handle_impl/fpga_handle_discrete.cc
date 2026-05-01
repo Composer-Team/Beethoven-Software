@@ -46,7 +46,7 @@ fpga_handle_t *beethoven::current_handle_context;
 #include "beethoven/verilator_server.h"
 #include "beethoven/response_handle.h"
 #include <unistd.h>
-#ifndef Kria
+#ifndef ZYNQ
 #include <pthread.h>
 #endif
 

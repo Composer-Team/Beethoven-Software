@@ -3,7 +3,7 @@
 //
 #include "fpga_utils.h"
 
-#if AWS || defined(Kria)
+#if AWS || defined(ZYNQ)
 #include <pthread.h>
 pthread_mutex_t bus_lock;
 #endif

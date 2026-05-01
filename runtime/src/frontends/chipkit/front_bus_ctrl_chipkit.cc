@@ -3,8 +3,8 @@
 //
 
 #include "beethoven_allocator_declaration.h"
-#include "sim/axi/front_bus_ctrl_axi.h"
-#include "sim/mem_ctrl.h"
+#include "front_bus_ctrl_axi.h"
+#include "mem_ctrl.h"
 #include "sim/chipkit/state_machine.h"
 
 unsigned int baud_sel = 14;

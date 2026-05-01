@@ -162,7 +162,7 @@ static void *cmd_server_f(void *) {
       return nullptr;
     }
 #if defined(FPGA) || defined(VSIM)
-#if AWS or defined(Kria)
+#if AWS or defined(ZYNQ)
       // wake up response poller if this command expects a response
       if (addr.cmd.getXd()) {
         sem_post(&addr.processes_waiting);
@@ -193,7 +193,7 @@ static void *cmd_server_f(void *) {
 #endif
     LOG(std::cerr << "Successfully delivered command\n"
                   << std::endl);
-#if AWS or defined(Kria)
+#if AWS or defined(ZYNQ)
     pthread_mutex_unlock(&bus_lock);
 #else
     // sim only

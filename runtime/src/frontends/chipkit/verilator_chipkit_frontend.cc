@@ -7,16 +7,16 @@
 #include <queue>
 #include <verilated.h>
 
-#include "sim/front_bus_ctrl_uart.h"
-#include "sim/mem_ctrl.h"
-#include "sim/verilator.h"
+#include "front_bus_ctrl_uart.h"
+#include "mem_ctrl.h"
+#include "verilator.h"
 #include "sim/chipkit/state_machine.h"
 
 #include "util.h"
 #include <beethoven_allocator_declaration.h>
 
 #include "sim/chipkit/tick.h"
-#include "sim/tick.h"
+#include "tick.h"
 #include "sim/chipkit/util.h"
 
 uint64_t main_time = 0;
