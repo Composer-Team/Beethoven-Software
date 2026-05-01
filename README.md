@@ -47,9 +47,8 @@ The simplest path is the wrapper script:
 ```bash
 ./install.sh                       # ~/.local, Release
 ./install.sh --prefix /opt/foo     # different prefix
-./install.sh --debug               # debug build
-./install.sh --platforms "zynq"    # restrict the host platforms built
-./install.sh --clean               # wipe the build dir first
+./install.sh --debug               # -O0 -g
+./install.sh --clean               # wipe build/ first
 ./install.sh --help
 ```
 
@@ -143,10 +142,12 @@ cmake -B build
 
 ### Subset of host platforms
 
-Default builds both `discrete` and `zynq`. To build only one:
+`install.sh` always builds both `discrete` and `zynq`. To build only one,
+drop down to plain cmake:
 
 ```bash
 cmake -S . -B build -DBEETHOVEN_PLATFORMS="zynq" -DCMAKE_INSTALL_PREFIX=$HOME/.local
+cmake --build build -j && cmake --install build
 ```
 
 ### Baremetal (Cortex-M55) variant
