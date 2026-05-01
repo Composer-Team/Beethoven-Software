@@ -24,8 +24,8 @@
 #include "util.h"
 #include <cmath>
 #include <fcntl.h>
-#ifdef USE_VCS
-#include "vcs_vpi_user.h"
+#if defined(USE_VCS) || defined(ICARUS)
+#include <vpi_user.h>
 #endif
 
 #ifdef FPGA
@@ -155,7 +155,7 @@ static void *cmd_server_f(void *) {
       pthread_mutex_unlock(&main_lock);
 #ifdef SIM
       kill_sig = true;
-#ifdef USE_VCS
+#if defined(USE_VCS) || defined(ICARUS)
       vpi_control(vpiFinish);
 #endif
 #endif
@@ -250,10 +250,8 @@ void register_reponse(uint32_t *r_buffer) {
   if (it == in_flight.end()) {
     fprintf(stderr, "Error: Got bad response from Sys(%d) Core(%d)\n", r.system_id, r.core_id);
     fflush(stderr);
-#ifdef USE_VCS
-#ifdef SIM
+#if defined(SIM) && (defined(USE_VCS) || defined(ICARUS))
       vpi_control(vpiFinish);
-#endif
 #endif
     pthread_mutex_unlock(&cmdserverlock);
     pthread_mutex_unlock(&main_lock);

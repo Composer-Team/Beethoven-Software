@@ -124,15 +124,19 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
         SUFFIX ".vpi"
         PREFIX ""
         LIBRARY_OUTPUT_DIRECTORY ${_out})
-    target_compile_definitions(sim_BeethovenRuntime PRIVATE ICARUS=1 SIM=1 USE_VCS=1)
+    target_compile_definitions(sim_BeethovenRuntime PRIVATE
+        ICARUS=1 SIM=1
+        DRAMSIM_CONFIG="${CMAKE_CURRENT_SOURCE_DIR}/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini")
     target_include_directories(sim_BeethovenRuntime PRIVATE
         include ${_binding} ${_hw})
     target_link_libraries(sim_BeethovenRuntime PRIVATE
         APEX::beethoven-${BEETHOVEN_PLATFORM} dramsim3)
 
     file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
-    if(EXISTS ${_hw}/BeethovenTopVCSHarness.v)
-        list(APPEND _verilog_srcs ${_hw}/BeethovenTopVCSHarness.v)
+    if(NOT EXISTS ${_hw}/BeethovenTopVCSHarness.v)
+        message(FATAL_ERROR
+            "Icarus path needs ${_hw}/BeethovenTopVCSHarness.v as the top. "
+            "Check sbt's simulation hw output.")
     endif()
     add_custom_command(
         OUTPUT ${_out}/beethoven.vvp
@@ -163,7 +167,9 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
     set_target_properties(BeethovenRuntime PROPERTIES
         OUTPUT_NAME "BeethovenRuntime"
         LIBRARY_OUTPUT_DIRECTORY ${_out})
-    target_compile_definitions(BeethovenRuntime PRIVATE VCS=1 SIM=1 USE_VCS=1)
+    target_compile_definitions(BeethovenRuntime PRIVATE
+        VCS=1 SIM=1 USE_VCS=1
+        DRAMSIM_CONFIG="${CMAKE_CURRENT_SOURCE_DIR}/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini")
 
     file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
     if(EXISTS ${_hw}/BeethovenTopVCSHarness.v)
