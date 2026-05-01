@@ -54,32 +54,58 @@ convention (`lib/` on Debian/macOS, `lib64/` on RHEL/Fedora):
 ```
 ~/.local/
 ├── lib[64]/
-│   ├── libbeethoven-discrete.so
-│   ├── libbeethoven-zynq.so
+│   ├── libbeethoven-discrete.so                   # built artifact
+│   ├── libbeethoven-zynq.so                       # built artifact
 │   └── cmake/beethoven/
 │       ├── beethovenConfig.cmake
 │       ├── beethovenConfigVersion.cmake
+│       ├── BeethovenBuildHelpers.cmake            # internal: shared by both Configs
 │       ├── beethoven-discrete-targets.cmake
 │       ├── beethoven-discrete-targets-release.cmake
 │       ├── beethoven-zynq-targets.cmake
 │       └── beethoven-zynq-targets-release.cmake
-└── include/beethoven/
-    ├── allocator/{alloc,alloc_baremetal,device_allocator}.h
-    ├── arm_cache.h
-    ├── beethoven_consts.h
-    ├── fpga_handle.h
-    ├── response_handle.h
-    ├── rocc_cmd.h
-    ├── rocc_response.h
-    ├── runtime_ipc.h
-    └── util.h
+├── include/beethoven/                              # public headers
+│   ├── allocator/{alloc,alloc_baremetal,device_allocator}.h
+│   ├── arm_cache.h
+│   ├── beethoven_consts.h
+│   ├── fpga_handle.h
+│   ├── response_handle.h
+│   ├── rocc_cmd.h
+│   ├── rocc_response.h
+│   ├── runtime_ipc.h
+│   └── util.h
+└── share/beethoven/runtime-src/                    # runtime cmake project, source-package
+    ├── CMakeLists.txt                                (cmake'd per-project by the CLI)
+    ├── DRAMsim3/                                     (vendored DRAM model, full source)
+    ├── include/{core,frontends/{axi,chipkit},fpga}/
+    ├── src/{core,frontends/{axi,chipkit},fpga}/
+    ├── scripts/{tab.tab, kria_alloc_pages.py}
+    └── verilog_resources/BUFG.v
 ```
 
-Plus a one-line registry breadcrumb (zero-config discovery):
+Two convenience pointers are also written:
 
 ```
-~/.cmake/packages/beethoven/<md5(prefix)>      # contains the cmake config dir
+~/.cmake/packages/beethoven/<md5(prefix)>      # registry breadcrumb;
+                                                 makes find_package(beethoven) zero-config
 ```
+
+…and `beethovenConfig.cmake` exports `BEETHOVEN_RUNTIME_SRC_DIR`
+(absolute path to `share/beethoven/runtime-src/`) so consumers reading
+the package config — the CLI in particular — can find the runtime
+cmake project without hardcoding paths.
+
+### What's installed vs cached vs not installed
+
+- **Installed (copied to `~/.local`):** `libbeethoven-*.so`, public
+  headers, cmake configs, the runtime cmake project. After
+  `cmake --install build`, you can `rm -rf` your dev clone and a
+  downstream `beethoven build` still works.
+- **Per-project (built by the CLI, not installed):** the
+  `BeethovenRuntime` daemon binary itself, lands at
+  `<your-project>/target/<mode>/runtime/BeethovenRuntime`. The runtime
+  is design-coupled (templated on the user's verilator output), so
+  it's never globally cached.
 
 ### Verify the install
 
@@ -143,19 +169,23 @@ accordingly.
 A user project's `Beethoven.toml` drives two cmake projects per build,
 both invoked by the `beethoven` CLI:
 
-1. **runtime** — `cmake -S Beethoven-Software/runtime -B
+1. **runtime** — `cmake -S ${BEETHOVEN_RUNTIME_SRC_DIR} -B
    <project>/target/<mode>/runtime/_cmake -DBEETHOVEN_PROJECT_ROOT=...
    -DBEETHOVEN_BUILD_MODE=... -DBEETHOVEN_PLATFORM=...
    -DBEETHOVEN_SIMULATOR=...`
-   Produces `<project>/target/<mode>/runtime/BeethovenRuntime`.
-   Testbenches signal shutdown via `handle.shutdown()` from libbeethoven.
+   `BEETHOVEN_RUNTIME_SRC_DIR` (= `~/.local/share/beethoven/runtime-src`
+   by default) is exported by `beethovenConfig.cmake`, so the CLI
+   discovers it via `find_package(beethoven)` — no hardcoded paths and
+   no dependency on the dev clone. Produces
+   `<project>/target/<mode>/runtime/BeethovenRuntime`. Testbenches
+   signal shutdown via `handle.shutdown()` from libbeethoven.
 2. **user sw** — `cmake -S <project>/sw -B
-   <project>/target/<mode>/sw -DBEETHOVEN_PROJECT_ROOT=...
+   <project>/target/sw -DBEETHOVEN_PROJECT_ROOT=...
    -DBEETHOVEN_PLATFORM=...`
    The user's `sw/CMakeLists.txt` is trivially:
 
    ```cmake
-   find_package(beethoven REQUIRED COMPONENTS discrete)
+   find_package(beethoven REQUIRED)
    beethoven_build(my_tb SOURCES my_tb.cc)
    ```
 
@@ -171,12 +201,12 @@ libbeethoven only — never the runtime.
 `docs/cli-integration.md` has the full schema, env contract, and CLI
 flow.
 
-## Layout
+## Repo layout
 
 ```
 Beethoven-Software/
 ├── CMakeLists.txt                          # ~10-line dispatcher
-├── include/beethoven/                      # public headers
+├── include/beethoven/                      # public headers (libbeethoven)
 ├── src/                                    # libbeethoven sources
 ├── platforms/
 │   ├── host/CMakeLists.txt                 # discrete + zynq COMPONENTS loop
@@ -184,21 +214,20 @@ Beethoven-Software/
 ├── cmake/
 │   ├── beethovenConfig.cmake.in            # find_package template
 │   ├── beethoven_baremetalConfig.cmake.in
+│   ├── BeethovenBuildHelpers.cmake         # shared body of beethoven_build()
 │   └── arm-none-eabi.cmake                 # baremetal toolchain
-├── runtime/                                # per-project daemon
-│   ├── CMakeLists.txt                      # CLI-invoked
-│   ├── DRAMsim3/                           # vendored
-│   ├── include/                            # internal daemon headers
-│   ├── src/
-│   │   ├── core/                           # cmd_server, data_server, mmio,
-│   │   │                                   # tick, mem_ctrl, DataWrapper, fpga_main
-│   │   ├── frontends/
-│   │   │   ├── axi/                        # default frontend
-│   │   │   └── chipkit/                    # baremetal frontend
-│   │   └── fpga/                           # synth-mode glue
-│   └── scripts/                            # tab.tab (VCS), kria_alloc_pages.py
+├── runtime/                                # per-project daemon (cmake project,
+│   ├── CMakeLists.txt                      #   installed to share/ — see "What's
+│   ├── DRAMsim3/                           #   installed" above)
+│   ├── include/{core,frontends/{axi,chipkit},fpga}/
+│   ├── src/{core,frontends/{axi,chipkit},fpga}/
+│   ├── scripts/                            # tab.tab (VCS), kria_alloc_pages.py
+│   └── verilog_resources/BUFG.v
 ├── test/                                   # libbeethoven host tests
-└── docs/cli-integration.md                 # CLI <-> SW build contract
+└── docs/
+    ├── cli-integration.md                  # CLI <-> SW build contract
+    ├── beethoven-toml-reference.md         # full Beethoven.toml schema
+    └── issues/verilator-widebus.md         # one open template-specialization gap
 ```
 
 ## Troubleshooting
