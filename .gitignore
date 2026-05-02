@@ -11,7 +11,9 @@ CTestTestfile.cmake
 _deps
 obj_dir
 .vscode
-build
+build/
+build-*/
+build_*/
 *.o
 *.json
 *.fst
