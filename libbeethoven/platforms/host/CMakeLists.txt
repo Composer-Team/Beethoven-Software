@@ -61,20 +61,11 @@ install(DIRECTORY ${_root}/include/beethoven/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/beethoven
         FILES_MATCHING PATTERN "*.h")
 
-# Install the runtime cmake project as a source package. The runtime
-# daemon is design-coupled and can't be shipped as a single .so, but
-# its cmake project can be cmake'd per project against this installed
-# tree. The CLI invokes `cmake -S ${BEETHOVEN_RUNTIME_SRC_DIR} ...`
-# (BEETHOVEN_RUNTIME_SRC_DIR is exported by beethovenConfig.cmake).
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/runtime/
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/beethoven/runtime-src
-        # Don't ship build artifacts or VCS metadata.
-        PATTERN ".git"   EXCLUDE
-        PATTERN "_cmake" EXCLUDE
-        PATTERN "build"  EXCLUDE
-        PATTERN "*.o"    EXCLUDE
-        PATTERN "*.so"   EXCLUDE
-        PATTERN "*.a"    EXCLUDE)
+# Note: the runtime cmake project (sibling of libbeethoven/) is installed
+# as a source package by the top-level CMakeLists.txt. This file only
+# concerns libbeethoven itself. BEETHOVEN_RUNTIME_SRC_DIR is exported
+# below from beethovenConfig.cmake.in via @PACKAGE_CMAKE_INSTALL_DATAROOTDIR@,
+# pointing consumers at where that install lands.
 
 configure_package_config_file(
     ${_root}/cmake/beethovenConfig.cmake.in
