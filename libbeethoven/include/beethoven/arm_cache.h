@@ -36,12 +36,21 @@ constexpr size_t ARM_CACHE_LINE_SIZE = 64;
  */
 inline void arm_dcache_flush(void* addr, size_t size) {
 #if defined(ENABLE_CACHE_FLUSH) && defined(__aarch64__)
-    __sync_synchronize();
+    // dsb ish before: ensure stores prior to this call are observable
+    // to the cache controller before we start cleaning lines.
+    asm volatile("dsb ish" ::: "memory");
     char* ptr = (char*)addr;
     for (size_t i = 0; i < size; i += ARM_CACHE_LINE_SIZE) {
         asm volatile("dc civac, %0" : : "r"(ptr + i) : "memory");
     }
-    __sync_synchronize();
+    // dsb ish after: WAIT for the cache maintenance ops to complete —
+    // i.e. for the dirty cache lines to actually reach DDR. A bare
+    // dmb (which __sync_synchronize emits) only ORDERS memory accesses;
+    // it doesn't wait. Without the dsb the FPGA can race ahead and read
+    // stale DDR while the writeback is still in flight, producing
+    // all-zero results from any accelerator. (Mirrors what the ARM
+    // Linux kernel does in __flush_dcache_area.)
+    asm volatile("dsb ish" ::: "memory");
 #else
     (void)addr;
     (void)size;
@@ -60,12 +69,16 @@ inline void arm_dcache_flush(void* addr, size_t size) {
  */
 inline void arm_dcache_invalidate(void* addr, size_t size) {
 #if defined(ENABLE_CACHE_FLUSH) && defined(__aarch64__)
-    __sync_synchronize();
+    // Same dsb-ish dance as arm_dcache_flush above. dc civac is used
+    // for both directions (it cleans AND invalidates), so this is
+    // really "drain anything dirty, then drop the lines so the next
+    // load re-fetches from DDR."
+    asm volatile("dsb ish" ::: "memory");
     char* ptr = (char*)addr;
     for (size_t i = 0; i < size; i += ARM_CACHE_LINE_SIZE) {
         asm volatile("dc civac, %0" : : "r"(ptr + i) : "memory");
     }
-    __sync_synchronize();
+    asm volatile("dsb ish" ::: "memory");
 #else
     (void)addr;
     (void)size;
