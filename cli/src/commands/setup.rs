@@ -44,11 +44,75 @@ pub fn run(args: SetupArgs) -> Result<()> {
     let git_ref = args.git_ref.or_else(|| cfg.git_ref.clone());
     let hardware_ref = args.hardware_ref;
 
+    prompt_brew_install_if_macos(!args.no_hardware)?;
+
     do_setup(&prefix, git_ref.as_deref(), args.from.as_deref(), args.jobs)?;
 
     if !args.no_hardware {
         do_setup_hardware(args.hardware_from.as_deref(), hardware_ref.as_deref())?;
     }
+    Ok(())
+}
+
+/// On macOS, offer to `brew install` build-time tools that the rest
+/// of the workflow needs. `sbt` is required by the hardware step;
+/// `iverilog` isn't needed by `setup` itself but is the default
+/// simulator picked up by `beethoven build` later, so checking it
+/// here saves the user a fail-then-install round trip. No-op when
+/// none are missing, when brew isn't installed (we just print a
+/// note), or when the user declines — the existing per-stage
+/// `require_tool` calls still gate hard failures.
+fn prompt_brew_install_if_macos(want_sbt: bool) -> Result<()> {
+    if !cfg!(target_os = "macos") {
+        return Ok(());
+    }
+
+    let mut candidates: Vec<(&str, &str)> = Vec::new();
+    if want_sbt {
+        candidates.push(("sbt", "sbt"));
+    }
+    candidates.push(("iverilog", "icarus-verilog"));
+
+    let missing: Vec<(&str, &str)> = candidates
+        .into_iter()
+        .filter(|(bin, _)| which::which(bin).is_err())
+        .collect();
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let bins: Vec<&str> = missing.iter().map(|(b, _)| *b).collect();
+    let formulas: Vec<&str> = missing.iter().map(|(_, f)| *f).collect();
+
+    if which::which("brew").is_err() {
+        ui::print_warning(&format!(
+            "missing tools needed by later steps: {}. Install Homebrew \
+             (https://brew.sh) and run `brew install {}`, or install \
+             them manually.",
+            bins.join(", "),
+            formulas.join(" "),
+        ));
+        return Ok(());
+    }
+
+    let prompt = format!(
+        "Missing: {}. Install via `brew install {}`?",
+        bins.join(", "),
+        formulas.join(" "),
+    );
+    let proceed = dialoguer::Confirm::new()
+        .with_prompt(prompt)
+        .default(true)
+        .interact()
+        .map_err(|e| anyhow::anyhow!("could not read confirmation prompt: {e}"))?;
+    if !proceed {
+        return Ok(());
+    }
+
+    ui::print_stage("Installing", &format!("brew install {}", formulas.join(" ")));
+    let mut cmd = std::process::Command::new("brew");
+    cmd.arg("install").args(&formulas);
+    exec::run(&mut cmd)?;
     Ok(())
 }
 
