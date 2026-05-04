@@ -7,16 +7,17 @@
 //!   `runtime::lifecycle::build_launch_command`; refuses if a daemon
 //!   is already up for this project (probe via `runtime::probe`).
 
-use crate::cli::{RuntimeCommand, RuntimeRunArgs};
+use crate::cli::{RuntimeCommand, RuntimeKillArgs, RuntimeRunArgs};
 use crate::commands::build;
 use crate::core::env;
 use crate::error::{CliError, Result};
-use crate::runtime::lifecycle;
+use crate::runtime::lifecycle::{self, KillOutcome};
 use crate::runtime::probe::{self, ProbeResult};
 use crate::state::Project;
 use crate::ui;
 use std::fs;
 use std::path::Path;
+use std::time::Duration;
 
 pub fn run(cmd: RuntimeCommand) -> Result<()> {
     match cmd {
@@ -28,8 +29,71 @@ pub fn run(cmd: RuntimeCommand) -> Result<()> {
             Ok(())
         }
         RuntimeCommand::Run(args) => run_daemon(args),
+        RuntimeCommand::Kill(args) => kill_daemon(args),
         RuntimeCommand::Clean { release } => clean_runtime(release),
     }
+}
+
+/// Stop the daemon currently running for this project.
+///
+/// Idempotent: exits 0 with a note if no daemon is running. Default
+/// is graceful (SIGTERM, 5s grace, escalate to SIGKILL); `--force`
+/// skips the grace and SIGKILLs immediately.
+///
+/// We resolve the daemon via the lockfile (probe → PID), not via
+/// pgrep/ps, so the implementation is identical on Linux and macOS.
+fn kill_daemon(args: RuntimeKillArgs) -> Result<()> {
+    let project = Project::discover()?;
+
+    let pid = match probe::probe(&project.root)? {
+        ProbeResult::Down => {
+            ui::print_note("no BeethovenRuntime running for this project.");
+            return Ok(());
+        }
+        ProbeResult::Up { pid: Some(p) } => p,
+        ProbeResult::Up { pid: None } => {
+            // Lockfile is held but contains no PID. Daemon raced its
+            // pwrite, or someone truncated the file. We can't signal
+            // without a PID; punt with a clear hint.
+            return Err(CliError::config(
+                "daemon is running but its PID could not be read from the lockfile. \
+                 Stop it via the terminal that launched it, or `pkill BeethovenRuntime`."
+                    .to_string(),
+            ));
+        }
+        ProbeResult::Error(e) => {
+            return Err(CliError::config(format!("daemon probe failed: {e}")));
+        }
+    };
+
+    let grace = if args.force {
+        Duration::ZERO
+    } else {
+        Duration::from_secs(5)
+    };
+
+    let action = if args.force { "SIGKILL" } else { "SIGTERM" };
+    ui::print_stage("Stopping", &format!("BeethovenRuntime (PID {pid}, {action})"));
+
+    match lifecycle::kill_external_daemon(&project, pid, grace)? {
+        KillOutcome::AlreadyGone => {
+            ui::print_note(&format!(
+                "daemon (PID {pid}) was already gone before the signal landed."
+            ));
+        }
+        KillOutcome::Terminated => {
+            ui::print_success(&format!("daemon (PID {pid}) stopped."));
+        }
+        KillOutcome::Killed => {
+            ui::print_success(&format!("daemon (PID {pid}) killed."));
+        }
+        KillOutcome::Escalated => {
+            ui::print_warning(&format!(
+                "daemon (PID {pid}) ignored SIGTERM after 5s; escalated to SIGKILL."
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Foreground daemon launch. Refuses if another daemon is already up

@@ -143,12 +143,30 @@ pub enum RuntimeCommand {
     },
     /// Launch the daemon in foreground (Ctrl+C to stop).
     Run(RuntimeRunArgs),
+    /// Stop the daemon running for this project (SIGTERM, then SIGKILL).
+    Kill(RuntimeKillArgs),
     /// Remove runtime artifacts under target/<mode>/runtime/.
     Clean {
         /// Operate on target/synthesis/runtime/ instead of target/simulation/.
         #[arg(long)]
         release: bool,
     },
+}
+
+#[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven runtime kill           graceful stop (SIGTERM, 5s grace, then SIGKILL)
+  beethoven runtime kill --force   skip grace period; SIGKILL immediately
+
+NOTE: idempotent — exits 0 if no daemon is running.
+      Resolves the daemon via the per-project lockfile, not pgrep, so
+      it works the same on Linux and macOS.
+")]
+pub struct RuntimeKillArgs {
+    /// Skip the SIGTERM grace period; send SIGKILL immediately.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]

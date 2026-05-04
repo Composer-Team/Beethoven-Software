@@ -155,6 +155,91 @@ pub fn shutdown_daemon(child: &mut Child) -> Result<()> {
     Ok(())
 }
 
+/// Outcome of `kill_external_daemon`. The variants distinguish
+/// "process was already gone" (no-op kill), "SIGTERM worked",
+/// "SIGKILL worked" (when --force was passed), and "SIGTERM didn't
+/// take so we escalated" — useful for surfacing the right message
+/// to the user without them having to read signals.
+pub enum KillOutcome {
+    AlreadyGone,
+    Terminated,
+    Killed,
+    Escalated,
+}
+
+/// Stop the daemon at `pid` for `project`. Sends SIGTERM (or SIGKILL
+/// if `grace.is_zero()`) and polls the lockfile via `probe::probe`
+/// until the lock is released or `grace` elapses. On grace timeout,
+/// escalates to SIGKILL.
+///
+/// Cross-platform: relies only on POSIX `kill(2)` and the existing
+/// flock-based probe — no `pgrep`/`ps`/`/proc` parsing. Works the
+/// same on Linux and macOS.
+pub fn kill_external_daemon(
+    project: &Project,
+    pid: i32,
+    grace: Duration,
+) -> Result<KillOutcome> {
+    use nix::errno::Errno;
+    use nix::sys::signal::{kill, Signal};
+    use nix::unistd::Pid;
+
+    let nix_pid = Pid::from_raw(pid);
+    let initial = if grace.is_zero() {
+        Signal::SIGKILL
+    } else {
+        Signal::SIGTERM
+    };
+
+    match kill(nix_pid, initial) {
+        Ok(()) => {}
+        // ESRCH: no such process — daemon already exited between the
+        // probe and our signal. Idempotent success from the user's POV.
+        Err(Errno::ESRCH) => return Ok(KillOutcome::AlreadyGone),
+        Err(e) => {
+            return Err(CliError::config(format!(
+                "kill(PID {pid}, {initial:?}) failed: {e}"
+            )))
+        }
+    }
+
+    // SIGKILL is unblockable — the lockfile should drop almost
+    // immediately. Give the kernel a brief window before we declare
+    // success and move on.
+    let post_kill_window = Duration::from_secs(2);
+
+    if grace.is_zero() {
+        let _ = wait_lockfile_released(project, post_kill_window);
+        return Ok(KillOutcome::Killed);
+    }
+
+    if wait_lockfile_released(project, grace).is_ok() {
+        return Ok(KillOutcome::Terminated);
+    }
+
+    // SIGTERM didn't take. Escalate.
+    let _ = kill(nix_pid, Signal::SIGKILL);
+    let _ = wait_lockfile_released(project, post_kill_window);
+    Ok(KillOutcome::Escalated)
+}
+
+/// Poll `probe::probe` until it reports `Down` or `timeout` elapses.
+/// 100ms tick is fine — we're waiting on a kernel-side flock release
+/// triggered by process exit, which happens in micro/milliseconds.
+fn wait_lockfile_released(project: &Project, timeout: Duration) -> Result<()> {
+    let deadline = Instant::now() + timeout;
+    while Instant::now() < deadline {
+        if matches!(probe::probe(&project.root)?, ProbeResult::Down) {
+            return Ok(());
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    Err(CliError::config(format!(
+        "daemon still alive after {}s",
+        timeout.as_secs()
+    )))?
+}
+
 /// Print a cargo-style exit summary. Returns `true` if the exit was
 /// "clean enough to count as success" — clean exit (code 0) or
 /// user-initiated termination (SIGINT / SIGTERM). The caller uses the
