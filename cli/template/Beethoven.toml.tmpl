@@ -15,11 +15,9 @@ version = "0.0.0"
 
 ## Beethoven-Hardware dependency. Provide exactly one of `path` or `version`.
 ## `path` source-links a local checkout (good while iterating on the framework);
-## `version` resolves from the maven repo. `path` wins if both are set.
-[hardware.beethoven-hardware]
-path = "../Beethoven-Hardware"
-# version = "0.1.6"
-
+## `version` resolves from the local Ivy cache populated by `beethoven setup`,
+## falling back to the maven repo configured in build.sbt.
+{{hardware_dep_toml}}
 # [software]                   # entire section optional
 # src-dir = "sw"               # default "sw"
 

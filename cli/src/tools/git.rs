@@ -26,3 +26,17 @@ pub fn checkout(repo: &Path, git_ref: &str) -> Result<()> {
     exec::run(&mut cmd)?;
     Ok(())
 }
+
+/// `git -C <repo> fetch --all --tags`. Used by the hardware-install
+/// path before checking out a ref, so a long-lived CLI-managed clone
+/// can pick up upstream changes.
+pub fn fetch_all(repo: &Path) -> Result<()> {
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
+        .arg(repo)
+        .arg("fetch")
+        .arg("--all")
+        .arg("--tags");
+    exec::run(&mut cmd)?;
+    Ok(())
+}

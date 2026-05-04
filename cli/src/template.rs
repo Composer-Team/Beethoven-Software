@@ -37,17 +37,57 @@ pub struct Vars {
     /// Per-target platform-specific TOML block (or empty for
     /// targets we don't have defaults for).
     pub platform_specific: String,
+    /// `[hardware.beethoven-hardware]` block in `Beethoven.toml`.
+    /// Either `version = "X.Y.Z"` (when `setup` has captured a local
+    /// publishLocal) or the legacy `path = "../Beethoven-Hardware"`
+    /// fallback (when the user hasn't run setup yet). Pre-rendered so
+    /// the template stays a single dumb file with no conditionals.
+    pub hardware_dep_toml: String,
+    /// Settings injected into `build.sbt` to wire the hardware
+    /// dependency. Two shapes:
+    ///   - version mode: `libraryDependencies += "<org>" %% "<name>" % "<v>"`
+    ///   - path mode: `lazy val beethovenHardware = ProjectRef(...)`
+    /// The full sbt project block depends on which one we're in, so
+    /// `hardware_sbt_extra_settings` carries the version-mode
+    /// `libraryDependencies` line and `hardware_sbt_lazy_val` /
+    /// `hardware_sbt_depends_on` carry the path-mode plumbing.
+    pub hardware_sbt_lazy_val: String,
+    pub hardware_sbt_depends_on: String,
+    pub hardware_sbt_extra_settings: String,
+}
+
+/// Resolved Beethoven-Hardware coordinates passed to `Vars::new`.
+/// `Some(coords)` means setup has captured a published version and
+/// the scaffold should resolve via the local Ivy cache; `None` means
+/// fall back to a sibling-path source link (legacy framework-dev mode).
+#[derive(Debug, Clone)]
+pub struct HardwareCoords {
+    pub organization: String,
+    pub artifact: String,
+    pub version: String,
 }
 
 impl Vars {
     /// Build the substitution set from the user's name + chosen
-    /// target, with optional override of `accel`.
-    pub fn new(name: &str, accel: Option<&str>, target: &str) -> Self {
+    /// target, with optional override of `accel` and optional
+    /// hardware coordinates from user config.
+    pub fn new(
+        name: &str,
+        accel: Option<&str>,
+        target: &str,
+        hardware: Option<&HardwareCoords>,
+    ) -> Self {
         let name_snake = to_snake_case(name);
         let accel = accel
             .map(String::from)
             .unwrap_or_else(|| to_pascal_case(name));
         let system = format!("my{accel}");
+        let (
+            hardware_dep_toml,
+            hardware_sbt_lazy_val,
+            hardware_sbt_depends_on,
+            hardware_sbt_extra_settings,
+        ) = render_hardware_blocks(hardware);
         Self {
             name: name.to_string(),
             name_snake,
@@ -55,6 +95,10 @@ impl Vars {
             system,
             target: target.to_string(),
             platform_specific: platform_specific_block(target),
+            hardware_dep_toml,
+            hardware_sbt_lazy_val,
+            hardware_sbt_depends_on,
+            hardware_sbt_extra_settings,
         }
     }
 
@@ -67,6 +111,47 @@ impl Vars {
             .replace("{{system}}", &self.system)
             .replace("{{target}}", &self.target)
             .replace("{{platform_specific}}", &self.platform_specific)
+            .replace("{{hardware_dep_toml}}", &self.hardware_dep_toml)
+            .replace("{{hardware_sbt_lazy_val}}", &self.hardware_sbt_lazy_val)
+            .replace("{{hardware_sbt_depends_on}}", &self.hardware_sbt_depends_on)
+            .replace(
+                "{{hardware_sbt_extra_settings}}",
+                &self.hardware_sbt_extra_settings,
+            )
+    }
+}
+
+/// Render the four hardware-related substitution slots based on
+/// whether setup has captured a version. Path mode is the legacy
+/// fallback; version mode is the post-`beethoven setup` default.
+fn render_hardware_blocks(
+    coords: Option<&HardwareCoords>,
+) -> (String, String, String, String) {
+    match coords {
+        Some(c) => {
+            let toml = format!(
+                "[hardware.beethoven-hardware]\n\
+                 version = \"{}\"\n\
+                 # path = \"../Beethoven-Hardware\"   # uncomment to source-link a sibling checkout\n",
+                c.version
+            );
+            let extra = format!(
+                "      libraryDependencies += \"{}\" %% \"{}\" % \"{}\",\n",
+                c.organization, c.artifact, c.version
+            );
+            (toml, String::new(), String::new(), extra)
+        }
+        None => {
+            let toml = "[hardware.beethoven-hardware]\n\
+                        path = \"../Beethoven-Hardware\"\n\
+                        # version = \"0.1.7-dev11\"          # uncomment after `beethoven setup`\n"
+                .to_string();
+            let lazy_val =
+                "lazy val beethovenHardware = ProjectRef(file(\"../Beethoven-Hardware\"), \"beethoven\")\n"
+                    .to_string();
+            let depends_on = "    .dependsOn(beethovenHardware)\n".to_string();
+            (toml, lazy_val, depends_on, String::new())
+        }
     }
 }
 
@@ -243,13 +328,13 @@ mod tests {
 
     #[test]
     fn substitution_idempotent_on_no_placeholders() {
-        let v = Vars::new("vector-add", None, "simulation");
+        let v = Vars::new("vector-add", None, "simulation", None);
         assert_eq!(v.substitute("plain text"), "plain text");
     }
 
     #[test]
     fn substitution_replaces_all_vars() {
-        let v = Vars::new("vector-add", None, "aupzu3");
+        let v = Vars::new("vector-add", None, "aupzu3", None);
         let out = v.substitute("{{name}}/{{name_snake}}/{{accel}}/{{system}}/{{target}}");
         assert_eq!(out, "vector-add/vector_add/VectorAdd/myVectorAdd/aupzu3");
     }

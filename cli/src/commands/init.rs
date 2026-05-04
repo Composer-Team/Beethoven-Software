@@ -7,7 +7,7 @@
 use crate::cli::{InitArgs, Platform};
 use crate::error::{CliError, Result};
 use crate::state::UserConfig;
-use crate::template::{self, Vars};
+use crate::template::{self, HardwareCoords, Vars};
 use crate::ui;
 use std::env;
 use std::path::Path;
@@ -45,7 +45,15 @@ pub fn run(args: InitArgs) -> Result<()> {
         ));
     }
 
-    let vars = Vars::new(&name, args.accel.as_deref(), &target);
+    let hw = hardware_coords_from_cfg(&cfg);
+    if hw.is_none() {
+        ui::print_note(
+            "no Beethoven-Hardware version captured in user config; scaffolding \
+             with the legacy `path = \"../Beethoven-Hardware\"` source link. \
+             Run `beethoven setup` to switch new projects to a published version.",
+        );
+    }
+    let vars = Vars::new(&name, args.accel.as_deref(), &target, hw.as_ref());
 
     ui::print_stage("Initializing", &format!("{} ({})", cwd.display(), target));
     template::extract_to(&cwd, &vars)?;
@@ -91,6 +99,21 @@ fn resolve_target(platform: Option<Platform>, cfg: &UserConfig) -> String {
         return p.clone();
     }
     "simulation".into()
+}
+
+/// Pull the captured Beethoven-Hardware coordinates out of user
+/// config, if all three pieces are present. We require the trio
+/// (organization + name + version) to be set together — half-set
+/// state would silently produce a broken scaffold.
+fn hardware_coords_from_cfg(cfg: &UserConfig) -> Option<HardwareCoords> {
+    let org = cfg.hardware_organization.clone()?;
+    let artifact = cfg.hardware_artifact.clone()?;
+    let version = cfg.hardware_version.clone()?;
+    Some(HardwareCoords {
+        organization: org,
+        artifact,
+        version,
+    })
 }
 
 fn git_init(dir: &Path) -> Result<()> {

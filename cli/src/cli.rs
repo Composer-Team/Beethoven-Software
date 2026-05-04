@@ -260,6 +260,24 @@ pub struct SetupArgs {
     /// Number of parallel build jobs (default: all cores).
     #[arg(short = 'j')]
     pub jobs: Option<usize>,
+
+    /// Use an existing Beethoven-Hardware clone instead of letting
+    /// setup manage one under ~/.local/share/beethoven/hardware-src.
+    /// The provided path is left untouched — only `sbt publishLocal`
+    /// runs against it.
+    #[arg(long = "hardware-from")]
+    pub hardware_from: Option<PathBuf>,
+
+    /// Git ref to check out for Beethoven-Hardware (default: "main").
+    /// Ignored with `--hardware-from`.
+    #[arg(long = "hardware-ref")]
+    pub hardware_ref: Option<String>,
+
+    /// Skip the Beethoven-Hardware install step. Scaffolded projects
+    /// will fall back to a sibling-path source link and a manual
+    /// `../Beethoven-Hardware` checkout (the legacy default).
+    #[arg(long)]
+    pub no_hardware: bool,
 }
 
 #[derive(Args, Debug)]

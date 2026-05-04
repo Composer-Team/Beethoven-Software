@@ -31,3 +31,17 @@ pub fn run(project_root: &Path, mode: &str) -> Result<()> {
     exec::run(&mut cmd)?;
     Ok(())
 }
+
+/// `sbt publishLocal` from `project_root`. Writes the project's jar +
+/// pom into `~/.ivy2/local/<org>/<name>_<scala-ver>/<version>/` so
+/// any sibling sbt project resolves it without hitting the network.
+/// `setup` calls this once per Beethoven-Hardware install.
+///
+/// We pass the task as a single argv so sbt's command parser
+/// receives it as one task — same idiom as `run` above.
+pub fn publish_local(project_root: &Path) -> Result<()> {
+    let mut cmd = Command::new("sbt");
+    cmd.arg("publishLocal").current_dir(project_root);
+    exec::run(&mut cmd)?;
+    Ok(())
+}

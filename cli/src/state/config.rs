@@ -21,6 +21,17 @@ pub struct UserConfig {
 
     /// Default platform for `new` / `init` when --platform is omitted.
     pub default_platform: Option<String>,
+
+    /// Beethoven-Hardware coordinates captured by `setup` after a
+    /// successful `sbt publishLocal`. When present, `init` / `new`
+    /// scaffold a project that depends on the version published in
+    /// the local Ivy cache (`~/.ivy2/local/`); when absent, they fall
+    /// back to a sibling-path source link (the legacy default for
+    /// framework devs). All three move together — set or unset as a
+    /// group via setup.
+    pub hardware_version: Option<String>,
+    pub hardware_organization: Option<String>,
+    pub hardware_artifact: Option<String>,
 }
 
 impl UserConfig {

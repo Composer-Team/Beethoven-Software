@@ -13,7 +13,7 @@
 use crate::cli::{NewArgs, Platform};
 use crate::error::{CliError, Result};
 use crate::state::UserConfig;
-use crate::template::{self, Vars};
+use crate::template::{self, HardwareCoords, Vars};
 use crate::ui;
 use std::env;
 use std::path::PathBuf;
@@ -40,7 +40,15 @@ pub fn run(args: NewArgs) -> Result<()> {
         )));
     }
 
-    let vars = Vars::new(&args.name, args.accel.as_deref(), &target);
+    let hw = hardware_coords_from_cfg(&cfg);
+    if hw.is_none() {
+        ui::print_note(
+            "no Beethoven-Hardware version captured in user config; scaffolding \
+             with the legacy `path = \"../Beethoven-Hardware\"` source link. \
+             Run `beethoven setup` to switch new projects to a published version.",
+        );
+    }
+    let vars = Vars::new(&args.name, args.accel.as_deref(), &target, hw.as_ref());
 
     ui::print_stage("Creating", &format!("{} ({})", dest.display(), target));
     template::extract_to(&dest, &vars)?;
@@ -56,6 +64,17 @@ pub fn run(args: NewArgs) -> Result<()> {
         args.name, args.name
     ));
     Ok(())
+}
+
+/// Pull captured Beethoven-Hardware coordinates from user config.
+/// Returns None when any of the trio (org, name, version) is missing,
+/// which signals "fall back to path mode" to `Vars::new`.
+fn hardware_coords_from_cfg(cfg: &UserConfig) -> Option<HardwareCoords> {
+    Some(HardwareCoords {
+        organization: cfg.hardware_organization.clone()?,
+        artifact: cfg.hardware_artifact.clone()?,
+        version: cfg.hardware_version.clone()?,
+    })
 }
 
 /// Reject names that would break scala identifiers, paths, or be

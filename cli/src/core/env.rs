@@ -60,6 +60,17 @@ pub fn lockfile_path(project_root: &Path) -> Result<PathBuf> {
     )))
 }
 
+/// CLI-managed Beethoven-Hardware checkout. `setup` clones into here
+/// (or pulls if it already exists) and runs `sbt publishLocal` from
+/// it. Lives next to `~/.local/share/beethoven/runtime-src/` so the
+/// two source trees the CLI manages are colocated.
+pub fn hardware_src_dir() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".local/share"))
+        .join("beethoven")
+        .join("hardware-src")
+}
+
 /// Default install prefix — `~/.local`. Used by `setup` when no
 /// `--prefix` flag is given and the user config has none yet.
 pub fn default_prefix() -> PathBuf {
