@@ -145,6 +145,15 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
     target_link_libraries(sim_BeethovenRuntime PRIVATE
         APEX::beethoven-${BEETHOVEN_PLATFORM} dramsim3)
 
+    # vpi_* symbols are resolved at runtime when vvp dlopens the .vpi
+    # module. Linux's ld allows unresolved symbols in shared modules by
+    # default; Apple's ld rejects them. -undefined dynamic_lookup
+    # restores Linux-style late binding for the host's vvp to satisfy.
+    if(APPLE)
+        target_link_options(sim_BeethovenRuntime PRIVATE
+            -Wl,-undefined,dynamic_lookup)
+    endif()
+
     file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
     if(NOT EXISTS ${_hw}/BeethovenTopVCSHarness.v)
         message(FATAL_ERROR

@@ -1,4 +1,11 @@
-set(BEETHOVEN_PLATFORMS "discrete;zynq" CACHE STRING
+# Zynq's host driver uses Linux-only mmap flags (MAP_HUGETLB, MAP_HUGE_SHIFT,
+# MAP_LOCKED) and _SC_LEVEL1_DCACHE_LINESIZE, so it can't compile on Darwin.
+if(APPLE)
+    set(_beethoven_default_platforms "discrete")
+else()
+    set(_beethoven_default_platforms "discrete;zynq")
+endif()
+set(BEETHOVEN_PLATFORMS "${_beethoven_default_platforms}" CACHE STRING
     "Host-CPU platforms to build (semicolon-separated subset of: discrete zynq)")
 
 include(GNUInstallDirs)
@@ -92,6 +99,9 @@ install(FILES
 if("discrete" IN_LIST BEETHOVEN_PLATFORMS)
     add_executable(merge_sort  ${_root}/test/merge_sort.cc)
     add_executable(alloc_sizes ${_root}/test/alloc_sizes.cc)
+    set_target_properties(merge_sort alloc_sizes PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES)
     target_link_libraries(merge_sort  PRIVATE beethoven-discrete)
     target_link_libraries(alloc_sizes PRIVATE beethoven-discrete)
 endif()
