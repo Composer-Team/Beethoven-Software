@@ -116,6 +116,15 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
     find_program(IVERILOG iverilog REQUIRED)
     find_program(VVP      vvp      REQUIRED)
 
+    # iverilog's vpi_user.h lives at different paths on different
+    # distros (e.g. /usr/include/vpi_user.h on some, /usr/include/
+    # iverilog/vpi_user.h on Debian/Ubuntu). Search both — the first
+    # variant is found by default, the second via the PATH_SUFFIXES
+    # extension to standard search dirs (/usr/include, /usr/local/include).
+    find_path(IVERILOG_VPI_INCLUDE_DIR vpi_user.h
+        PATH_SUFFIXES iverilog
+        REQUIRED)
+
     if(NOT BEETHOVEN_FRONTEND STREQUAL "axi")
         message(FATAL_ERROR "Icarus + chipkit is not currently supported.")
     endif()
@@ -132,7 +141,7 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
         ICARUS=1 SIM=1
         DRAMSIM_CONFIG="${CMAKE_CURRENT_SOURCE_DIR}/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini")
     target_include_directories(sim_BeethovenRuntime PRIVATE
-        include ${_binding} ${_hw})
+        include ${_binding} ${_hw} ${IVERILOG_VPI_INCLUDE_DIR})
     target_link_libraries(sim_BeethovenRuntime PRIVATE
         APEX::beethoven-${BEETHOVEN_PLATFORM} dramsim3)
 

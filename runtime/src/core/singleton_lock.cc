@@ -202,7 +202,12 @@ void runtime_acquire_singleton_lock() {
   int n = std::snprintf(pidbuf, sizeof(pidbuf), "%ld\n",
                         static_cast<long>(getpid()));
   if (n > 0) {
-    (void)pwrite(fd, pidbuf, static_cast<size_t>(n), 0);
+    // glibc's pwrite is `warn_unused_result`; a bare `(void)` cast
+    // doesn't silence it on gcc 11+. Capture the return into a
+    // throwaway local instead. This write is best-effort — failure
+    // just means the lockfile won't carry our PID for diagnostics.
+    ssize_t written = pwrite(fd, pidbuf, static_cast<size_t>(n), 0);
+    (void)written;
   }
 
   // Stash the fd so it survives until process exit. See the comment
