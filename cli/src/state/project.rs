@@ -17,7 +17,7 @@
 //!   src-dir = "sw"               # optional
 //!
 //!   [platform]
-//!   target = "..."               # required: simulation | kria | aupzu3 | ...
+//!   target = "..."               # required: default | kria | aupzu3 | ...
 //!   build-mode = "..."           # required: simulation | synthesis
 //!
 //!   [platform.<target>]          # required for some targets (e.g. aupzu3)
@@ -59,7 +59,6 @@ pub struct Manifest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ProjectSection {
     pub name: String,
-    pub version: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -90,15 +89,24 @@ impl Platform {
 
 /// Map a target name from `[platform].target` to a resolved platform.
 /// Returns `None` for unrecognized names.
+///
+/// `"default"` is the generic sim-tuned target (was named `"simulation"`
+/// pre-rename — disambiguated against the build-mode `simulation`).
 pub fn target_to_platform(target: &str) -> Option<Platform> {
     match target {
-        "simulation" => Some(Platform::Discrete),
+        "default" => Some(Platform::Discrete),
         t if t.starts_with("aws-") => Some(Platform::Discrete),
         "u200" | "u250" | "u280" => Some(Platform::Discrete),
         "kria" | "kria2" | "aupzu3" => Some(Platform::Zynq),
         "baremetal" => Some(Platform::Baremetal),
         _ => None,
     }
+}
+
+/// True if the target has a synthesis flow. The generic `default`
+/// target and `baremetal` don't — anything else does.
+pub fn target_supports_synth(target: &str) -> bool {
+    !matches!(target, "default" | "baremetal")
 }
 
 impl Project {

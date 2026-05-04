@@ -116,7 +116,7 @@ fn resolve_target(platform: Option<Platform>, cfg: &UserConfig) -> String {
     if let Some(p) = &cfg.default_platform {
         return p.clone();
     }
-    "simulation".into()
+    "default".into()
 }
 
 fn current_dir() -> Result<PathBuf> {

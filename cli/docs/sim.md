@@ -62,14 +62,18 @@ Lifecycle:
 ## Outputs
 
 - Console output from runtime and testbench.
-- Simulation traces (`*.vcd`, `*.fst`) under `target/sim/runtime/`,
-  if enabled in the design.
+- Simulation traces under `target/simulation/`, if enabled in the design:
+  `trace.vcd` / `trace.fst` (verilator/icarus), `BeethovenTrace.vpd` (vcs),
+  plus DRAMsim3 logs (`dramsim3.txt`, `dramsim3log/`). The CLI pins the
+  daemon's cwd to `target/simulation/` so these don't pollute the
+  invocation directory; if the daemon is launched manually via
+  `beethoven runtime run`, they land in *that* shell's cwd instead.
 - Exit code = the testbench's exit code.
 
 ## Errors
 
 - Not in a project → exit `64`.
-- Project target resolves to non-simulation → exit `64`, suggests [`run`](run.md).
+- Project target is `baremetal` (no daemon) → exit `64`.
 - `--no-launch` set but no daemon is up → exit `1`.
 - Build failure → exit `1` with the underlying error.
 - Runtime fails to start → exit `1`.

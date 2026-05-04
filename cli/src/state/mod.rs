@@ -11,4 +11,4 @@ pub mod config;
 pub mod project;
 
 pub use config::UserConfig;
-pub use project::{target_to_platform, Manifest, Platform, Project};
+pub use project::{target_supports_synth, target_to_platform, Manifest, Platform, Project};

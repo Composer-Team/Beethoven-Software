@@ -81,7 +81,6 @@ beethoven-hardware = "/home/mason/.local/share/beethoven/src/Beethoven-Hardware"
 ```toml
 [project]
 name        = "..."          # required
-version     = "0.0.0"        # default "0.0.0"
 
 [hardware.beethoven-hardware]
 path        = "..."          # OR
@@ -91,7 +90,7 @@ version     = "..."          # exactly one of path / version
 # path = "..."               # optional dev-mode override
 
 [platform]
-target      = "aupzu3"       # one of: simulation | kria | kria2 | aupzu3 |
+target      = "aupzu3"       # one of: default | kria | kria2 | aupzu3 |
                              #          aws-f1 | aws-f2 | u200
                              # build mode is NOT in the manifest — it's a
                              # per-invocation choice (`beethoven sim` /

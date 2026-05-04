@@ -32,7 +32,7 @@ pub struct Vars {
     /// ("myVectorAdd"). Hardcoded to `"my" + accel` to match the
     /// existing project template.
     pub system: String,
-    /// Initial deployment target ("simulation", "aupzu3", ...).
+    /// Initial deployment target ("default", "aupzu3", ...).
     pub target: String,
     /// Per-target platform-specific TOML block (or empty for
     /// targets we don't have defaults for).
@@ -191,13 +191,13 @@ pub fn to_pascal_case(s: &str) -> String {
 
 /// Predefined `[platform.<target>]` block for known targets, or empty
 /// if we don't have defaults. Callers (`commands::new`) should warn
-/// the user when this returns empty for a non-`"simulation"` target.
+/// the user when this returns empty for a non-`"default"` target.
 fn platform_specific_block(target: &str) -> String {
     match target {
         "aupzu3" => "[platform.aupzu3]\ndram-size-gb = 8\n".to_string(),
-        // simulation, kria, aws-*, u200 — no defaults baked in. Users
-        // can fill in what they need. simulation in particular needs
-        // nothing.
+        // default, kria, aws-*, u200 — no defaults baked in. Users can
+        // fill in what they need; the `default` target in particular
+        // needs nothing.
         _ => String::new(),
     }
 }
@@ -206,7 +206,7 @@ fn platform_specific_block(target: &str) -> String {
 pub fn is_known_target(target: &str) -> bool {
     matches!(
         target,
-        "simulation"
+        "default"
             | "kria"
             | "kria2"
             | "aupzu3"
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn substitution_idempotent_on_no_placeholders() {
-        let v = Vars::new("vector-add", None, "simulation", None);
+        let v = Vars::new("vector-add", None, "default", None);
         assert_eq!(v.substitute("plain text"), "plain text");
     }
 

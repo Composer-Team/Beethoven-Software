@@ -121,14 +121,6 @@ fn print_text(
         print_section("Project");
         let mut rows: Vec<(&str, String)> = vec![
             ("name", p.manifest.project.name.clone()),
-            (
-                "version",
-                p.manifest
-                    .project
-                    .version
-                    .clone()
-                    .unwrap_or_else(|| "(unset)".into()),
-            ),
             ("root", p.root.display().to_string()),
         ];
         match p.target() {
@@ -223,7 +215,6 @@ fn print_json(
             };
             json!({
                 "name": &proj.manifest.project.name,
-                "version": &proj.manifest.project.version,
                 "root": proj.root.display().to_string(),
                 "target": target,
                 "platform": platform,

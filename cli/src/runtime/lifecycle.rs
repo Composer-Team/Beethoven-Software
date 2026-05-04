@@ -155,50 +155,38 @@ pub fn shutdown_daemon(child: &mut Child) -> Result<()> {
     Ok(())
 }
 
-/// Outcome of `kill_external_daemon`. The variants distinguish
-/// "process was already gone" (no-op kill), "SIGTERM worked",
-/// "SIGKILL worked" (when --force was passed), and "SIGTERM didn't
-/// take so we escalated" — useful for surfacing the right message
-/// to the user without them having to read signals.
+/// Outcome of `kill_external_daemon`. We always SIGKILL — the only
+/// distinction worth surfacing is "process was already gone" vs
+/// "we sent the signal."
 pub enum KillOutcome {
     AlreadyGone,
-    Terminated,
     Killed,
-    Escalated,
 }
 
-/// Stop the daemon at `pid` for `project`. Sends SIGTERM (or SIGKILL
-/// if `grace.is_zero()`) and polls the lockfile via `probe::probe`
-/// until the lock is released or `grace` elapses. On grace timeout,
-/// escalates to SIGKILL.
+/// SIGKILL the daemon at `pid` for `project`, then poll the lockfile
+/// until the lock is released. SIGTERM-with-grace was tried earlier
+/// and rejected: clean shutdown is the daemon's job, not ours; if
+/// the daemon is responsive enough to honor SIGTERM, the user
+/// almost always meant Ctrl+C in the launching terminal anyway.
 ///
 /// Cross-platform: relies only on POSIX `kill(2)` and the existing
 /// flock-based probe — no `pgrep`/`ps`/`/proc` parsing. Works the
 /// same on Linux and macOS.
-pub fn kill_external_daemon(
-    project: &Project,
-    pid: i32,
-    grace: Duration,
-) -> Result<KillOutcome> {
+pub fn kill_external_daemon(project: &Project, pid: i32) -> Result<KillOutcome> {
     use nix::errno::Errno;
     use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
 
     let nix_pid = Pid::from_raw(pid);
-    let initial = if grace.is_zero() {
-        Signal::SIGKILL
-    } else {
-        Signal::SIGTERM
-    };
 
-    match kill(nix_pid, initial) {
+    match kill(nix_pid, Signal::SIGKILL) {
         Ok(()) => {}
         // ESRCH: no such process — daemon already exited between the
         // probe and our signal. Idempotent success from the user's POV.
         Err(Errno::ESRCH) => return Ok(KillOutcome::AlreadyGone),
         Err(e) => {
             return Err(CliError::config(format!(
-                "kill(PID {pid}, {initial:?}) failed: {e}"
+                "kill(PID {pid}, SIGKILL) failed: {e}"
             )))
         }
     }
@@ -206,21 +194,8 @@ pub fn kill_external_daemon(
     // SIGKILL is unblockable — the lockfile should drop almost
     // immediately. Give the kernel a brief window before we declare
     // success and move on.
-    let post_kill_window = Duration::from_secs(2);
-
-    if grace.is_zero() {
-        let _ = wait_lockfile_released(project, post_kill_window);
-        return Ok(KillOutcome::Killed);
-    }
-
-    if wait_lockfile_released(project, grace).is_ok() {
-        return Ok(KillOutcome::Terminated);
-    }
-
-    // SIGTERM didn't take. Escalate.
-    let _ = kill(nix_pid, Signal::SIGKILL);
-    let _ = wait_lockfile_released(project, post_kill_window);
-    Ok(KillOutcome::Escalated)
+    let _ = wait_lockfile_released(project, Duration::from_secs(2));
+    Ok(KillOutcome::Killed)
 }
 
 /// Poll `probe::probe` until it reports `Down` or `timeout` elapses.

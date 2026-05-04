@@ -20,7 +20,7 @@ checkout = "/home/<you>/.cache/beethoven/Beethoven-Software"
 ref = "main"
 
 # default platform for `new` / `init` when --platform is omitted.
-default_platform = "simulation"
+default_platform = "default"
 ```
 
 XDG-aware: `XDG_CONFIG_HOME` overrides `~/.config`; `XDG_CACHE_HOME`

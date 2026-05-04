@@ -1,6 +1,6 @@
 //! `beethoven run` — end-to-end real-FPGA flow.
 //!
-//! Validates the project's target is real hardware (not `simulation`,
+//! Validates the project's target is real hardware (not `default`,
 //! not `baremetal`), then delegates to `commands::pipeline::execute`
 //! with mode hard-coded to `"synthesis"`.
 
@@ -13,9 +13,9 @@ pub fn run(args: RunArgs) -> Result<()> {
     let project = Project::discover()?;
 
     match project.target() {
-        Some("simulation") => {
+        Some("default") => {
             return Err(CliError::config(
-                "target = \"simulation\" can't run on real hardware; \
+                "target = \"default\" can't run on real hardware; \
                  use `beethoven sim` instead"
                     .to_string(),
             ));

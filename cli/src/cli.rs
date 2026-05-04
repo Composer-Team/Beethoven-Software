@@ -122,8 +122,14 @@ pub struct BuildArgs {
     pub target: Option<BuildTarget>,
 
     /// Build for synthesis (target/synthesis/) instead of simulation.
-    #[arg(long)]
+    /// For `build hw`, also suppresses the simulation pass (default builds both).
+    #[arg(long, conflicts_with = "simulation")]
     pub release: bool,
+
+    /// Build for simulation only. Useful with `build hw` to skip the
+    /// synthesis pass that the default would otherwise run.
+    #[arg(long)]
+    pub simulation: bool,
 
     /// Number of parallel jobs.
     #[arg(short = 'j')]
@@ -143,7 +149,8 @@ pub enum RuntimeCommand {
     },
     /// Launch the daemon in foreground (Ctrl+C to stop).
     Run(RuntimeRunArgs),
-    /// Stop the daemon running for this project (SIGTERM, then SIGKILL).
+    /// SIGKILL the daemon for this project, then wipe its lockfile,
+    /// shmem segments, and runtime build dirs. Idempotent.
     Kill(RuntimeKillArgs),
     /// Remove runtime artifacts under target/<mode>/runtime/.
     Clean {
@@ -156,18 +163,18 @@ pub enum RuntimeCommand {
 #[derive(Args, Debug)]
 #[command(after_help = "\
 EXAMPLES:
-  beethoven runtime kill           graceful stop (SIGTERM, 5s grace, then SIGKILL)
-  beethoven runtime kill --force   skip grace period; SIGKILL immediately
+  beethoven runtime kill   SIGKILL the daemon and wipe runtime state
 
-NOTE: idempotent — exits 0 if no daemon is running.
-      Resolves the daemon via the per-project lockfile, not pgrep, so
-      it works the same on Linux and macOS.
+After the daemon is gone, also removes:
+  - the per-project flock lockfile
+  - per-user POSIX shmem segments (/compo_c_<uid>, /compo_d_<uid>)
+  - target/simulation/runtime/ and target/synthesis/runtime/ build dirs
+
+Idempotent — if no daemon is running, just runs the cleanup pass.
+Resolves the daemon via the per-project lockfile, not pgrep, so it
+works the same on Linux and macOS.
 ")]
-pub struct RuntimeKillArgs {
-    /// Skip the SIGTERM grace period; send SIGKILL immediately.
-    #[arg(long)]
-    pub force: bool,
-}
+pub struct RuntimeKillArgs {}
 
 #[derive(Args, Debug)]
 pub struct RuntimeRunArgs {
@@ -359,7 +366,12 @@ pub struct FlashArgs {}
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
 pub enum Platform {
-    Simulation,
+    /// Generic sim-tuned platform — what you pick when you don't care
+    /// about a specific FPGA's bus widths/memory params. Renders as
+    /// `default` on the CLI and in `Beethoven.toml` to disambiguate
+    /// from the build mode `simulation`.
+    #[value(name = "default")]
+    DefaultTarget,
     Kria,
     Kria2,
     Aupzu3,
@@ -377,7 +389,7 @@ impl Platform {
     /// for `--platform` arguments.
     pub fn target_name(&self) -> &'static str {
         match self {
-            Self::Simulation => "simulation",
+            Self::DefaultTarget => "default",
             Self::Kria => "kria",
             Self::Kria2 => "kria2",
             Self::Aupzu3 => "aupzu3",
