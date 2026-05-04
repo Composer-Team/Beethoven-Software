@@ -1,0 +1,21 @@
+package {{name_snake}}
+
+import beethoven._
+
+// Platform comes from Beethoven.toml (`[platform] target`); build mode is
+// per-invocation (`sbt "run --mode simulation"` / `--mode synthesis`, set
+// for you by the `beethoven` CLI). The framework picks up this
+// AcceleratorConfig subclass via classpath autodiscovery (driven by
+// beethoven.cli.Run, which is the build.sbt mainClass).
+
+class {{accel}}Config extends AcceleratorConfig(
+  List(AcceleratorSystemConfig(
+    nCores = 3,
+    name = "{{system}}",
+    moduleConstructor = ModuleBuilder(p => new {{accel}}Core()(p)),
+    memoryChannelConfig = List(
+      ReadChannelConfig("vec_a", dataBytes = 4),
+      ReadChannelConfig("vec_b", dataBytes = 4),
+      WriteChannelConfig("vec_out", dataBytes = 4)
+    )
+  )))

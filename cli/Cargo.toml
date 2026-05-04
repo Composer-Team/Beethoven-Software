@@ -1,0 +1,48 @@
+[package]
+name = "beethoven-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Command-line tool for Beethoven hardware acceleration projects"
+license = "MIT"
+repository = "https://github.com/Composer-Team/Beethoven-Software"
+
+[[bin]]
+name = "beethoven"
+path = "src/main.rs"
+
+[dependencies]
+# argv parsing
+clap = { version = "4", features = ["derive"] }
+
+# error handling
+anyhow = "1"
+thiserror = "1"
+
+# config / manifest parsing
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# pretty terminal output (no ratatui — we print, we don't paint)
+console = "0.15"
+indicatif = "0.17"
+comfy-table = "7"
+dialoguer = "0.11"
+
+# unix bits
+nix = { version = "0.29", features = ["fs", "signal", "user"] }
+dirs = "5"
+walkdir = "2"
+which = "6"
+tempfile = "3"
+
+# template embedding (used by `new` / `init`)
+include_dir = "0.7"
+
+# logging (verbose mode)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[profile.release]
+lto = "thin"
+strip = "symbols"

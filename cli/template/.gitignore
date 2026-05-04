@@ -1,0 +1,17 @@
+# Beethoven build outputs and sbt compile cache
+target/
+
+# sbt's meta-build compile cache.
+project/
+
+# Simulator outputs that get dumped in cwd by VCS / Icarus / Verilator
+# / DRAMsim3 — these always land at the project root if `beethoven run`
+# is invoked from here.
+dramsim3.json
+dramsim3.txt
+dramsim3log/
+trace.fst
+trace.fst.hier
+trace.vcd
+dump.vcd
+BeethovenTrace.vpd
