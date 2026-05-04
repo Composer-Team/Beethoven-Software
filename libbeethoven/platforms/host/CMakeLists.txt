@@ -14,7 +14,12 @@ set(_core_sources
     ${_root}/src/allocator/alloc.cc
     ${_root}/src/runtime_ipc.cc)
 
-option(ENABLE_CACHE_FLUSH "Enable software cache flushing on Zynq (ARM64 only)" OFF)
+# Default ON: HP (non-coherent) AXI ports need software flush/invalidate
+# around copy_to_fpga / copy_from_fpga or the FPGA reads stale DDR / the
+# CPU reads stale cache (symptom: all-zero results from any accelerator).
+# Set OFF only when you know the bitstream uses HPC + CCI and you want
+# to skip the redundant flush for performance.
+option(ENABLE_CACHE_FLUSH "Enable software cache flushing on Zynq (ARM64 only)" ON)
 
 foreach(_plat IN LISTS BEETHOVEN_PLATFORMS)
     set(_lib beethoven-${_plat})
