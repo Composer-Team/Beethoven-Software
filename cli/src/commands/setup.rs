@@ -35,27 +35,36 @@ const HARDWARE_REPO_URL: &str = "https://github.com/Composer-Team/Beethoven-Hard
 pub fn run(args: SetupArgs) -> Result<()> {
     let cfg = UserConfig::load()?;
     let prefix = resolve_prefix(args.prefix.as_deref(), &cfg);
-    let git_ref = args
-        .git_ref
-        .or_else(|| cfg.git_ref.clone())
-        .unwrap_or_else(|| "main".into());
-    let hardware_ref = args
-        .hardware_ref
-        .unwrap_or_else(|| "main".into());
+    // Ref resolution: explicit --ref always wins; cfg.git_ref is a
+    // soft hint (it gets soft-fallback to HEAD if it's stale); when
+    // neither is set we let `git clone` land on the remote's default
+    // branch and persist whatever that turns out to be. The old
+    // hardcoded "main" default bit users when the remote was actually
+    // on `master`.
+    let git_ref = args.git_ref.or_else(|| cfg.git_ref.clone());
+    let hardware_ref = args.hardware_ref;
 
-    do_setup(&prefix, &git_ref, args.from.as_deref(), args.jobs)?;
+    do_setup(&prefix, git_ref.as_deref(), args.from.as_deref(), args.jobs)?;
 
     if !args.no_hardware {
-        do_setup_hardware(args.hardware_from.as_deref(), &hardware_ref)?;
+        do_setup_hardware(args.hardware_from.as_deref(), hardware_ref.as_deref())?;
     }
     Ok(())
 }
 
 /// The reusable worker. Called by `setup::run` directly and by
 /// `update::run` after it runs the uninstall step.
+///
+/// `git_ref = None` means "use whatever branch the clone lands on"
+/// (the remote's default HEAD). When the user passes a ref but it
+/// doesn't exist in the clone — e.g. a stale `ref = "main"` from a
+/// previous CLI version that hardcoded that default — we warn and
+/// stay on HEAD instead of failing. The persisted ref is always
+/// whatever HEAD is at the end, so `info` and the next `update` see
+/// the truth.
 pub fn do_setup(
     prefix: &Path,
-    git_ref: &str,
+    git_ref: Option<&str>,
     from: Option<&Path>,
     jobs: Option<usize>,
 ) -> Result<()> {
@@ -80,8 +89,16 @@ pub fn do_setup(
         let dest = scratch_path.join("checkout");
         ui::print_stage("Cloning", &format!("{REPO_URL} → {}", dest.display()));
         git::clone(REPO_URL, &dest)?;
-        ui::print_stage("Checking out", git_ref);
-        git::checkout(&dest, git_ref)?;
+        if let Some(r) = git_ref {
+            if git::ref_exists(&dest, r) {
+                ui::print_stage("Checking out", r);
+                git::checkout(&dest, r)?;
+            } else {
+                ui::print_warning(&format!(
+                    "ref '{r}' not found in clone; staying on the repo's default branch"
+                ));
+            }
+        }
         dest
     };
 
@@ -107,7 +124,15 @@ pub fn do_setup(
     let manifest_dst = env::manifest_path()?;
     cmake::copy_manifest(&build, &manifest_dst)?;
 
-    persist_config(prefix, git_ref)?;
+    // Persist whatever branch we ended up on. With no --ref this
+    // captures the remote's default (e.g. "master"), so a future
+    // `update` reads back the right thing and doesn't fall over on
+    // the stale-"main" trap that motivated this refactor. With
+    // `--from` (a user-managed checkout) we still record current
+    // HEAD for `info` to display.
+    let resolved_ref = git::current_branch(&checkout)
+        .unwrap_or_else(|_| git_ref.unwrap_or("master").to_string());
+    persist_config(prefix, &resolved_ref)?;
 
     ui::print_success(&format!(
         "libbeethoven installed to {}. Run `beethoven info` to verify.",
@@ -175,7 +200,7 @@ fn persist_config(prefix: &Path, git_ref: &str) -> Result<()> {
 /// `from` is an escape hatch for framework devs: when provided, we
 /// publishLocal the user's existing checkout in place and skip the
 /// CLI-managed clone. The path is otherwise untouched.
-pub fn do_setup_hardware(from: Option<&Path>, git_ref: &str) -> Result<()> {
+pub fn do_setup_hardware(from: Option<&Path>, git_ref: Option<&str>) -> Result<()> {
     exec::require_tool("sbt", Some("install via your package manager (sbt 1.x)"))?;
     if from.is_none() {
         exec::require_tool("git", Some("install via your package manager"))?;
@@ -219,15 +244,19 @@ fn validate_hardware_path(p: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Resolve the CLI-managed clone, cloning or fetch+checkout as needed.
-/// Returns the path to the clone.
-fn ensure_hardware_clone(git_ref: &str) -> Result<PathBuf> {
+/// Resolve the CLI-managed clone, cloning or fetch+checkout as
+/// needed. With `git_ref = None` we leave the clone on whatever HEAD
+/// the remote chose (e.g. "master") — same self-healing strategy as
+/// the SW path. With Some(r), we checkout if it exists, warn-and-
+/// stay-on-HEAD if it doesn't.
+fn ensure_hardware_clone(git_ref: Option<&str>) -> Result<PathBuf> {
     let dest = env::hardware_src_dir();
     if dest.join(".git").is_dir() {
         ui::print_stage("Updating", &format!("{} (git fetch)", dest.display()));
         git::fetch_all(&dest)?;
-        ui::print_stage("Checking out", git_ref);
-        git::checkout(&dest, git_ref)?;
+        if let Some(r) = git_ref {
+            checkout_or_warn(&dest, r)?;
+        }
     } else {
         if dest.exists() {
             return Err(CliError::config(format!(
@@ -249,10 +278,26 @@ fn ensure_hardware_clone(git_ref: &str) -> Result<PathBuf> {
             &format!("{HARDWARE_REPO_URL} → {}", dest.display()),
         );
         git::clone(HARDWARE_REPO_URL, &dest)?;
-        ui::print_stage("Checking out", git_ref);
-        git::checkout(&dest, git_ref)?;
+        if let Some(r) = git_ref {
+            checkout_or_warn(&dest, r)?;
+        }
     }
     Ok(dest)
+}
+
+/// Soft checkout: if the ref exists, switch to it; otherwise warn and
+/// leave the clone on whatever HEAD it's at. Mirrors the same logic
+/// used in `do_setup` for the software path.
+fn checkout_or_warn(repo: &Path, git_ref: &str) -> Result<()> {
+    if git::ref_exists(repo, git_ref) {
+        ui::print_stage("Checking out", git_ref);
+        git::checkout(repo, git_ref)?;
+    } else {
+        ui::print_warning(&format!(
+            "ref '{git_ref}' not found in clone; staying on the repo's default branch"
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Debug)]

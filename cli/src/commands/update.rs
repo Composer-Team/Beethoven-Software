@@ -18,10 +18,10 @@ pub fn run(args: UpdateArgs) -> Result<()> {
             "update needs `setup` to have been run first (no install prefix recorded)",
         )
     })?;
-    let git_ref = args
-        .git_ref
-        .or_else(|| cfg.git_ref.clone())
-        .unwrap_or_else(|| "main".into());
+    // Same ref-resolution as `setup::run`: explicit --ref wins,
+    // cfg.git_ref is a soft hint that gracefully falls back to HEAD
+    // if it's stale, None means "use the remote's default branch."
+    let git_ref = args.git_ref.or_else(|| cfg.git_ref.clone());
 
     // Step 1: tear down the current install. We do *not* purge the
     // user config / cache — setup will rewrite the manifest in a
@@ -30,7 +30,7 @@ pub fn run(args: UpdateArgs) -> Result<()> {
     uninstall::do_uninstall(&prefix, /* purge_user_state = */ false)?;
 
     // Step 2: fresh clone + install.
-    setup::do_setup(&prefix, &git_ref, args.from.as_deref(), args.jobs)?;
+    setup::do_setup(&prefix, git_ref.as_deref(), args.from.as_deref(), args.jobs)?;
 
     Ok(())
 }

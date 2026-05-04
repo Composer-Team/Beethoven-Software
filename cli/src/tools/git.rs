@@ -40,3 +40,43 @@ pub fn fetch_all(repo: &Path) -> Result<()> {
     exec::run(&mut cmd)?;
     Ok(())
 }
+
+/// `git -C <repo> rev-parse --abbrev-ref HEAD` — name of the
+/// currently-checked-out branch (e.g. "master"). Used to record what
+/// `setup` actually landed on when the user didn't pass `--ref`, so
+/// `info` and future `update`s know what's tracked.
+pub fn current_branch(repo: &Path) -> Result<String> {
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .arg("rev-parse")
+        .arg("--abbrev-ref")
+        .arg("HEAD")
+        .output()
+        .map_err(|e| anyhow::anyhow!("git rev-parse: {e}"))?;
+    if !out.status.success() {
+        return Err(anyhow::anyhow!(
+            "git rev-parse failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        )
+        .into());
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+}
+
+/// True iff `git_ref` resolves to a commit in `repo`. Used as a
+/// guard before `checkout` so a stale `ref = "main"` lingering in
+/// user config (from before the master/main rename was settled)
+/// silently falls back to HEAD instead of erroring out.
+pub fn ref_exists(repo: &Path, git_ref: &str) -> bool {
+    Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .arg("rev-parse")
+        .arg("--verify")
+        .arg("--quiet")
+        .arg(format!("{git_ref}^{{commit}}"))
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false)
+}
