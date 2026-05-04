@@ -34,5 +34,6 @@ pub fn run(args: SimArgs) -> Result<()> {
         args.no_launch,
         args.testbench.as_deref(),
         args.simulator.as_deref(),
+        &args.tb_args,
     )
 }

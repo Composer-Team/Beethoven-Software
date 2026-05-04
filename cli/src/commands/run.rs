@@ -40,5 +40,6 @@ pub fn run(args: RunArgs) -> Result<()> {
         args.no_launch,
         args.testbench.as_deref(),
         None,
+        &args.tb_args,
     )
 }

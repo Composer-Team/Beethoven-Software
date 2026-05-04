@@ -32,6 +32,7 @@ pub(crate) fn execute(
     no_launch: bool,
     testbench_arg: Option<&str>,
     simulator_override: Option<&str>,
+    tb_args: &[String],
 ) -> Result<()> {
     // 1. Probe daemon
     let daemon_state = probe::probe(&project.root)?;
@@ -122,6 +123,7 @@ pub(crate) fn execute(
         ui::print_stage("Running", &tb_name);
         let mut tb_cmd = Command::new(&tb_path);
         tb_cmd.env("BEETHOVEN_PROJECT_ROOT", &project.root);
+        tb_cmd.args(tb_args);
         ui::print_exec(&tb_cmd);
         tb_cmd
             .status()

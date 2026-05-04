@@ -7,6 +7,7 @@ use crate::error::Result;
 pub mod build;
 pub mod check;
 pub mod clean;
+pub mod flash;
 pub mod info;
 pub mod init;
 pub mod new;
@@ -30,7 +31,8 @@ pub fn dispatch(cmd: Command) -> Result<()> {
         Command::Runtime { command } => runtime_cmd::run(command),
         Command::Sim(args) => sim::run(args),
         Command::Run(args) => run::run(args),
-        Command::Synth => synth::run(),
+        Command::Synth(args) => synth::run(args),
+        Command::Flash(args) => flash::run(args),
         Command::Setup(args) => setup::run(args),
         Command::Update(args) => update::run(args),
         Command::Uninstall(args) => uninstall::run(args),

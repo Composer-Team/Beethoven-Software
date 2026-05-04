@@ -5,3 +5,4 @@
 pub mod cmake;
 pub mod git;
 pub mod sbt;
+pub mod vivado;

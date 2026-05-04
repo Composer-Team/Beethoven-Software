@@ -47,11 +47,15 @@ pub enum Command {
         command: RuntimeCommand,
     },
     /// Build and run end-to-end in simulation. Auto-detects an existing daemon.
+    /// Extra args after `--` are forwarded to the testbench, like `cargo run`.
     Sim(SimArgs),
     /// Build and run end-to-end on real FPGA. Auto-detects an existing daemon.
+    /// Extra args after `--` are forwarded to the testbench, like `cargo run`.
     Run(RunArgs),
-    /// (Placeholder) Vivado synth / P&R / bitgen.
-    Synth,
+    /// Drive Vivado: setup + synth + impl + bitstream. Always full rebuild.
+    Synth(SynthArgs),
+    /// JTAG-program the FPGA with the latest bitstream.
+    Flash(FlashArgs),
     /// First-run bootstrap: clone Beethoven-Software and install libbeethoven.
     Setup(SetupArgs),
     /// Pull and reinstall libbeethoven.
@@ -159,6 +163,15 @@ pub struct RuntimeRunArgs {
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven sim                        run the only testbench in simulation
+  beethoven sim mytb                   run a specific testbench
+  beethoven sim --no-build             skip the rebuild step
+  beethoven sim --simulator verilator  override simulator backend
+  beethoven sim mytb -- --foo bar      forward `--foo bar` to the testbench
+  beethoven sim -- --foo bar           same, when there's only one testbench
+")]
 pub struct SimArgs {
     /// Which testbench to run (defaults to the only one in Beethoven.toml).
     pub testbench: Option<String>,
@@ -174,9 +187,25 @@ pub struct SimArgs {
     /// Override the simulator backend.
     #[arg(long)]
     pub simulator: Option<String>,
+
+    /// Arguments forwarded to the testbench. Must follow `--`, like
+    /// `cargo run -- --foo bar`.
+    #[arg(last = true, allow_hyphen_values = true)]
+    pub tb_args: Vec<String>,
 }
 
 #[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven run                        run the only testbench on real FPGA
+  beethoven run mytb                   run a specific testbench
+  beethoven run --no-build             skip the rebuild step
+  beethoven run mytb -- --foo bar      forward `--foo bar` to the testbench
+  beethoven run -- --foo bar           same, when there's only one testbench
+
+NOTE: real-FPGA runs need /dev/mem access — invoke under sudo, e.g.:
+  sudo -E env HOME=$HOME beethoven run -- --foo bar
+")]
 pub struct RunArgs {
     /// Which testbench to run (defaults to the only one built).
     pub testbench: Option<String>,
@@ -188,6 +217,11 @@ pub struct RunArgs {
     /// Refuse to launch a daemon; require one to be already up.
     #[arg(long)]
     pub no_launch: bool,
+
+    /// Arguments forwarded to the testbench. Must follow `--`, like
+    /// `cargo run -- --foo bar`.
+    #[arg(last = true, allow_hyphen_values = true)]
+    pub tb_args: Vec<String>,
 }
 
 #[derive(Args, Debug)]
@@ -238,6 +272,54 @@ pub enum BuildTarget {
     Runtime,
     Sw,
 }
+
+#[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven synth                   full pipeline: setup -> synth -> impl -> bit
+  beethoven synth --no-build        skip the chisel `build hw --release` step
+  beethoven synth --up-to synth     stop after synth_design (skip impl + bit)
+  beethoven synth --up-to impl      stop after impl (skip bit)
+  beethoven synth --gui             open Vivado GUI on 0_setup.tcl, then exit
+
+NOTE: every run starts from a clean `xilinx_work/` (0_setup.tcl wipes it).
+      Use `beethoven flash` to JTAG-program the produced bitstream.
+")]
+pub struct SynthArgs {
+    /// Skip the prerequisite `beethoven build hw --release` step.
+    #[arg(long)]
+    pub no_build: bool,
+
+    /// Stop after this stage. Default: bit (full pipeline).
+    #[arg(long, value_enum, value_name = "STAGE")]
+    pub up_to: Option<SynthStage>,
+
+    /// Open Vivado GUI on 0_setup.tcl and exit. Does not run synth/impl.
+    #[arg(long, conflicts_with_all = ["no_build", "up_to"])]
+    pub gui: bool,
+}
+
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SynthStage {
+    /// Just the block design + IP setup.
+    Setup,
+    /// Through synth_design.
+    Synth,
+    /// Through place + route.
+    Impl,
+    /// Through bitstream (default).
+    Bit,
+}
+
+#[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven flash    JTAG-program the FPGA with the bitstream produced by `synth`
+
+NOTE: requires Xilinx hw_server reachable at localhost:3121 (the JTAG TCL
+      defaults to that). Run from the same machine the cable is attached to.
+")]
+pub struct FlashArgs {}
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
 pub enum Platform {
