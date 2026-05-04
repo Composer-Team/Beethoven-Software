@@ -11,9 +11,10 @@ name = "{{name_snake}}"
 [hardware]
 # src-dir = "hw"               # optional, default "hw"
 
-## Beethoven-Hardware dependency. Provide exactly one of `path` or `version`.
-## `path` source-links a local checkout (good while iterating on the framework);
-## `version` resolves from the local Ivy cache populated by `beethoven setup`,
+## Beethoven-Hardware dependency. Both lines below are commented out by default —
+## version pinning is opt-in. Uncomment exactly one before `beethoven build`:
+##   `path`    source-links a local checkout (good while iterating on the framework)
+##   `version` resolves from the local Ivy cache populated by `beethoven setup`
 {{hardware_dep_toml}}
 # [software]                   # entire section optional
 # src-dir = "sw"               # default "sw"

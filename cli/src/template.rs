@@ -129,14 +129,19 @@ fn render_hardware_blocks(
 ) -> (String, String, String, String) {
     match coords {
         Some(c) => {
+            // Both lines are commented by default — version pinning is
+            // opt-in. See Beethoven.toml.tmpl for the user-facing
+            // explanation. The matching libraryDependencies in
+            // build.sbt is also commented out so the toml stays in sync
+            // with what sbt actually resolves.
             let toml = format!(
                 "[hardware.beethoven-hardware]\n\
-                 version = \"{}\"\n\
+                 # version = \"{}\"          # uncomment to pin to this published version\n\
                  # path = \"../Beethoven-Hardware\"   # uncomment to source-link a sibling checkout\n",
                 c.version
             );
             let extra = format!(
-                "      libraryDependencies += \"{}\" %% \"{}\" % \"{}\",\n",
+                "      // libraryDependencies += \"{}\" %% \"{}\" % \"{}\",\n",
                 c.organization, c.artifact, c.version
             );
             (toml, String::new(), String::new(), extra)

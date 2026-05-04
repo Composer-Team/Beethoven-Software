@@ -80,14 +80,18 @@ fn validate_manifest(project: &Project) -> std::result::Result<(), String> {
         }
     }
 
-    // beethoven-hardware: exactly one of path / version (this is a
-    // soft check — sbt would fail later anyway, but this catches it
-    // earlier with a clearer message).
+    // beethoven-hardware: at least one of path / version must be
+    // active. Fresh scaffolds leave both commented out so the user
+    // makes a deliberate choice (pin a captured version vs. source-link
+    // a sibling checkout). Without either, sbt has no beethoven-hardware
+    // dep and the build won't elaborate — catching it here gives a
+    // clearer message than sbt's "unresolved dependencies" error.
     let has_path = project.beethoven_hardware_path().is_some();
     let has_version = project.beethoven_hardware_version().is_some();
     if !has_path && !has_version {
         return Err(
-            "[hardware.beethoven-hardware] requires exactly one of 'path' or 'version'"
+            "[hardware.beethoven-hardware] has no active dependency — \
+             uncomment 'path' or 'version' in Beethoven.toml"
                 .into(),
         );
     }

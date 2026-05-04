@@ -144,6 +144,8 @@ fn print_text(
             rows.push(("hw dep (path)", path.to_string()));
         } else if let Some(ver) = p.beethoven_hardware_version() {
             rows.push(("hw dep (version)", ver.to_string()));
+        } else {
+            rows.push(("hw dep", "(unset; uncomment in Beethoven.toml)".into()));
         }
         let daemon_str = match daemon {
             DaemonStatus::Up { pid: Some(pid) } => format!("up (PID {pid})"),
