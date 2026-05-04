@@ -10,6 +10,7 @@
 #include "frontends/axi/vpi_handle.h"
 #include "core/cmd_server.h"
 #include "core/data_server.h"
+#include "core/singleton_lock.h"
 #include <pthread.h>
 
 #include "beethoven_hardware.h"
@@ -290,6 +291,10 @@ PLI_INT32 init_structures_calltf(PLI_BYTE8 *) {
 
 
   std::cout << "start servers" << std::endl;
+
+  // Per-project singleton lock — must run before either server
+  // creates IPC state. See core/singleton_lock.h.
+  beethoven::runtime_acquire_singleton_lock();
 
   cmd_server::start();
   data_server::start();

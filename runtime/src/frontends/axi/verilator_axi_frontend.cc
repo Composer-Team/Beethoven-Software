@@ -3,6 +3,7 @@
 #include "VBeethovenTop.h"
 #include "core/cmd_server.h"
 #include "core/data_server.h"
+#include "core/singleton_lock.h"
 #include <csignal>
 #include <chrono>
 #include <pthread.h>
@@ -442,6 +443,10 @@ int main(int argc, char **argv) {
   if (!dram_file.has_value()) {
     dram_file = std::string("runtime/DRAMsim3/configs/DDR4_8Gb_x16_3200.ini");
   }
+
+  // Per-project singleton lock — must run before either server
+  // creates IPC state. See core/singleton_lock.h.
+  beethoven::runtime_acquire_singleton_lock();
 
   data_server::start();
   cmd_server::start();

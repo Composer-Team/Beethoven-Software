@@ -9,7 +9,10 @@ foreach(_var BEETHOVEN_PROJECT_ROOT BEETHOVEN_BUILD_MODE BEETHOVEN_PLATFORM)
 endforeach()
 
 if(NOT DEFINED BEETHOVEN_SIMULATOR AND BEETHOVEN_BUILD_MODE STREQUAL "simulation")
-    set(BEETHOVEN_SIMULATOR "verilator")
+    # Default to icarus: verilator is faster but currently breaks on
+    # SimulationPlatform's wide buses (see docs/issues/verilator-widebus.md).
+    # Switch back to verilator here once that's fixed.
+    set(BEETHOVEN_SIMULATOR "icarus")
 endif()
 
 # === Frontend selection (inferred from platform) ===
@@ -51,7 +54,8 @@ set(_core
     src/core/mmio.cc
     src/core/tick.cc
     src/core/mem_ctrl.cc
-    src/core/data_wrapper.cc)
+    src/core/data_wrapper.cc
+    src/core/singleton_lock.cc)
 
 # === Frontend sources (axi or chipkit) ===
 if(BEETHOVEN_FRONTEND STREQUAL "axi")

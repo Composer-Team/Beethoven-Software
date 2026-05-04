@@ -3,6 +3,7 @@
 //
 #include "core/data_server.h"
 #include "core/cmd_server.h"
+#include "core/singleton_lock.h"
 #include <pthread.h>
 #include "fpga/fpga_utils.h"
 #include <cstring>
@@ -29,6 +30,12 @@ int main(int argc, char *argv[])
     }
   }
 #endif
+
+  // Acquire the per-project singleton lock before either server
+  // creates any IPC state. Refuses to start (with a clear PID-bearing
+  // diagnostic) if another BeethovenRuntime is already running for
+  // this project; see core/singleton_lock.h.
+  beethoven::runtime_acquire_singleton_lock();
 
   // Kria does local allocations only
   if (runtime_verbose) {
