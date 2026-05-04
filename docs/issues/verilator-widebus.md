@@ -1,6 +1,6 @@
 # Open issue: data_channel.h doesn't support Verilator's wide-signal types
 
-`target = "simulation"` + `build-mode = "simulation"` + `BEETHOVEN_SIMULATOR=verilator`
+`target = "simulation"` + simulation mode + `BEETHOVEN_SIMULATOR=verilator`
 fails to compile the runtime daemon. The SimulationPlatform's wider bus
 widths cause Verilator to emit `VlWide<N>` types for some signals, and
 `runtime/include/core/data_channel.h` doesn't know how to decode them.
@@ -10,11 +10,12 @@ widths cause Verilator to emit `VlWide<N>` types for some signals, and
 ```
 template/Beethoven.toml:
   [platform]
-  target     = "simulation"
-  build-mode = "simulation"
+  target = "simulation"
+  # build mode is per-invocation (not in the manifest); the failing
+  # case below uses simulation mode, set via `--mode simulation`.
 
 # Inside template/:
-sbt run
+sbt "run --mode simulation"
 
 cmake -S /path/to/Beethoven-Software/runtime \
       -B target/simulation/runtime/_cmake \
@@ -24,6 +25,9 @@ cmake -S /path/to/Beethoven-Software/runtime \
       -DBEETHOVEN_SIMULATOR=verilator
 cmake --build target/simulation/runtime/_cmake -j
 ```
+
+Or via the CLI: `beethoven sim --simulator verilator` from the project
+(which the CLI's default `--simulator icarus` deliberately avoids).
 
 ## Error
 

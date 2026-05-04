@@ -10,6 +10,22 @@ sources: `Beethoven-Hardware/src/main/scala/beethoven/Manifest.scala`
 The `beethoven` CLI parses this file, generates `build.sbt` for sbt to run,
 and orchestrates the cmake builds underneath.
 
+## What's NOT in the manifest
+
+**Build mode** (`simulation` vs `synthesis`) is intentionally *not* a
+manifest field. It's a per-invocation choice:
+
+- `beethoven sim` → simulation
+- `beethoven run` → synthesis
+- `beethoven build [--release]` / `beethoven runtime build [--release]`
+  → simulation by default, synthesis with `--release`
+- Direct sbt: `sbt "run --mode simulation"` / `sbt "run --mode synthesis"`
+
+Rationale: the manifest describes the **project** (target platform, hw
+deps, per-target params) — it doesn't dictate which mode to build *next
+time*. Stale manifests with a leftover `[platform].build-mode` key are
+silently ignored by the parser; you can leave them or delete them.
+
 ## Top-level sections
 
 ```toml
@@ -30,8 +46,7 @@ path    = "../Beethoven-Hardware"   # local checkout (developer mode)
 src-dir = "sw"           # optional, default "sw" — your testbench / host code
 
 [platform]
-target     = "aupzu3"    # REQUIRED — see "Targets" below
-build-mode = "simulation" # REQUIRED — "simulation" or "synthesis"
+target = "aupzu3"        # REQUIRED — see "Targets" below
 
 [platform.<target>]      # exactly ONE matching table; required keys depend on target
 # … per-platform params, see below …
@@ -67,12 +82,12 @@ the bus widths to be wider (see `SimulationPlatform.scala`).
 |---|---|---|---|
 | `clock-rate-mhz` | int | 100 | Pretend FPGA clock rate; drives DRAMsim3 timing |
 
-Constraints: `build-mode = "synthesis"` is rejected (no synth target for `simulation`).
+Constraints: only `beethoven sim` / `sbt "run --mode simulation"` makes
+sense for this target. There's no real silicon to synthesize against.
 
 ```toml
 [platform]
-target     = "simulation"
-build-mode = "simulation"
+target = "simulation"
 
 [platform.simulation]
 # clock-rate-mhz = 100
@@ -89,8 +104,7 @@ Xilinx Kria KV260 (Zynq UltraScale+ MPSoC). Backed by `KriaPlatform`.
 
 ```toml
 [platform]
-target     = "kria"
-build-mode = "synthesis"
+target = "kria"
 
 [platform.kria]
 # memory-channels = 1
@@ -119,8 +133,7 @@ RealDigital AUP-ZU3 board (Zynq UltraScale+ XCZU3EG). Backed by `AUPZU3Platform`
 
 ```toml
 [platform]
-target     = "aupzu3"
-build-mode = "synthesis"
+target = "aupzu3"
 
 [platform.aupzu3]
 dram-size-gb = 8        # REQUIRED — must be 4 or 8
@@ -138,14 +151,13 @@ Backed by `AWSF1Platform extends U200Platform with PlatformHasDMA`.
 | `memory-channels` | int | **REQUIRED** | 1–4. Drives DDR controller count and physical interface layout |
 | `clock-recipe` | string | `"A0"` | One of `"A0"` (125 MHz), `"A1"` (250 MHz), `"A2"` (15 MHz). Anything else is rejected at construction |
 
-`build-mode = "synthesis"` triggers AWS-specific post-processing: shell wrap,
+`beethoven run` (synth mode) triggers AWS-specific post-processing: shell wrap,
 TCL src list, optional rsync to an EC2 F1 instance, and `aws-fpga` setup.
 See `AWSF1Platform.scala:62–169`.
 
 ```toml
 [platform]
-target     = "aws-f1"
-build-mode = "simulation"
+target = "aws-f1"
 
 [platform.aws-f1]
 memory-channels = 1     # REQUIRED
@@ -165,8 +177,7 @@ not exposed in the toml.
 
 ```toml
 [platform]
-target     = "aws-f2"
-build-mode = "synthesis"
+target = "aws-f2"
 
 [platform.aws-f2]
 # remote-username = "ubuntu"
@@ -174,9 +185,12 @@ build-mode = "synthesis"
 
 ## Build mode × target legality
 
-| target / build-mode | `simulation` | `synthesis` |
+Mode is chosen at invocation, not in the manifest, but not every (target,
+mode) combo is meaningful. The matrix:
+
+| target | `simulation` | `synthesis` |
 |---|---|---|
-| `simulation` | ✅ | ❌ (rejected — no real silicon target) |
+| `simulation` | ✅ | ❌ (no real silicon to synthesize for) |
 | `kria` | ✅ | ✅ |
 | `kria2` | ✅ | ✅ |
 | `aupzu3` | ✅ | ✅ |
@@ -196,8 +210,9 @@ There's a still-open issue: building the runtime daemon for
 `target = "simulation"` + `BEETHOVEN_SIMULATOR=verilator` fails to compile
 because `SimulationPlatform`'s wider strb signals trip a template
 specialization gap in `runtime/include/data_channel.h`. Workaround: use
-**Icarus** with `target = "simulation"`, or use any non-sim target with
-Verilator. See `issues/verilator-widebus.md` for the full diagnosis.
+**Icarus** with `target = "simulation"` (the CLI's current default), or
+use any non-sim target with Verilator. See `issues/verilator-widebus.md`
+for the full diagnosis.
 
 ## Developer-mode override
 
@@ -218,7 +233,9 @@ When `path` is set, the resolution is relative to the manifest's directory.
 ## Full annotated example
 
 ```toml
-# A working AUP-ZU3 simulation config — every key shown, defaults commented.
+# A working AUP-ZU3 config — every key shown, defaults commented.
+# Build mode comes from the CLI command (`beethoven sim` / `run` / `build
+# [--release]`), not from this file.
 
 [project]
 name    = "vector_add"
@@ -234,9 +251,8 @@ path    = "../Beethoven-Hardware"   # OR `version = "X.Y.Z"`
 # src-dir = "sw"                    # default "sw"
 
 [platform]
-target     = "aupzu3"               # one of: simulation | kria | kria2
+target = "aupzu3"                   # one of: simulation | kria | kria2
                                     #         aupzu3 | aws-f1 | aws-f2
-build-mode = "simulation"           # "simulation" or "synthesis"
 
 [platform.aupzu3]
 dram-size-gb     = 8                # REQUIRED — 4 or 8 only
@@ -249,16 +265,22 @@ dram-size-gb     = 8                # REQUIRED — 4 or 8 only
 
 ## Path layout the CLI derives from this manifest
 
-For the example above, the CLI generates:
+For the example above, after both `beethoven build` and
+`beethoven build --release`:
 
 ```
 <manifest-dir>/
 └── target/                              # [build] output-dir
     ├── binding/                         # generated C bindings (mode-agnostic)
     ├── sw/                              # user testbench (mode-agnostic)
-    ├── simulation/                      # [platform] build-mode = simulation
+    ├── simulation/                      # populated by `beethoven sim`
+    │   │                                #   or `build [hw|runtime] (no flag)`
     │   ├── hw/                          # platform's RTL + harness
     │   └── runtime/BeethovenRuntime     # daemon
+    ├── synthesis/                       # populated by `beethoven run`
+    │   │                                #   or `build [hw|runtime] --release`
+    │   ├── hw/
+    │   └── runtime/BeethovenRuntime
     └── .cache/                          # cross-mode shared
 ```
 
@@ -275,11 +297,12 @@ Common errors and what they mean (see `Manifest.scala::err()` callers):
 - `Missing required key project.name` — `[project] name` is required.
 - `[hardware.beethoven-hardware] requires either path or version.` —
   exactly one of those keys must be present.
-- `[platform] build-mode='X' is invalid.` — only `simulation` or
-  `synthesis`.
 - `Unknown [platform] target='X'.` — typo in the target name. Valid
   list above.
 - `Missing required key [platform.aupzu3] dram-size-gb.` — required
   key for that platform.
 - `[platform.aupzu3] dram-size-gb must be an integer; got String (...)` —
   toml type mismatch (e.g. you wrote `"8"` instead of `8`).
+- `--mode='X' is invalid.` (from sbt) — pass `simulation` or `synthesis`
+  to `sbt "run --mode <m>"`. The `beethoven` CLI sets this for you;
+  you only see this when invoking sbt directly.

@@ -93,7 +93,9 @@ version     = "..."          # exactly one of path / version
 [platform]
 target      = "aupzu3"       # one of: simulation | kria | kria2 | aupzu3 |
                              #          aws-f1 | aws-f2 | u200
-build-mode  = "synthesis"    # one of: synthesis | simulation
+                             # build mode is NOT in the manifest — it's a
+                             # per-invocation choice (`beethoven sim` /
+                             # `run` / `build [--release]`).
 
 [platform.<target>]
 # target-specific params (e.g., dram-size-gb for aupzu3)
@@ -102,8 +104,10 @@ build-mode  = "synthesis"    # one of: synthesis | simulation
 output-dir  = "target"       # default "target"
 
 [runtime]
-simulator   = "verilator"    # only meaningful when build-mode = simulation
-                             # one of: verilator | icarus | vcs (default verilator)
+simulator   = "icarus"       # only meaningful in simulation mode (`beethoven
+                             # sim`, `build [hw|runtime] (no flag)`); ignored
+                             # in synthesis. One of: icarus | verilator | vcs
+                             # (default icarus).
 ```
 
 Frontend selection is **not** a user knob: it is inferred from the platform
