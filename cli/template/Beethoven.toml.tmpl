@@ -1,0 +1,42 @@
+# Beethoven project manifest — analogous to Cargo.toml.
+# The `beethoven` CLI reads this and generates the hidden sbt + cmake builds
+# under target/. Users should not need to edit build.sbt or CMakeLists.txt by hand.
+#
+# Convention: keys that are commented out show their default value. Uncomment
+# only to override.
+
+[project]
+name = "{{name_snake}}"
+# version = "0.0.0"            # optional, default "0.0.0"
+version = "0.0.0"
+
+[hardware]
+# src-dir = "hw"               # optional, default "hw"
+
+## Beethoven-Hardware dependency. Provide exactly one of `path` or `version`.
+## `path` source-links a local checkout (good while iterating on the framework);
+## `version` resolves from the local Ivy cache populated by `beethoven setup`,
+## falling back to the maven repo configured in build.sbt.
+{{hardware_dep_toml}}
+# [software]                   # entire section optional
+# src-dir = "sw"               # default "sw"
+
+[platform]
+## Deployment target. One of:
+##   simulation | kria | kria2 | aupzu3 | aws-f1 | aws-f2 | u200
+##
+## Build *mode* (simulation vs synthesis) is NOT in the manifest — it's a
+## per-invocation choice. `beethoven sim` builds simulation, `beethoven run`
+## builds synthesis, `beethoven build [--release]` flips between them. If
+## you invoke sbt directly, pass `--mode simulation` or `--mode synthesis`.
+target = "{{target}}"
+
+## Platform-specific parameters. Only the table matching `platform.target` is
+## read. The required keys depend on the chosen target — `aupzu3` needs at
+## minimum `dram-size-gb` (the AUPZU3Platform constructor asserts 4 or 8).
+{{platform_specific}}
+## Build output directory — replaces the BEETHOVEN_PATH env var.
+## All chisel-generated Verilog, beethoven_hardware.{h,cc}, and cmake_srcs.cmake
+## land under <output-dir>/build/. Path is resolved relative to this manifest.
+# [build]                      # entire section optional
+# output-dir = "target"        # default "target"

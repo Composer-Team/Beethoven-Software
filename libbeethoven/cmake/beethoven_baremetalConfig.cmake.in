@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+set_and_check(BEETHOVEN_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+
+include("${CMAKE_CURRENT_LIST_DIR}/beethoven_baremetalTargets.cmake")
+check_required_components(beethoven_baremetal)
+
+# Shared body for beethoven_build() — defines _beethoven_build_common().
+include("${CMAKE_CURRENT_LIST_DIR}/BeethovenBuildHelpers.cmake")
+
+function(beethoven_build TARGET)
+    if("${CMAKE_TOOLCHAIN_FILE}" STREQUAL "")
+        message(FATAL_ERROR
+            "Baremetal build requires -DCMAKE_TOOLCHAIN_FILE=...arm-none-eabi.cmake")
+    endif()
+    _beethoven_build_common(${TARGET} APEX::beethoven_baremetal ${ARGN})
+endfunction()

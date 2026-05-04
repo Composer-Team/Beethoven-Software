@@ -1,0 +1,57 @@
+//
+// Created by Chris Kjellqvist on 10/29/22.
+//
+#include "core/data_server.h"
+#include "core/cmd_server.h"
+#include "core/singleton_lock.h"
+#include <pthread.h>
+#include "fpga/fpga_utils.h"
+#include <cstring>
+#include <iostream>
+
+pthread_mutex_t main_lock = PTHREAD_MUTEX_INITIALIZER;
+
+#ifdef VSIM
+extern "C" {
+#include <sh_dpi_tasks.h>
+};
+extern "C" void test_main_hook(uint32_t *exit_code)
+#else
+
+int main(int argc, char *argv[])
+#endif
+{
+#ifndef VSIM
+  // Parse command-line arguments
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-v") == 0) {
+      runtime_verbose = true;
+      std::cout << "[RUNTIME] Verbose mode enabled" << std::endl;
+    }
+  }
+#endif
+
+  // Acquire the per-project singleton lock before either server
+  // creates any IPC state. Refuses to start (with a clear PID-bearing
+  // diagnostic) if another BeethovenRuntime is already running for
+  // this project; see core/singleton_lock.h.
+  beethoven::runtime_acquire_singleton_lock();
+
+  // Kria does local allocations only
+  if (runtime_verbose) {
+    std::cout << "[RUNTIME] Starting command server..." << std::endl;
+  }
+  cmd_server::start();
+  if (runtime_verbose) {
+    std::cout << "[RUNTIME] Starting data server..." << std::endl;
+  }
+  data_server::start();
+  if (runtime_verbose) {
+    std::cout << "[RUNTIME] Servers started, entering wait state" << std::endl;
+  }
+  pthread_mutex_lock(&main_lock);
+  pthread_mutex_lock(&main_lock);
+#ifdef VSIM
+  *exit_code = 0;
+#endif
+}
