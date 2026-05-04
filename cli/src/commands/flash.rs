@@ -21,13 +21,15 @@ pub fn run(_args: FlashArgs) -> Result<()> {
         .join("target")
         .join("synthesis")
         .join("implementation");
-    let tcl = impl_dir.join("jtag_program.tcl");
-    if !tcl.is_file() {
+    if !impl_dir.is_dir() {
         return Err(CliError::config(format!(
             "missing {}; run `beethoven synth` first to produce a bitstream",
-            tcl.display()
+            impl_dir.display()
         )));
     }
+    // jtag_program.tcl is CLI-owned (no Scala emitter today) — write
+    // it into impl_dir if it's not already there.
+    vivado::ensure_cli_tcl(&impl_dir)?;
 
     ui::print_stage("Vivado", "JTAG program");
     vivado::run(&impl_dir, "batch", &["jtag_program.tcl"])?;
