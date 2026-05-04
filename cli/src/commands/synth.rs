@@ -57,10 +57,11 @@ pub fn run(args: SynthArgs) -> Result<()> {
         .join("synthesis")
         .join("implementation");
     require_dir(&impl_dir)?;
-    require_files(
-        &impl_dir,
-        &["0_setup.tcl", "1_synth.tcl", "2_impl.tcl", "run_bitstream.tcl"],
-    )?;
+    // 0/1/2_*.tcl come from Beethoven-Hardware's SynthScript via
+    // `build hw --release`. run_bitstream.tcl is CLI-owned (no Scala
+    // emitter today) — write it here if it's missing.
+    require_files(&impl_dir, &["0_setup.tcl", "1_synth.tcl", "2_impl.tcl"])?;
+    vivado::ensure_cli_tcl(&impl_dir)?;
 
     if args.gui {
         // Hand off to Vivado GUI on the setup script; user drives the rest.
