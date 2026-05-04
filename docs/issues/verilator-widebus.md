@@ -1,6 +1,6 @@
 # Open issue: data_channel.h doesn't support Verilator's wide-signal types
 
-`target = "simulation"` + simulation mode + `BEETHOVEN_SIMULATOR=verilator`
+`target = "default"` + simulation mode + `BEETHOVEN_SIMULATOR=verilator`
 fails to compile the runtime daemon. The SimulationPlatform's wider bus
 widths cause Verilator to emit `VlWide<N>` types for some signals, and
 `runtime/include/core/data_channel.h` doesn't know how to decode them.
@@ -10,7 +10,7 @@ widths cause Verilator to emit `VlWide<N>` types for some signals, and
 ```
 template/Beethoven.toml:
   [platform]
-  target = "simulation"
+  target = "default"
   # build mode is per-invocation (not in the manifest); the failing
   # case below uses simulation mode, set via `--mode simulation`.
 
@@ -92,7 +92,7 @@ The same gap probably affects `address_channel.h` and
 
 Run with `target = "aws-f1"` (or any narrow-bus discrete target) when
 verifying with Verilator. Or use Icarus, which doesn't go through these
-templates the same way — `target = "simulation"` with Icarus already
+templates the same way — `target = "default"` with Icarus already
 works end-to-end.
 
 ## Status

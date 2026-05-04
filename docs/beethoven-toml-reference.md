@@ -31,7 +31,6 @@ silently ignored by the parser; you can leave them or delete them.
 ```toml
 [project]
 name    = "vector_add"   # REQUIRED — appears in build outputs
-version = "0.0.0"        # optional, default "0.0.0"
 
 [hardware]
 src-dir = "hw"           # optional, default "hw" — relative to manifest dir
@@ -70,9 +69,9 @@ to "the FPGA":
 - **zynq-silicon** — real Zynq SoC (FPGA fabric + CPU on one chip sharing
   DDR). `BEETHOVEN_PLATFORM=zynq` in synth, `discrete` in sim (the runtime
   daemon mediates allocations in sim — see `issues/verilator-widebus.md`
-  caveat for `target = "simulation"` specifically with Verilator).
+  caveat for `target = "default"` specifically with Verilator).
 
-### `target = "simulation"`
+### `target = "default"` (was `"simulation"` pre-rename)
 
 Generic, sim-tuned harness — fastest for iterating on accelerator logic.
 Backed by `SimulationPlatform`, which extends `KriaPlatform` but overrides
@@ -87,9 +86,9 @@ sense for this target. There's no real silicon to synthesize against.
 
 ```toml
 [platform]
-target = "simulation"
+target = "default"
 
-[platform.simulation]
+[platform.default]
 # clock-rate-mhz = 100
 ```
 
@@ -200,17 +199,17 @@ mode) combo is meaningful. The matrix:
 For sim mode, the HW side still emits the **target's actual RTL parameters**
 (real bus widths, AXI variant, memory layout) — that's the point of running
 sim against a non-`simulation` target. You catch bus-protocol bugs that
-only surface at the production widths. Use `target = "simulation"` for the
+only surface at the production widths. Use `target = "default"` for the
 fastest iteration loop and a non-sim target's sim mode for pre-tape-out
 verification.
 
-## Caveat: Verilator + `target = "simulation"`
+## Caveat: Verilator + `target = "default"`
 
 There's a still-open issue: building the runtime daemon for
-`target = "simulation"` + `BEETHOVEN_SIMULATOR=verilator` fails to compile
+`target = "default"` + `BEETHOVEN_SIMULATOR=verilator` fails to compile
 because `SimulationPlatform`'s wider strb signals trip a template
 specialization gap in `runtime/include/data_channel.h`. Workaround: use
-**Icarus** with `target = "simulation"` (the CLI's current default), or
+**Icarus** with `target = "default"` (the CLI's current default), or
 use any non-sim target with Verilator. See `issues/verilator-widebus.md`
 for the full diagnosis.
 
@@ -239,7 +238,6 @@ When `path` is set, the resolution is relative to the manifest's directory.
 
 [project]
 name    = "vector_add"
-version = "0.0.1"                   # optional, default "0.0.0"
 
 [hardware]
 # src-dir = "hw"                    # optional, default "hw"

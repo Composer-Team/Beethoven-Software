@@ -17,7 +17,6 @@ use crate::state::Project;
 use crate::ui;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
 
 pub fn run(cmd: RuntimeCommand) -> Result<()> {
     match cmd {
@@ -34,27 +33,38 @@ pub fn run(cmd: RuntimeCommand) -> Result<()> {
     }
 }
 
-/// Stop the daemon currently running for this project.
-///
-/// Idempotent: exits 0 with a note if no daemon is running. Default
-/// is graceful (SIGTERM, 5s grace, escalate to SIGKILL); `--force`
-/// skips the grace and SIGKILLs immediately.
+/// SIGKILL the daemon for this project, then wipe per-project +
+/// per-user runtime state (lockfile, shmem, both modes' cmake build
+/// dirs). Idempotent: with no daemon running, the kill phase is a
+/// no-op note and we still run the cleanup pass.
 ///
 /// We resolve the daemon via the lockfile (probe → PID), not via
 /// pgrep/ps, so the implementation is identical on Linux and macOS.
-fn kill_daemon(args: RuntimeKillArgs) -> Result<()> {
+fn kill_daemon(_args: RuntimeKillArgs) -> Result<()> {
     let project = Project::discover()?;
 
-    let pid = match probe::probe(&project.root)? {
+    match probe::probe(&project.root)? {
         ProbeResult::Down => {
             ui::print_note("no BeethovenRuntime running for this project.");
-            return Ok(());
         }
-        ProbeResult::Up { pid: Some(p) } => p,
+        ProbeResult::Up { pid: Some(pid) } => {
+            ui::print_stage("Killing", &format!("BeethovenRuntime (PID {pid}, SIGKILL)"));
+            match lifecycle::kill_external_daemon(&project, pid)? {
+                KillOutcome::AlreadyGone => {
+                    ui::print_note(&format!(
+                        "daemon (PID {pid}) was already gone before the signal landed."
+                    ));
+                }
+                KillOutcome::Killed => {
+                    ui::print_success(&format!("daemon (PID {pid}) killed."));
+                }
+            }
+        }
         ProbeResult::Up { pid: None } => {
             // Lockfile is held but contains no PID. Daemon raced its
             // pwrite, or someone truncated the file. We can't signal
-            // without a PID; punt with a clear hint.
+            // without a PID; punt with a clear hint and DON'T wipe
+            // state — there's a daemon out there with shmem mapped.
             return Err(CliError::config(
                 "daemon is running but its PID could not be read from the lockfile. \
                  Stop it via the terminal that launched it, or `pkill BeethovenRuntime`."
@@ -64,36 +74,13 @@ fn kill_daemon(args: RuntimeKillArgs) -> Result<()> {
         ProbeResult::Error(e) => {
             return Err(CliError::config(format!("daemon probe failed: {e}")));
         }
-    };
-
-    let grace = if args.force {
-        Duration::ZERO
-    } else {
-        Duration::from_secs(5)
-    };
-
-    let action = if args.force { "SIGKILL" } else { "SIGTERM" };
-    ui::print_stage("Stopping", &format!("BeethovenRuntime (PID {pid}, {action})"));
-
-    match lifecycle::kill_external_daemon(&project, pid, grace)? {
-        KillOutcome::AlreadyGone => {
-            ui::print_note(&format!(
-                "daemon (PID {pid}) was already gone before the signal landed."
-            ));
-        }
-        KillOutcome::Terminated => {
-            ui::print_success(&format!("daemon (PID {pid}) stopped."));
-        }
-        KillOutcome::Killed => {
-            ui::print_success(&format!("daemon (PID {pid}) killed."));
-        }
-        KillOutcome::Escalated => {
-            ui::print_warning(&format!(
-                "daemon (PID {pid}) ignored SIGTERM after 5s; escalated to SIGKILL."
-            ));
-        }
     }
-    Ok(())
+
+    // Auto-clean. Both modes — we don't track which mode the killed
+    // daemon was running in, and removing the inactive mode's dir is
+    // harmless. Lockfile + shmem are mode-independent and only
+    // wiped once.
+    wipe_runtime_state(&project, &["simulation", "synthesis"])
 }
 
 /// Foreground daemon launch. Refuses if another daemon is already up
@@ -176,6 +163,8 @@ fn run_daemon(args: RuntimeRunArgs) -> Result<()> {
 ///     after a Ctrl+C.
 ///
 /// Refuses to run if a daemon is currently up for this project.
+/// (`runtime kill` shares the same wiping logic but skips this
+/// guard — it's responsible for terminating the daemon first.)
 fn clean_runtime(release: bool) -> Result<()> {
     let project = Project::discover()?;
     let mode = if release { "synthesis" } else { "simulation" };
@@ -190,14 +179,28 @@ fn clean_runtime(release: bool) -> Result<()> {
         )));
     }
 
+    wipe_runtime_state(&project, &[mode])
+}
+
+/// Shared wiping pass used by both `runtime clean` and `runtime
+/// kill`. Caller is responsible for ensuring no daemon is up; this
+/// function will happily nuke shmem out from under a live daemon.
+///
+/// `modes` is the set of `target/<mode>/runtime/` directories to
+/// remove (one per build mode). The lockfile and shmem segments are
+/// mode-independent; we touch them exactly once regardless of how
+/// many modes are passed in.
+fn wipe_runtime_state(project: &Project, modes: &[&str]) -> Result<()> {
     let mut anything_removed = false;
 
-    // 1. cmake build dir for this mode.
-    let runtime_dir = lifecycle::runtime_out_dir(&project, mode);
-    if runtime_dir.exists() {
-        ui::print_stage("Removing", &runtime_dir.display().to_string());
-        fs::remove_dir_all(&runtime_dir)?;
-        anything_removed = true;
+    // 1. cmake build dirs (one per mode).
+    for mode in modes {
+        let runtime_dir = lifecycle::runtime_out_dir(project, mode);
+        if runtime_dir.exists() {
+            ui::print_stage("Removing", &runtime_dir.display().to_string());
+            fs::remove_dir_all(&runtime_dir)?;
+            anything_removed = true;
+        }
     }
 
     // 2. Per-project flock lockfile (flock state is kernel-managed

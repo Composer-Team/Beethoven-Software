@@ -11,11 +11,11 @@ tear the daemon down on exit.
 
 ## Description
 
-The non-simulation analog of [`sim`](sim.md). Lifecycle:
+The real-FPGA analog of [`sim`](sim.md). Lifecycle:
 
 1. **Validate target.** `Beethoven.toml` resolves to a real FPGA
    platform (`kria`, `aupzu3`, `aws-f1`, `u200`, …). Refuses if the
-   target is `simulation`.
+   target is `default` (the generic sim platform).
 2. **Probe daemon.** Try a non-blocking shared `flock` on the
    project's lockfile (see [`runtime`](runtime.md) → *Concurrency*).
    - **Lock held → daemon up.** Skip launch; testbench will run
@@ -64,7 +64,7 @@ The non-simulation analog of [`sim`](sim.md). Lifecycle:
 ## Errors
 
 - Not in a project → exit `64`.
-- Project target is `simulation` → exit `64`, suggests [`sim`](sim.md).
+- Project target is `default` → exit `64`, suggests [`sim`](sim.md).
 - `--no-launch` set but no daemon is up → exit `1`.
 - FPGA not accessible (UIO device missing, AWS PCIe handle fails) → exit `1`.
 - Build failure → exit `1`.

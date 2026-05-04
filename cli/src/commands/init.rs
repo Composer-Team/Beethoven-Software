@@ -98,7 +98,7 @@ fn resolve_target(platform: Option<Platform>, cfg: &UserConfig) -> String {
     if let Some(p) = &cfg.default_platform {
         return p.clone();
     }
-    "simulation".into()
+    "default".into()
 }
 
 /// Pull the captured Beethoven-Hardware coordinates out of user

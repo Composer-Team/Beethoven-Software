@@ -29,7 +29,7 @@ installed libbeethoven (see [`setup`](setup.md)).
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--platform <p>` | from user config (`simulation`) | One of `simulation`, `kria`, `aupzu3`, `aws-f1`, `u200`, `baremetal`. |
+| `--platform <p>` | from user config (`default`) | One of `default`, `kria`, `aupzu3`, `aws-f1`, `u200`, `baremetal`. |
 | `--accel <name>` | PascalCased project name | Class name of the accelerator stub. |
 | `--vcs` | (off) | Initialize a git repo and make an initial commit. |
 

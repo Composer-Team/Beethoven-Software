@@ -23,9 +23,9 @@ pub fn run(args: SynthArgs) -> Result<()> {
     let project = Project::discover()?;
 
     match project.target() {
-        Some("simulation") => {
+        Some("default") => {
             return Err(CliError::config(
-                "target = \"simulation\" can't be synthesized; \
+                "target = \"default\" can't be synthesized; \
                  set [platform].target to a real-FPGA target".to_string(),
             ));
         }

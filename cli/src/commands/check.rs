@@ -58,7 +58,7 @@ fn validate_manifest(project: &Project) -> std::result::Result<(), String> {
     if target_to_platform(target).is_none() {
         return Err(format!(
             "[platform].target '{target}': unrecognized (expected one of: \
-             simulation, kria, kria2, aupzu3, aws-f1, aws-f2, u200, u250, u280, baremetal)"
+             default, kria, kria2, aupzu3, aws-f1, aws-f2, u200, u250, u280, baremetal)"
         ));
     }
 

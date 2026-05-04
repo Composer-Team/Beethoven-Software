@@ -38,7 +38,7 @@ Text format example:
 
     project        my-design
     project root   /home/me/code/my-design
-    target         simulation
+    target         default
     platform       discrete
     install prefix /home/me/.local
     runtime-src    /home/me/.local/share/beethoven/runtime-src

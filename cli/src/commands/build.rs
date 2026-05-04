@@ -9,7 +9,7 @@
 use crate::cli::{BuildArgs, BuildTarget};
 use crate::core::exec;
 use crate::error::{CliError, Result};
-use crate::state::{Project, UserConfig};
+use crate::state::{target_supports_synth, Project, UserConfig};
 use crate::tools::{cmake, sbt};
 use crate::ui;
 use std::path::PathBuf;
@@ -17,9 +17,31 @@ use std::path::PathBuf;
 pub fn run(args: BuildArgs) -> Result<()> {
     let project = Project::discover()?;
     let mode = if args.release { "synthesis" } else { "simulation" };
+    let synth_ok = project.target().map_or(true, target_supports_synth);
+
+    if args.release && !synth_ok {
+        return Err(CliError::config(format!(
+            "target = \"{}\" has no synthesis flow; remove --release",
+            project.target().unwrap_or("?")
+        )));
+    }
 
     match args.target {
-        Some(BuildTarget::Hw) => build_hw(&project, mode)?,
+        // Default builds both modes for real-FPGA targets — chisel emits
+        // different RTL per mode (sim harness vs synth-side floorplan /
+        // timing knobs), and most workflows need both. `--release` /
+        // `--simulation` opt into a single mode. The generic `default`
+        // target has no synth flow, so we skip the synth pass there.
+        Some(BuildTarget::Hw) => {
+            if args.release {
+                build_hw(&project, "synthesis")?;
+            } else if args.simulation || !synth_ok {
+                build_hw(&project, "simulation")?;
+            } else {
+                build_hw(&project, "simulation")?;
+                build_hw(&project, "synthesis")?;
+            }
+        }
         Some(BuildTarget::Runtime) => build_runtime(&project, mode, args.jobs, None)?,
         Some(BuildTarget::Sw) => build_sw(&project, args.jobs)?,
         None => {

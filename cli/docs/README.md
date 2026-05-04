@@ -60,7 +60,7 @@ Typical first-run journey:
     cd my-design
     beethoven check           # validate manifest and elaborate chisel
     beethoven build           # generate verilog, runtime daemon, testbench
-    beethoven sim             # for target=simulation: end-to-end run
+    beethoven sim             # for target=default: end-to-end run
     # OR
     beethoven run             # for real FPGA: end-to-end run
 
