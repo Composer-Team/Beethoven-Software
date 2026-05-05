@@ -70,14 +70,12 @@ pub(crate) fn execute(
             } else {
                 build::build_hw(project, mode)?;
             }
-            if build::runtime_already_built(project, mode, simulator_override) {
-                ui::print_stage(
-                    "Skipped",
-                    &format!("runtime — daemon already built ({mode})"),
-                );
-            } else {
-                build::build_runtime(project, mode, None, simulator_override)?;
-            }
+            // Always invoke `build_runtime`; cmake's dep system is the
+            // source of truth for incrementality. A presence-only skip
+            // here masked stale daemons when libbeethoven was reinstalled
+            // with a new source file (e.g. singleton_lock.cc) but the
+            // prior `.vpi`/binary was still on disk.
+            build::build_runtime(project, mode, None, simulator_override)?;
             if sw_already_built(project) {
                 ui::print_stage("Skipped", "sw — testbench already built");
             } else {

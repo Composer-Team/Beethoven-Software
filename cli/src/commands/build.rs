@@ -213,30 +213,6 @@ pub fn hw_already_built(project: &Project, mode: &str) -> bool {
     }
 }
 
-/// True if the runtime daemon's primary artifact for `(mode, simulator)`
-/// already exists at `target/<mode>/runtime/`.
-pub fn runtime_already_built(
-    project: &Project,
-    mode: &str,
-    simulator_override: Option<&str>,
-) -> bool {
-    let out = project.root.join("target").join(mode).join("runtime");
-    if mode == "synthesis" {
-        return out.join("BeethovenRuntime").is_file();
-    }
-    let sim = simulator_override.unwrap_or_else(|| project.simulator());
-    match sim {
-        "verilator" => out.join("BeethovenRuntime").is_file(),
-        "icarus" => {
-            out.join("beethoven.vvp").is_file()
-                && out.join("sim_BeethovenRuntime.vpi").is_file()
-        }
-        "vcs" => out.join("BeethovenTop").is_file(),
-        // Unknown simulator → safe default is to rebuild.
-        _ => false,
-    }
-}
-
 fn require_bindings(project: &Project) -> Result<()> {
     let bindings = bindings_path(project);
     if !bindings.is_file() {
