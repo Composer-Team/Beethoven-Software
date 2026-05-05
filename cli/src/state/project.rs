@@ -18,7 +18,6 @@
 //!
 //!   [platform]
 //!   target = "..."               # required: default | kria | aupzu3 | ...
-//!   build-mode = "..."           # required: simulation | synthesis
 //!
 //!   [platform.<target>]          # required for some targets (e.g. aupzu3)
 //!   ...
