@@ -180,7 +180,7 @@ fn render_hardware_blocks(
         None => {
             let toml = "[hardware.beethoven-hardware]\n\
                         path = \"../Beethoven-Hardware\"\n\
-                        # version = \"0.1.7-dev11\"          # uncomment after `beethoven setup`\n"
+                        # version = \"0.1.7-dev12\"          # uncomment after `beethoven setup`\n"
                 .to_string();
             let lazy_val =
                 "lazy val beethovenHardware = ProjectRef(file(\"../Beethoven-Hardware\"), \"beethoven\")\n"
