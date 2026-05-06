@@ -74,7 +74,9 @@ pub struct Vars {
     pub hardware_dep_toml: String,
     /// Settings injected into `build.sbt` to wire the hardware
     /// dependency. Two shapes:
-    ///   - version mode: `libraryDependencies += "<org>" %% "<name>" % "<v>"`
+    ///   - version mode: `libraryDependencies += "<org>" %% "<name>" % "latest.integration"`
+    ///     (the captured version is preserved as a comment in
+    ///     `Beethoven.toml` for users who want to pin)
     ///   - path mode: `lazy val beethovenHardware = ProjectRef(...)`
     /// The full sbt project block depends on which one we're in, so
     /// `hardware_sbt_extra_settings` carries the version-mode
@@ -160,20 +162,21 @@ fn render_hardware_blocks(
 ) -> (String, String, String, String) {
     match coords {
         Some(c) => {
-            // Both lines are commented by default — version pinning is
-            // opt-in. See Beethoven.toml.tmpl for the user-facing
-            // explanation. The matching libraryDependencies in
-            // build.sbt is also commented out so the toml stays in sync
-            // with what sbt actually resolves.
+            // Default to sbt's `latest.integration` selector so a fresh
+            // scaffold builds without the user editing build.sbt. The
+            // captured version `c.version` is left in a comment so the
+            // user can switch to a reproducible pin (and the matching
+            // `version =` line in build.sbt) when they're ready.
             let toml = format!(
                 "[hardware.beethoven-hardware]\n\
-                 # version = \"{}\"          # uncomment to pin to this published version\n\
+                 version = \"latest.integration\"   # always resolves the newest published artifact\n\
+                 # version = \"{}\"          # uncomment to pin to the version captured by `beethoven setup`\n\
                  # path = \"../Beethoven-Hardware\"   # uncomment to source-link a sibling checkout\n",
                 c.version
             );
             let extra = format!(
-                "      // libraryDependencies += \"{}\" %% \"{}\" % \"{}\",\n",
-                c.organization, c.artifact, c.version
+                "      libraryDependencies += \"{}\" %% \"{}\" % \"latest.integration\",\n",
+                c.organization, c.artifact
             );
             (toml, String::new(), String::new(), extra)
         }

@@ -48,6 +48,10 @@ module {{system}} (
   // BEETHOVEN-PORTS-END
 );
 
+    // Forward-declared so the FSM below can reference it; Icarus
+    // doesn't accept an inline `wire x = ...;` used before its line.
+    wire cmd_fire;
+
     // ---- FSM ---------------------------------------------------------
     //   IDLE    -> WORKING : cmd accepted, three memory requests issued
     //   WORKING -> RESPOND : writer flushed last byte to DRAM
@@ -71,7 +75,7 @@ module {{system}} (
     // ---- Cmd handshake -----------------------------------------------
     // Accept a command only when all three channels can also take a
     // request, so cmd accept and req dispatch land in the same cycle.
-    wire cmd_fire = cmd_{{name_snake}}_valid && cmd_{{name_snake}}_ready;
+    assign cmd_fire = cmd_{{name_snake}}_valid && cmd_{{name_snake}}_ready;
     assign cmd_{{name_snake}}_ready = (state == IDLE)
                                     && vec_a_req_ready
                                     && vec_b_req_ready
