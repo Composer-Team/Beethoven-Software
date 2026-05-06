@@ -77,6 +77,12 @@ pub struct NewArgs {
     #[arg(long)]
     pub accel: Option<String>,
 
+    /// Scaffold a Verilog-blackbox project instead of pure Chisel. The
+    /// hardware top is a `<accel>Core.v` file; the framework auto-syncs
+    /// its port list against the Scala-side cmd struct on every build.
+    #[arg(long)]
+    pub verilog: bool,
+
     /// Initialize a git repository and make an initial commit.
     #[arg(long)]
     pub vcs: bool,
@@ -91,6 +97,10 @@ pub struct InitArgs {
     /// Accelerator class name (defaults to PascalCased directory name).
     #[arg(long)]
     pub accel: Option<String>,
+
+    /// Scaffold a Verilog-blackbox project instead of pure Chisel.
+    #[arg(long)]
+    pub verilog: bool,
 
     /// Initialize a git repository and make an initial commit.
     #[arg(long)]

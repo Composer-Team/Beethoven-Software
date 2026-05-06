@@ -1,0 +1,21 @@
+package {{name_snake}}
+
+import beethoven._
+import chisel3._
+
+// Standalone AccelCommand subclass — referenced from the Config below
+// via BeethovenIOInterface. Each `val` here becomes one cmd field on
+// the Verilog blackbox: `cmd_{{name_snake}}_<field>` with width = the
+// Chisel UInt's width.
+//
+// We use UInt(64.W) for addresses (rather than `Address()`) because
+// `Address()` requires an implicit Parameters that's only in scope
+// inside an AcceleratorCore. Cost: the C++ binding emits these fields
+// as `uint64_t`, so the testbench must call `.getFpgaAddr()` on each
+// remote_ptr before calling the kernel.
+class {{accel}}Cmd extends AccelCommand("{{name_snake}}") {
+  val vec_a_addr    = UInt(64.W)
+  val vec_b_addr    = UInt(64.W)
+  val vec_out_addr  = UInt(64.W)
+  val vector_length = UInt(32.W)
+}

@@ -1,0 +1,39 @@
+package {{name_snake}}
+
+import beethoven._
+
+// No Chisel hardware lives in this project — the accelerator is
+// implemented in Verilog (`hw/{{system}}.v`). `BlackboxBuilderCustom`
+// is the Chisel-side handshake: it tells Beethoven the IO contract
+// (cmd struct + memory channels) and points the framework at the
+// Verilog sources to pull into elaboration.
+//
+// The system `name` ("{{system}}") must match the top-level Verilog
+// module name and becomes the C++ namespace exposed to the testbench.
+
+class {{accel}}Config extends AcceleratorConfig(
+  AcceleratorSystemConfig(
+    nCores = 1,
+    name = "{{system}}",
+    moduleConstructor = new BlackboxBuilderCustom(
+      Seq(
+        BeethovenIOInterface(
+          new {{accel}}Cmd,
+          EmptyAccelResponse()
+        )
+      ),
+      // Beethoven scans `sourcePath` for the top-level module whose
+      // name matches the system `name` above (here: {{system}}.v).
+      // List any *supporting* Verilog files (modules instantiated by
+      // the top) in `externalDependencies`. Don't list the top there
+      // — the framework finds it via the sourcePath scan.
+      sourcePath = os.pwd / "hw",
+      externalDependencies = None
+    ),
+    memoryChannelConfig = List(
+      ReadChannelConfig("vec_a",    dataBytes = 4),
+      ReadChannelConfig("vec_b",    dataBytes = 4),
+      WriteChannelConfig("vec_out", dataBytes = 4)
+    )
+  )
+)

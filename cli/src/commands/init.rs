@@ -7,7 +7,7 @@
 use crate::cli::{InitArgs, Platform};
 use crate::error::{CliError, Result};
 use crate::state::UserConfig;
-use crate::template::{self, HardwareCoords, Vars};
+use crate::template::{self, Flavor, HardwareCoords, Vars};
 use crate::ui;
 use std::env;
 use std::path::Path;
@@ -53,10 +53,15 @@ pub fn run(args: InitArgs) -> Result<()> {
              Run `beethoven setup` to switch new projects to a published version.",
         );
     }
-    let vars = Vars::new(&name, args.accel.as_deref(), &target, hw.as_ref());
+    let flavor = if args.verilog { Flavor::Verilog } else { Flavor::Chisel };
+    let vars = Vars::new(&name, args.accel.as_deref(), &target, hw.as_ref(), flavor);
 
-    ui::print_stage("Initializing", &format!("{} ({})", cwd.display(), target));
-    template::extract_to(&cwd, &vars)?;
+    let flavor_label = if args.verilog { "verilog" } else { "chisel" };
+    ui::print_stage(
+        "Initializing",
+        &format!("{} ({}, {})", cwd.display(), target, flavor_label),
+    );
+    template::extract_to(&cwd, &vars, flavor)?;
 
     if args.vcs && !cwd.join(".git").exists() {
         ui::print_stage("Initializing", "git repo");

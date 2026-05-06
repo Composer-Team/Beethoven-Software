@@ -1,0 +1,7 @@
+# Beethoven build outputs and sbt compile cache. Waveforms
+# (trace.vcd / trace.fst / BeethovenTrace.vpd) and DRAMsim3 logs land
+# under target/<mode>/ — see cli/docs/sim.md.
+target/
+
+# sbt's meta-build compile cache.
+project/

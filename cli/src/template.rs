@@ -13,9 +13,38 @@ use include_dir::{include_dir, Dir, DirEntry};
 use std::fs;
 use std::path::Path;
 
-/// The embedded template tree. The path is resolved at compile time
-/// against `$CARGO_MANIFEST_DIR`.
-const TEMPLATE: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/template");
+/// Embedded template trees. Paths are resolved at compile time
+/// against `$CARGO_MANIFEST_DIR`. There's one tree per project flavor;
+/// `Flavor::tree()` picks the right one at runtime.
+const TEMPLATE_CHISEL: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/template");
+const TEMPLATE_VERILOG: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/template-verilog");
+
+/// Which project skeleton to scaffold. Selects both the embedded
+/// template tree and the substitution rule for `{{system}}`:
+///   - Chisel:  system = "my" + accel  (e.g. myVectorAdd)
+///   - Verilog: system = accel + "Core" (e.g. VectorAddCore), matching
+///     the convention in verilog-example/Kreyvium and SHAKE256.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Flavor {
+    Chisel,
+    Verilog,
+}
+
+impl Flavor {
+    fn tree(self) -> &'static Dir<'static> {
+        match self {
+            Self::Chisel => &TEMPLATE_CHISEL,
+            Self::Verilog => &TEMPLATE_VERILOG,
+        }
+    }
+
+    fn system_name(self, accel: &str) -> String {
+        match self {
+            Self::Chisel => format!("my{accel}"),
+            Self::Verilog => format!("{accel}Core"),
+        }
+    }
+}
 
 /// Variables substituted into filenames and `.tmpl` file contents.
 #[derive(Debug, Clone)]
@@ -28,9 +57,9 @@ pub struct Vars {
     /// PascalCase accelerator name ("VectorAdd"). Defaults to
     /// PascalCase(name); overridable via `--accel`.
     pub accel: String,
-    /// AcceleratorSystemConfig name registered in the bindings
-    /// ("myVectorAdd"). Hardcoded to `"my" + accel` to match the
-    /// existing project template.
+    /// AcceleratorSystemConfig name registered in the bindings.
+    /// Derived from `accel` per the chosen `Flavor`:
+    /// `"my" + accel` for Chisel, `accel + "Core"` for Verilog.
     pub system: String,
     /// Initial deployment target ("default", "aupzu3", ...).
     pub target: String,
@@ -70,18 +99,20 @@ pub struct HardwareCoords {
 impl Vars {
     /// Build the substitution set from the user's name + chosen
     /// target, with optional override of `accel` and optional
-    /// hardware coordinates from user config.
+    /// hardware coordinates from user config. `flavor` selects the
+    /// `{{system}}` naming rule (see [`Flavor`]).
     pub fn new(
         name: &str,
         accel: Option<&str>,
         target: &str,
         hardware: Option<&HardwareCoords>,
+        flavor: Flavor,
     ) -> Self {
         let name_snake = to_snake_case(name);
         let accel = accel
             .map(String::from)
             .unwrap_or_else(|| to_pascal_case(name));
-        let system = format!("my{accel}");
+        let system = flavor.system_name(&accel);
         let (
             hardware_dep_toml,
             hardware_sbt_lazy_val,
@@ -225,14 +256,15 @@ pub fn is_known_target(target: &str) -> bool {
 }
 
 /// Extract the embedded template tree to `dest`, applying placeholder
-/// substitution. Refuses to overwrite existing files at the destination
-/// — callers (commands/new, commands/init) should refuse in advance
-/// with a clearer error if they can detect collision earlier.
-pub fn extract_to(dest: &Path, vars: &Vars) -> Result<()> {
+/// substitution. The tree is selected by `flavor`. Refuses to overwrite
+/// existing files at the destination — callers (commands/new,
+/// commands/init) should refuse in advance with a clearer error if they
+/// can detect collision earlier.
+pub fn extract_to(dest: &Path, vars: &Vars, flavor: Flavor) -> Result<()> {
     fs::create_dir_all(dest).map_err(|e| {
         CliError::config(format!("cannot create {}: {e}", dest.display()))
     })?;
-    extract_dir(&TEMPLATE, dest, vars)
+    extract_dir(flavor.tree(), dest, vars)
 }
 
 fn extract_dir(dir: &Dir<'_>, dest: &Path, vars: &Vars) -> Result<()> {
@@ -333,14 +365,21 @@ mod tests {
 
     #[test]
     fn substitution_idempotent_on_no_placeholders() {
-        let v = Vars::new("vector-add", None, "default", None);
+        let v = Vars::new("vector-add", None, "default", None, Flavor::Chisel);
         assert_eq!(v.substitute("plain text"), "plain text");
     }
 
     #[test]
-    fn substitution_replaces_all_vars() {
-        let v = Vars::new("vector-add", None, "aupzu3", None);
+    fn substitution_replaces_all_vars_chisel() {
+        let v = Vars::new("vector-add", None, "aupzu3", None, Flavor::Chisel);
         let out = v.substitute("{{name}}/{{name_snake}}/{{accel}}/{{system}}/{{target}}");
         assert_eq!(out, "vector-add/vector_add/VectorAdd/myVectorAdd/aupzu3");
+    }
+
+    #[test]
+    fn substitution_replaces_all_vars_verilog() {
+        let v = Vars::new("vector-add", None, "default", None, Flavor::Verilog);
+        let out = v.substitute("{{name}}/{{name_snake}}/{{accel}}/{{system}}/{{target}}");
+        assert_eq!(out, "vector-add/vector_add/VectorAdd/VectorAddCore/default");
     }
 }
