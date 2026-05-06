@@ -1,0 +1,60 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to release (e.g. v0.1.0). Created if it does not exist.'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cli
+
+      - name: Build
+        working-directory: cli
+        run: cargo build --release --locked
+
+      - name: Package
+        id: package
+        working-directory: cli
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          ARCHIVE="beethoven-${TAG}-${{ matrix.target }}.tar.gz"
+          tar -czf "../${ARCHIVE}" -C target/release beethoven
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.archive }}
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
