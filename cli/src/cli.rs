@@ -131,13 +131,13 @@ pub struct BuildArgs {
     #[arg(value_enum)]
     pub target: Option<BuildTarget>,
 
-    /// Build for synthesis (target/synthesis/) instead of simulation.
-    /// For `build hw`, also suppresses the simulation pass (default builds both).
+    /// Build for synthesis only (target/synthesis/).
+    /// Without flags, synthesis-capable targets build both simulation and synthesis.
     #[arg(long, conflicts_with = "simulation")]
     pub release: bool,
 
-    /// Build for simulation only. Useful with `build hw` to skip the
-    /// synthesis pass that the default would otherwise run.
+    /// Build for simulation only. Useful to skip the synthesis pass
+    /// that the default would otherwise run on synthesis-capable targets.
     #[arg(long)]
     pub simulation: bool,
 

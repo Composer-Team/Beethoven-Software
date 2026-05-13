@@ -33,26 +33,35 @@ pub fn run(args: BuildArgs) -> Result<()> {
         // `--simulation` opt into a single mode. The generic `default`
         // target has no synth flow, so we skip the synth pass there.
         Some(BuildTarget::Hw) => {
-            if args.release {
-                build_hw(&project, "synthesis")?;
-            } else if args.simulation || !synth_ok {
-                build_hw(&project, "simulation")?;
-            } else {
-                build_hw(&project, "simulation")?;
-                build_hw(&project, "synthesis")?;
+            for mode in selected_modes(&args, synth_ok) {
+                build_hw(&project, mode)?;
             }
         }
         Some(BuildTarget::Runtime) => build_runtime(&project, mode, args.jobs, None)?,
         Some(BuildTarget::Sw) => build_sw(&project, args.jobs)?,
         None => {
-            build_hw(&project, mode)?;
-            build_runtime(&project, mode, args.jobs, None)?;
+            for mode in selected_modes(&args, synth_ok) {
+                build_hw(&project, mode)?;
+            }
+            for mode in selected_modes(&args, synth_ok) {
+                build_runtime(&project, mode, args.jobs, None)?;
+            }
             build_sw(&project, args.jobs)?;
         }
     }
 
     ui::print_success("build complete.");
     Ok(())
+}
+
+fn selected_modes(args: &BuildArgs, synth_ok: bool) -> &'static [&'static str] {
+    if args.release {
+        &["synthesis"]
+    } else if args.simulation || !synth_ok {
+        &["simulation"]
+    } else {
+        &["simulation", "synthesis"]
+    }
 }
 
 /// Hardware step: `sbt "run --mode <mode>"` from the project root,
@@ -247,4 +256,39 @@ fn require_runtime_src() -> Result<PathBuf> {
             prefix.display()
         ))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::selected_modes;
+    use crate::cli::BuildArgs;
+
+    fn args(release: bool, simulation: bool) -> BuildArgs {
+        BuildArgs {
+            target: None,
+            release,
+            simulation,
+            jobs: None,
+        }
+    }
+
+    #[test]
+    fn default_build_uses_both_modes_when_synth_is_supported() {
+        assert_eq!(selected_modes(&args(false, false), true), &["simulation", "synthesis"]);
+    }
+
+    #[test]
+    fn default_build_stays_simulation_only_when_synth_is_unsupported() {
+        assert_eq!(selected_modes(&args(false, false), false), &["simulation"]);
+    }
+
+    #[test]
+    fn release_forces_synthesis_only() {
+        assert_eq!(selected_modes(&args(true, false), true), &["synthesis"]);
+    }
+
+    #[test]
+    fn simulation_flag_forces_simulation_only() {
+        assert_eq!(selected_modes(&args(false, true), true), &["simulation"]);
+    }
 }

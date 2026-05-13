@@ -40,13 +40,13 @@ the binding file shipped between them.
 
 | Flag | Meaning |
 |---|---|
-| `--release` | Build for synthesis instead of simulation. For `runtime` (and bare `build`) this swaps the output dir (`target/synthesis/runtime/` vs `target/simulation/runtime/`). For `build hw` it suppresses the simulation pass — by default `build hw` runs both modes. `sw` is mode-agnostic. Rejected when `[platform].target = "default"` (no synthesis flow). |
-| `--simulation` | Build for simulation only. Mutually exclusive with `--release`. Most useful with `build hw` to skip the synthesis pass that the default would otherwise run. |
+| `--release` | Build for synthesis only. For `runtime` (and bare `build`) this uses the synthesis output dir (`target/synthesis/runtime/`). For `build hw` and bare `build`, it suppresses the simulation pass. `sw` is mode-agnostic. Rejected when `[platform].target = "default"` (no synthesis flow). |
+| `--simulation` | Build for simulation only. Mutually exclusive with `--release`. Most useful to skip the synthesis pass that the default would otherwise run on synthesis-capable targets. |
 | `-j N` | Parallel jobs for cmake/make. Defaults to all cores. |
 
 When `[platform].target = "default"` (the generic sim-tuned platform),
-`build hw` only builds the simulation pass — the default target has no
-synthesis flow.
+bare `build` and `build hw` only build the simulation pass — the
+default target has no synthesis flow.
 
 ## Inputs
 
@@ -85,8 +85,8 @@ sim-backed or silicon-backed at build time.
 
 ## Examples
 
-    beethoven build                    # all three, simulation mode
-    beethoven build --release          # all three, synthesis mode
+    beethoven build                    # all three; sim + synth when supported
+    beethoven build --release          # all three, synthesis only
     beethoven build hw                 # regenerate verilog/bindings for BOTH modes
     beethoven build hw --simulation    # sim mode only (skip the synthesis pass)
     beethoven build hw --release       # synth mode only (skip the simulation pass)

@@ -59,7 +59,7 @@ Typical first-run journey:
     beethoven new my-design   # creates ./my-design/ with Beethoven.toml, hw/, sw/
     cd my-design
     beethoven check           # validate manifest and elaborate chisel
-    beethoven build           # generate verilog, runtime daemon, testbench
+    beethoven build           # generate verilog, runtime daemon, testbench (sim + synth when supported)
     beethoven sim             # for target=default: end-to-end run
     # OR
     beethoven run             # for real FPGA: end-to-end run
