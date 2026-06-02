@@ -181,6 +181,8 @@ pub enum AwsCommand {
     Upload(AwsUploadArgs),
     /// Create an AWS FPGA image from a completed F2 Vivado build.
     CreateFpgaImage(AwsCreateFpgaImageArgs),
+    /// Load an available AWS FPGA image into a local F2 FPGA slot.
+    Load(AwsLoadArgs),
 }
 
 #[derive(Args, Debug)]
@@ -262,6 +264,49 @@ pub struct AwsCreateFpgaImageArgs {
     pub dry_run: bool,
 
     /// Non-interactive mode; fail instead of prompting, except for generated defaults.
+    #[arg(long)]
+    pub yes: bool,
+}
+
+#[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven aws load
+  beethoven aws load --name cl_beethoven_top-20260602-225900
+  beethoven aws load --afi afi-034e1ab10ddc704e9
+  beethoven aws load --agfi agfi-01337c0515461e0f2 --slot 0
+  beethoven aws load --dry-run
+
+This command only loads an already-created AFI/AGFI into a local AWS F2 FPGA
+slot. It does not download the design environment tarball and does not build or
+start the Beethoven runtime.
+")]
+pub struct AwsLoadArgs {
+    /// Load a specific AFI, e.g. afi-...
+    #[arg(long, conflicts_with = "agfi")]
+    pub afi: Option<String>,
+
+    /// Load a specific AGFI directly, e.g. agfi-...
+    #[arg(long, conflicts_with = "afi")]
+    pub agfi: Option<String>,
+
+    /// Select an available AFI by name.
+    #[arg(long, conflicts_with = "agfi")]
+    pub name: Option<String>,
+
+    /// AWS region. Defaults from AWS_REGION, AWS_DEFAULT_REGION, or AWS CLI config.
+    #[arg(long)]
+    pub region: Option<String>,
+
+    /// FPGA slot number.
+    #[arg(long, default_value_t = 0)]
+    pub slot: u32,
+
+    /// Print the load command without running it.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Non-interactive mode; fail instead of prompting.
     #[arg(long)]
     pub yes: bool,
 }

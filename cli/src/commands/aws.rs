@@ -3,7 +3,7 @@
 //! Keep long-running remote work explicit and outside this CLI for now:
 //! `upload` only synchronizes the locally generated CL package.
 
-use crate::cli::{AwsCommand, AwsCreateFpgaImageArgs, AwsUploadArgs};
+use crate::cli::{AwsCommand, AwsCreateFpgaImageArgs, AwsLoadArgs, AwsUploadArgs};
 use crate::core::exec;
 use crate::error::{CliError, Result};
 use crate::state::Project;
@@ -21,7 +21,43 @@ pub fn run(command: AwsCommand) -> Result<()> {
     match command {
         AwsCommand::Upload(args) => upload(args),
         AwsCommand::CreateFpgaImage(args) => create_fpga_image(args),
+        AwsCommand::Load(args) => load(args),
     }
+}
+
+fn load(args: AwsLoadArgs) -> Result<()> {
+    if args.agfi.is_none() {
+        exec::require_tool(
+            "aws",
+            Some("install the AWS CLI and configure AWS credentials"),
+        )?;
+    }
+    if !args.dry_run {
+        exec::require_tool(
+            "fpga-load-local-image",
+            Some("install the AWS FPGA runtime tools on this F2 instance"),
+        )?;
+    }
+
+    let region = if args.agfi.is_some() {
+        None
+    } else {
+        Some(resolve_region(args.region.as_deref(), args.yes)?)
+    };
+    let image = resolve_load_image(&args, region.as_deref())?;
+    let plan = LoadPlan {
+        slot: args.slot,
+        agfi: image.global_id,
+        name: image.name,
+        afi: image.id,
+    };
+
+    if args.dry_run {
+        print_load_dry_run(&plan);
+        return Ok(());
+    }
+
+    execute_load(&plan)
 }
 
 fn create_fpga_image(args: AwsCreateFpgaImageArgs) -> Result<()> {
@@ -186,6 +222,40 @@ struct CreateFpgaImageOutput {
     fpga_image_global_id: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct FpgaImage {
+    fpga_image_id: String,
+    fpga_image_global_id: String,
+    name: Option<String>,
+    state: Option<FpgaImageState>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct FpgaImageState {
+    code: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct DescribeFpgaImagesOutput {
+    fpga_images: Vec<FpgaImage>,
+}
+
+struct LoadImage {
+    id: Option<String>,
+    global_id: String,
+    name: Option<String>,
+}
+
+struct LoadPlan {
+    slot: u32,
+    agfi: String,
+    afi: Option<String>,
+    name: Option<String>,
+}
+
 fn resolve_cl_dir(cli_cl_dir: Option<PathBuf>) -> Result<PathBuf> {
     let dir = match cli_cl_dir {
         Some(path) => path,
@@ -200,6 +270,150 @@ fn resolve_cl_dir(cli_cl_dir: Option<PathBuf>) -> Result<PathBuf> {
         }
     };
     Ok(dir)
+}
+
+fn resolve_load_image(args: &AwsLoadArgs, region: Option<&str>) -> Result<LoadImage> {
+    if let Some(agfi) = &args.agfi {
+        validate_agfi(agfi)?;
+        return Ok(LoadImage {
+            id: None,
+            global_id: agfi.clone(),
+            name: args.name.clone(),
+        });
+    }
+
+    let region = region.expect("region must be resolved unless --agfi is set");
+    let images = describe_available_fpga_images(region)?;
+    if images.is_empty() {
+        return Err(CliError::config(
+            "no available FPGA images found for this AWS account",
+        ));
+    }
+
+    if let Some(afi) = &args.afi {
+        validate_afi(afi)?;
+        let matches: Vec<FpgaImage> = images
+            .into_iter()
+            .filter(|image| image.fpga_image_id == *afi)
+            .collect();
+        return one_load_image(matches, &format!("AFI {afi}"));
+    }
+
+    if let Some(name) = &args.name {
+        let matches: Vec<FpgaImage> = images
+            .into_iter()
+            .filter(|image| image.name.as_deref() == Some(name.as_str()))
+            .collect();
+        return one_load_image(matches, &format!("name `{name}`"));
+    }
+
+    if args.yes {
+        return Err(CliError::config(
+            "no AFI selector provided; pass --agfi, --afi, --name, or omit --yes to choose interactively",
+        ));
+    }
+
+    choose_load_image(images)
+}
+
+fn describe_available_fpga_images(region: &str) -> Result<Vec<FpgaImage>> {
+    let mut describe = Command::new("aws");
+    describe
+        .args(["ec2", "describe-fpga-images"])
+        .arg("--region")
+        .arg(region)
+        .args(["--owner", "self"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let output = describe.status_output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "aws ec2 describe-fpga-images exited with {}\n{}",
+            output.status,
+            stderr.trim()
+        )
+        .into());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let parsed: DescribeFpgaImagesOutput = serde_json::from_str(&stdout).map_err(|e| {
+        anyhow::anyhow!("failed to parse describe-fpga-images output: {e}\n{stdout}")
+    })?;
+    let mut images: Vec<FpgaImage> = parsed
+        .fpga_images
+        .into_iter()
+        .filter(|image| image.state_code() == Some("available"))
+        .collect();
+    images.sort_by(|a, b| display_image_name(a).cmp(&display_image_name(b)));
+    Ok(images)
+}
+
+fn one_load_image(matches: Vec<FpgaImage>, selector: &str) -> Result<LoadImage> {
+    match matches.len() {
+        0 => Err(CliError::config(format!(
+            "no available FPGA image matched {selector}"
+        ))),
+        1 => Ok(matches[0].clone().into_load_image()),
+        _ => Err(CliError::config(format!(
+            "multiple available FPGA images matched {selector}; use --afi or --agfi"
+        ))),
+    }
+}
+
+fn choose_load_image(images: Vec<FpgaImage>) -> Result<LoadImage> {
+    let items: Vec<String> = images
+        .iter()
+        .map(|image| {
+            format!(
+                "{}  {}  {}",
+                image.fpga_image_id,
+                image.fpga_image_global_id,
+                display_image_name(image)
+            )
+        })
+        .collect();
+    let selection = Select::new()
+        .with_prompt("Select FPGA image to load")
+        .items(&items)
+        .default(0)
+        .interact()
+        .map_err(|e| anyhow::anyhow!("could not read FPGA image selection prompt: {e}"))?;
+    Ok(images[selection].clone().into_load_image())
+}
+
+impl FpgaImage {
+    fn state_code(&self) -> Option<&str> {
+        self.state.as_ref().and_then(|state| state.code.as_deref())
+    }
+
+    fn into_load_image(self) -> LoadImage {
+        LoadImage {
+            id: Some(self.fpga_image_id),
+            global_id: self.fpga_image_global_id,
+            name: self.name,
+        }
+    }
+}
+
+fn display_image_name(image: &FpgaImage) -> String {
+    image.name.as_deref().unwrap_or("<unnamed>").to_string()
+}
+
+fn validate_afi(afi: &str) -> Result<()> {
+    if afi.starts_with("afi-") {
+        Ok(())
+    } else {
+        Err(CliError::usage("--afi must start with `afi-`"))
+    }
+}
+
+fn validate_agfi(agfi: &str) -> Result<()> {
+    if agfi.starts_with("agfi-") {
+        Ok(())
+    } else {
+        Err(CliError::usage("--agfi must start with `agfi-`"))
+    }
 }
 
 fn validate_cl_dir(cl_dir: &Path) -> Result<()> {
@@ -545,6 +759,45 @@ fn validate_nonempty(label: &str, value: &str) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+fn execute_load(plan: &LoadPlan) -> Result<()> {
+    ui::print_stage(
+        "Loading",
+        &format!("{} into FPGA slot {}", plan.agfi, plan.slot),
+    );
+    let mut load = Command::new("sudo");
+    load.arg("fpga-load-local-image")
+        .arg("-S")
+        .arg(plan.slot.to_string())
+        .arg("-I")
+        .arg(&plan.agfi);
+    exec::run(&mut load)?;
+    ui::print_success(&format!(
+        "loaded {} into FPGA slot {}",
+        plan.agfi, plan.slot
+    ));
+    Ok(())
+}
+
+fn print_load_dry_run(plan: &LoadPlan) {
+    println!("Dry run: load FPGA image");
+    println!();
+    if let Some(name) = &plan.name {
+        println!("Name:  {name}");
+    }
+    if let Some(afi) = &plan.afi {
+        println!("AFI:   {afi}");
+    }
+    println!("AGFI:  {}", plan.agfi);
+    println!("Slot:  {}", plan.slot);
+    println!();
+    println!("Command:");
+    println!(
+        "sudo fpga-load-local-image -S {} -I {}",
+        plan.slot,
+        shell_quote(&plan.agfi)
+    );
 }
 
 fn execute_create_fpga_image(plan: &CreateFpgaImagePlan) -> Result<()> {
