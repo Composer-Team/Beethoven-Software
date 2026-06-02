@@ -348,11 +348,36 @@ fn suggested_name(cl_dir: &Path) -> String {
         .and_then(OsStr::to_str)
         .unwrap_or("beethoven")
         .to_string();
-    let timestamp = SystemTime::now()
+    let timestamp = utc_timestamp(SystemTime::now());
+    format!("{}-{timestamp}", sanitize_component(&stem))
+}
+
+fn utc_timestamp(time: SystemTime) -> String {
+    let seconds = time
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    format!("{}-{timestamp}", sanitize_component(&stem))
+    let days = (seconds / 86_400) as i64;
+    let seconds_of_day = seconds % 86_400;
+    let (year, month, day) = civil_from_days(days);
+    let hour = seconds_of_day / 3_600;
+    let minute = (seconds_of_day % 3_600) / 60;
+    let second = seconds_of_day % 60;
+    format!("{year:04}{month:02}{day:02}-{hour:02}{minute:02}{second:02}")
+}
+
+fn civil_from_days(days_since_unix_epoch: i64) -> (i64, u64, u64) {
+    let z = days_since_unix_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = mp + if mp < 10 { 3 } else { -9 };
+    let year = y + if month <= 2 { 1 } else { 0 };
+    (year, month as u64, day as u64)
 }
 
 fn validate_name(name: &str) -> Result<()> {
@@ -754,5 +779,14 @@ mod tests {
     fn name_validation_allows_key_friendly_chars() {
         assert!(validate_name("test-key_01.afi").is_ok());
         assert!(validate_name("bad/name").is_err());
+    }
+
+    #[test]
+    fn utc_timestamp_is_human_readable() {
+        assert_eq!(utc_timestamp(UNIX_EPOCH), "19700101-000000");
+        assert_eq!(
+            utc_timestamp(UNIX_EPOCH + std::time::Duration::from_secs(1_704_067_205)),
+            "20240101-000005"
+        );
     }
 }
