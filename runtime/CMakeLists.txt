@@ -8,6 +8,23 @@ foreach(_var BEETHOVEN_PROJECT_ROOT BEETHOVEN_BUILD_MODE BEETHOVEN_PLATFORM)
     endif()
 endforeach()
 
+if(NOT DEFINED BEETHOVEN_TARGET)
+    set(BEETHOVEN_TARGET "${BEETHOVEN_PLATFORM}")
+    set(_manifest "${BEETHOVEN_PROJECT_ROOT}/Beethoven.toml")
+    if(EXISTS "${_manifest}")
+        file(STRINGS "${_manifest}" _target_lines REGEX "^[ \t]*target[ \t]*=")
+        if(_target_lines)
+            list(GET _target_lines 0 _target_line)
+            string(REGEX REPLACE
+                "^[ \t]*target[ \t]*=[ \t]*\"([^\"]+)\".*" "\\1"
+                _manifest_target "${_target_line}")
+            if(NOT _manifest_target STREQUAL _target_line)
+                set(BEETHOVEN_TARGET "${_manifest_target}")
+            endif()
+        endif()
+    endif()
+endif()
+
 if(NOT DEFINED BEETHOVEN_SIMULATOR AND BEETHOVEN_BUILD_MODE STREQUAL "simulation")
     # Default to icarus: verilator is faster but currently breaks on
     # SimulationPlatform's wide buses (see docs/issues/verilator-widebus.md).
@@ -224,6 +241,12 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "synthesis")
     string(TOUPPER ${BEETHOVEN_PLATFORM} _PLAT_UPPER)
     target_compile_definitions(BeethovenRuntime PRIVATE ${_PLAT_UPPER})
 
+    if(BEETHOVEN_TARGET STREQUAL "aws-f1")
+        target_compile_definitions(BeethovenRuntime PRIVATE F1=1)
+    elseif(BEETHOVEN_TARGET STREQUAL "aws-f2")
+        target_compile_definitions(BeethovenRuntime PRIVATE F2=1)
+    endif()
+
     if(BEETHOVEN_PLATFORM STREQUAL "discrete")
         if(NOT EXISTS "$ENV{AWS_FPGA_REPO_DIR}")
             message(FATAL_ERROR
@@ -258,4 +281,3 @@ if(TARGET BeethovenRuntime AND NOT BEETHOVEN_SIMULATOR STREQUAL "icarus")
         target_compile_definitions(BeethovenRuntime PRIVATE VERBOSE)
     endif()
 endif()
-

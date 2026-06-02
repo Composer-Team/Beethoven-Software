@@ -125,6 +125,7 @@ pub fn build_runtime(
     let mut defines: Vec<(&str, &str)> = vec![
         ("BEETHOVEN_PROJECT_ROOT", project_root_str.as_str()),
         ("BEETHOVEN_BUILD_MODE", mode),
+        ("BEETHOVEN_TARGET", target),
         ("BEETHOVEN_PLATFORM", platform.as_str()),
         ("CMAKE_BUILD_TYPE", "Release"),
     ];
