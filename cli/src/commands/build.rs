@@ -12,6 +12,7 @@ use crate::error::{CliError, Result};
 use crate::state::{target_supports_synth, Project, UserConfig};
 use crate::tools::{cmake, sbt};
 use crate::ui;
+use std::env;
 use std::path::PathBuf;
 
 pub fn run(args: BuildArgs) -> Result<()> {
@@ -120,6 +121,7 @@ pub fn build_runtime(
             "unrecognized target '{target}'; cannot resolve platform"
         ))
     })?;
+    require_aws_f2_runtime_env(target, mode)?;
 
     let project_root_str = project.root.display().to_string();
     let mut defines: Vec<(&str, &str)> = vec![
@@ -149,6 +151,40 @@ pub fn build_runtime(
 
     ui::print_stage("Building", "runtime daemon");
     cmake::build(&build_dir, jobs)?;
+
+    Ok(())
+}
+
+fn require_aws_f2_runtime_env(target: &str, mode: &str) -> Result<()> {
+    if target != "aws-f2" || mode != "synthesis" {
+        return Ok(());
+    }
+
+    let aws_fpga_repo_dir = env::var("AWS_FPGA_REPO_DIR").map_err(|_| {
+        CliError::config(
+            "aws-f2 release runtime build requires the AWS FPGA SDK environment.\n\
+             Run:\n\
+               cd ~/aws-fpga\n\
+               source sdk_setup.sh\n\
+               cd -\n\
+             Then retry `beethoven runtime build --release`.",
+        )
+    })?;
+
+    let sdk_include = PathBuf::from(&aws_fpga_repo_dir)
+        .join("sdk")
+        .join("userspace")
+        .join("include");
+    if !sdk_include.is_dir() {
+        return Err(CliError::config(format!(
+            "AWS_FPGA_REPO_DIR is set to {}, but {} does not exist.\n\
+             Source the correct aws-fpga SDK first:\n\
+               cd ~/aws-fpga\n\
+               source sdk_setup.sh",
+            aws_fpga_repo_dir,
+            sdk_include.display()
+        )));
+    }
 
     Ok(())
 }
