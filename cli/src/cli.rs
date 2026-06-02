@@ -179,6 +179,8 @@ pub enum RuntimeCommand {
 pub enum AwsCommand {
     /// Upload the generated AWS F2 CL package to a remote build machine.
     Upload(AwsUploadArgs),
+    /// Create an AWS FPGA image from a completed F2 Vivado build.
+    CreateFpgaImage(AwsCreateFpgaImageArgs),
 }
 
 #[derive(Args, Debug)]
@@ -212,6 +214,56 @@ pub struct AwsUploadArgs {
     /// Delete remote files that are absent locally.
     #[arg(long)]
     pub delete: bool,
+}
+
+#[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven aws create-fpga-image --name test-key
+  beethoven aws create-fpga-image --cl-dir ~/cl_beethoven_top --bucket beethoven-my-run-123456789012
+  beethoven aws create-fpga-image --dry-run
+
+This command is intended to run directly on the AWS F2 build machine after the
+Vivado build has finished. It validates timing, uploads the generated
+Developer_CL.tar package and design environment tarball to S3, then calls
+`aws ec2 create-fpga-image`.
+")]
+pub struct AwsCreateFpgaImageArgs {
+    /// AFI name, description, and S3 object key stem. If omitted, prompts with a suggested default.
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// CL directory. Defaults to current directory, or ./cl_beethoven_top if present.
+    #[arg(long)]
+    pub cl_dir: Option<PathBuf>,
+
+    /// S3 bucket for AFI input tar and logs.
+    #[arg(long)]
+    pub bucket: Option<String>,
+
+    /// AWS region. Defaults from AWS_REGION, AWS_DEFAULT_REGION, or AWS CLI config.
+    #[arg(long)]
+    pub region: Option<String>,
+
+    /// Explicitly choose the post-route timing report.
+    #[arg(long)]
+    pub timing_report: Option<PathBuf>,
+
+    /// Explicitly choose the Developer_CL.tar checkpoint package.
+    #[arg(long)]
+    pub checkpoint_tar: Option<PathBuf>,
+
+    /// Choose the newest valid artifact when several candidates exist.
+    #[arg(long)]
+    pub auto: bool,
+
+    /// Print the resolved plan and AWS commands without running them.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Non-interactive mode; fail instead of prompting, except for generated defaults.
+    #[arg(long)]
+    pub yes: bool,
 }
 
 #[derive(Args, Debug)]
