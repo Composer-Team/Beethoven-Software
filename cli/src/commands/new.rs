@@ -48,8 +48,18 @@ pub fn run(args: NewArgs) -> Result<()> {
              Run `beethoven setup` to switch new projects to a published version.",
         );
     }
-    let flavor = if args.verilog { Flavor::Verilog } else { Flavor::Chisel };
-    let vars = Vars::new(&args.name, args.accel.as_deref(), &target, hw.as_ref(), flavor);
+    let flavor = if args.verilog {
+        Flavor::Verilog
+    } else {
+        Flavor::Chisel
+    };
+    let vars = Vars::new(
+        &args.name,
+        args.accel.as_deref(),
+        &target,
+        hw.as_ref(),
+        flavor,
+    );
 
     let flavor_label = if args.verilog { "verilog" } else { "chisel" };
     ui::print_stage(
@@ -61,7 +71,9 @@ pub fn run(args: NewArgs) -> Result<()> {
     if args.vcs {
         ui::print_stage("Initializing", "git repo");
         git_init(&dest)?;
-        ui::print_note("run `git add . && git commit -m 'Initial commit'` to make the first commit");
+        ui::print_note(
+            "run `git add . && git commit -m 'Initial commit'` to make the first commit",
+        );
     }
 
     ui::print_success(&format!(
@@ -125,8 +137,7 @@ fn resolve_target(platform: Option<Platform>, cfg: &UserConfig) -> String {
 }
 
 fn current_dir() -> Result<PathBuf> {
-    env::current_dir()
-        .map_err(|e| CliError::config(format!("cannot read cwd: {e}")))
+    env::current_dir().map_err(|e| CliError::config(format!("cannot read cwd: {e}")))
 }
 
 fn git_init(dir: &std::path::Path) -> Result<()> {

@@ -14,18 +14,12 @@ use std::path::Path;
 use std::process::Command;
 
 pub fn run(args: InitArgs) -> Result<()> {
-    let cwd = env::current_dir()
-        .map_err(|e| CliError::config(format!("cannot read cwd: {e}")))?;
+    let cwd = env::current_dir().map_err(|e| CliError::config(format!("cannot read cwd: {e}")))?;
 
     let name = cwd
         .file_name()
         .and_then(|s| s.to_str())
-        .ok_or_else(|| {
-            CliError::config(format!(
-                "cwd has no usable basename: {}",
-                cwd.display()
-            ))
-        })?
+        .ok_or_else(|| CliError::config(format!("cwd has no usable basename: {}", cwd.display())))?
         .to_string();
     validate_name(&name)?;
 
@@ -53,7 +47,11 @@ pub fn run(args: InitArgs) -> Result<()> {
              Run `beethoven setup` to switch new projects to a published version.",
         );
     }
-    let flavor = if args.verilog { Flavor::Verilog } else { Flavor::Chisel };
+    let flavor = if args.verilog {
+        Flavor::Verilog
+    } else {
+        Flavor::Chisel
+    };
     let vars = Vars::new(&name, args.accel.as_deref(), &target, hw.as_ref(), flavor);
 
     let flavor_label = if args.verilog { "verilog" } else { "chisel" };
@@ -66,7 +64,9 @@ pub fn run(args: InitArgs) -> Result<()> {
     if args.vcs && !cwd.join(".git").exists() {
         ui::print_stage("Initializing", "git repo");
         git_init(&cwd)?;
-        ui::print_note("run `git add . && git commit -m 'Initial commit'` to make the first commit");
+        ui::print_note(
+            "run `git add . && git commit -m 'Initial commit'` to make the first commit",
+        );
     }
 
     ui::print_success(&format!(

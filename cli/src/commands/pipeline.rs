@@ -101,9 +101,8 @@ pub(crate) fn execute(
         // target/<mode>/ so those land alongside other build artifacts
         // instead of polluting wherever the user invoked the CLI.
         let dump_dir = project.root.join("target").join(mode);
-        fs::create_dir_all(&dump_dir).map_err(|e| {
-            anyhow::anyhow!("failed to create {}: {e}", dump_dir.display())
-        })?;
+        fs::create_dir_all(&dump_dir)
+            .map_err(|e| anyhow::anyhow!("failed to create {}: {e}", dump_dir.display()))?;
         cmd.current_dir(&dump_dir);
         ui::print_stage("Starting", &format!("BeethovenRuntime ({mode})"));
         ui::print_exec(&cmd);

@@ -26,7 +26,8 @@ pub fn run(args: SynthArgs) -> Result<()> {
         Some("default") => {
             return Err(CliError::config(
                 "target = \"default\" can't be synthesized; \
-                 set [platform].target to a real-FPGA target".to_string(),
+                 set [platform].target to a real-FPGA target"
+                    .to_string(),
             ));
         }
         Some("baremetal") => {
@@ -74,7 +75,10 @@ pub fn run(args: SynthArgs) -> Result<()> {
     // Batch 1: setup [+ synth] [+ impl]. Single Vivado session.
     let mut batch1: Vec<&str> = vec!["0_setup.tcl"];
     let mut label = String::from("setup");
-    if matches!(stop_after, SynthStage::Synth | SynthStage::Impl | SynthStage::Bit) {
+    if matches!(
+        stop_after,
+        SynthStage::Synth | SynthStage::Impl | SynthStage::Bit
+    ) {
         batch1.push("1_synth.tcl");
         label.push_str(" + synth");
     }

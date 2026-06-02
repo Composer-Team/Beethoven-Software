@@ -10,8 +10,7 @@ use std::process::{Command, ExitStatus};
 /// `MissingTool` error tagged with the supplied install hint (which
 /// `ui::print_error` will surface as a `hint:` line).
 pub fn require_tool(name: &str, hint: Option<&str>) -> Result<PathBuf> {
-    which::which(name)
-        .map_err(|_| CliError::missing_tool(name.to_string(), hint.map(String::from)))
+    which::which(name).map_err(|_| CliError::missing_tool(name.to_string(), hint.map(String::from)))
 }
 
 /// Run a command to completion; surface non-zero exit status as an

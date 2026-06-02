@@ -33,10 +33,7 @@ use std::process::Command;
 /// and the user-sw build (BEETHOVEN_PROJECT_ROOT, BEETHOVEN_PLATFORM).
 pub fn configure(source: &Path, build: &Path, defines: &[(&str, &str)]) -> Result<()> {
     fs::create_dir_all(build).map_err(|e| {
-        CliError::config(format!(
-            "cannot create build dir {}: {e}",
-            build.display()
-        ))
+        CliError::config(format!("cannot create build dir {}: {e}", build.display()))
     })?;
     let mut cmd = Command::new("cmake");
     cmd.arg("-S").arg(source).arg("-B").arg(build);
@@ -165,9 +162,9 @@ pub fn remove_registry_entries_for(prefix: &Path) -> Result<()> {
         return Ok(());
     }
 
-    for entry in fs::read_dir(&registry_dir).map_err(|e| {
-        CliError::config(format!("cannot read {}: {e}", registry_dir.display()))
-    })? {
+    for entry in fs::read_dir(&registry_dir)
+        .map_err(|e| CliError::config(format!("cannot read {}: {e}", registry_dir.display())))?
+    {
         let entry = match entry {
             Ok(e) => e,
             Err(_) => continue,

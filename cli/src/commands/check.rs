@@ -70,9 +70,7 @@ fn validate_manifest(project: &Project) -> std::result::Result<(), String> {
     // Per-target required keys.
     if matches!(target, "aupzu3" | "kria" | "kria2") {
         let spec = project.target_specific();
-        let has_dram = spec
-            .and_then(|t| t.get("dram-size-gb"))
-            .is_some();
+        let has_dram = spec.and_then(|t| t.get("dram-size-gb")).is_some();
         if !has_dram {
             return Err(format!(
                 "[platform.{target}] is missing required key 'dram-size-gb'"
@@ -89,11 +87,9 @@ fn validate_manifest(project: &Project) -> std::result::Result<(), String> {
     let has_path = project.beethoven_hardware_path().is_some();
     let has_version = project.beethoven_hardware_version().is_some();
     if !has_path && !has_version {
-        return Err(
-            "[hardware.beethoven-hardware] has no active dependency — \
+        return Err("[hardware.beethoven-hardware] has no active dependency — \
              uncomment 'path' or 'version' in Beethoven.toml"
-                .into(),
-        );
+            .into());
     }
 
     Ok(())

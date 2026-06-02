@@ -61,9 +61,8 @@ fn write_if_missing(path: std::path::PathBuf, contents: &str) -> Result<()> {
     if path.exists() {
         return Ok(());
     }
-    fs::write(&path, contents).map_err(|e| {
-        CliError::config(format!("cannot write {}: {e}", path.display()))
-    })?;
+    fs::write(&path, contents)
+        .map_err(|e| CliError::config(format!("cannot write {}: {e}", path.display())))?;
     Ok(())
 }
 

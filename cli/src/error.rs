@@ -18,10 +18,7 @@ pub enum CliError {
 
     /// A required external tool is missing from PATH.
     #[error("required tool '{name}' not found on PATH")]
-    MissingTool {
-        name: String,
-        hint: Option<String>,
-    },
+    MissingTool { name: String, hint: Option<String> },
 
     /// Anything else: build failures, IO errors, network errors.
     #[error(transparent)]

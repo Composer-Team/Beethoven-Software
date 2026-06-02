@@ -157,9 +157,7 @@ impl Vars {
 /// Render the four hardware-related substitution slots based on
 /// whether setup has captured a version. Path mode is the legacy
 /// fallback; version mode is the post-`beethoven setup` default.
-fn render_hardware_blocks(
-    coords: Option<&HardwareCoords>,
-) -> (String, String, String, String) {
+fn render_hardware_blocks(coords: Option<&HardwareCoords>) -> (String, String, String, String) {
     match coords {
         Some(c) => {
             // Default to sbt's `latest.integration` selector so a fresh
@@ -264,9 +262,8 @@ pub fn is_known_target(target: &str) -> bool {
 /// commands/init) should refuse in advance with a clearer error if they
 /// can detect collision earlier.
 pub fn extract_to(dest: &Path, vars: &Vars, flavor: Flavor) -> Result<()> {
-    fs::create_dir_all(dest).map_err(|e| {
-        CliError::config(format!("cannot create {}: {e}", dest.display()))
-    })?;
+    fs::create_dir_all(dest)
+        .map_err(|e| CliError::config(format!("cannot create {}: {e}", dest.display())))?;
     extract_dir(flavor.tree(), dest, vars)
 }
 
@@ -287,10 +284,7 @@ fn extract_dir(dir: &Dir<'_>, dest: &Path, vars: &Vars) -> Result<()> {
                 let dst_name = vars.substitute(&raw_name);
                 let dst_path = dest.join(&dst_name);
                 fs::create_dir_all(&dst_path).map_err(|e| {
-                    CliError::config(format!(
-                        "cannot create {}: {e}",
-                        dst_path.display()
-                    ))
+                    CliError::config(format!("cannot create {}: {e}", dst_path.display()))
                 })?;
                 extract_dir(d, &dst_path, vars)?;
             }
@@ -321,23 +315,14 @@ fn extract_dir(dir: &Dir<'_>, dest: &Path, vars: &Vars) -> Result<()> {
 
                 if needs_subst {
                     let body = std::str::from_utf8(f.contents()).map_err(|e| {
-                        CliError::config(format!(
-                            "non-UTF8 .tmpl file {}: {e}",
-                            f.path().display()
-                        ))
+                        CliError::config(format!("non-UTF8 .tmpl file {}: {e}", f.path().display()))
                     })?;
                     fs::write(&dst_path, vars.substitute(body)).map_err(|e| {
-                        CliError::config(format!(
-                            "cannot write {}: {e}",
-                            dst_path.display()
-                        ))
+                        CliError::config(format!("cannot write {}: {e}", dst_path.display()))
                     })?;
                 } else {
                     fs::write(&dst_path, f.contents()).map_err(|e| {
-                        CliError::config(format!(
-                            "cannot write {}: {e}",
-                            dst_path.display()
-                        ))
+                        CliError::config(format!("cannot write {}: {e}", dst_path.display()))
                     })?;
                 }
             }

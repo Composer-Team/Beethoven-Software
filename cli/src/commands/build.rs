@@ -16,7 +16,11 @@ use std::path::PathBuf;
 
 pub fn run(args: BuildArgs) -> Result<()> {
     let project = Project::discover()?;
-    let mode = if args.release { "synthesis" } else { "simulation" };
+    let mode = if args.release {
+        "synthesis"
+    } else {
+        "simulation"
+    };
     let synth_ok = project.target().map_or(true, target_supports_synth);
 
     if args.release && !synth_ok {
@@ -108,9 +112,9 @@ pub fn build_runtime(
     let runtime_src = require_runtime_src()?;
     exec::require_tool("cmake", Some("install via your package manager"))?;
 
-    let target = project.target().ok_or_else(|| {
-        CliError::config("[platform].target is required to build the runtime")
-    })?;
+    let target = project
+        .target()
+        .ok_or_else(|| CliError::config("[platform].target is required to build the runtime"))?;
     let platform = project.platform().ok_or_else(|| {
         CliError::config(format!(
             "unrecognized target '{target}'; cannot resolve platform"
@@ -162,9 +166,9 @@ pub fn build_sw(project: &Project, jobs: Option<usize>) -> Result<()> {
     let target = project
         .target()
         .ok_or_else(|| CliError::config("[platform].target is required to build sw"))?;
-    let platform = project.platform().ok_or_else(|| {
-        CliError::config(format!("unrecognized target '{target}'"))
-    })?;
+    let platform = project
+        .platform()
+        .ok_or_else(|| CliError::config(format!("unrecognized target '{target}'")))?;
 
     let project_root_str = project.root.display().to_string();
     let defines: Vec<(&str, &str)> = vec![
@@ -274,7 +278,10 @@ mod tests {
 
     #[test]
     fn default_build_uses_both_modes_when_synth_is_supported() {
-        assert_eq!(selected_modes(&args(false, false), true), &["simulation", "synthesis"]);
+        assert_eq!(
+            selected_modes(&args(false, false), true),
+            &["simulation", "synthesis"]
+        );
     }
 
     #[test]

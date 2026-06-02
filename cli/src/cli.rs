@@ -54,6 +54,11 @@ pub enum Command {
     Run(RunArgs),
     /// Drive Vivado: setup + synth + impl + bitstream. Always full rebuild.
     Synth(SynthArgs),
+    /// AWS F2 helper commands.
+    Aws {
+        #[command(subcommand)]
+        command: AwsCommand,
+    },
     /// JTAG-program the FPGA with the latest bitstream.
     Flash(FlashArgs),
     /// First-run bootstrap: clone Beethoven-Software and install libbeethoven.
@@ -168,6 +173,45 @@ pub enum RuntimeCommand {
         #[arg(long)]
         release: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AwsCommand {
+    /// Upload the generated AWS F2 CL package to a remote build machine.
+    Upload(AwsUploadArgs),
+}
+
+#[derive(Args, Debug)]
+#[command(after_help = "\
+EXAMPLES:
+  beethoven build hw --release
+  beethoven aws upload --host ubuntu@98.81.32.36 --key ~/Desktop/isca-testing.pem
+
+Uploads:
+  target/synthesis/aws/cl_beethoven_top/
+
+To:
+  <host>:~/cl_beethoven_top/
+
+This command only uploads files. It does not start the long-running AWS/Vivado
+build on the remote machine.
+")]
+pub struct AwsUploadArgs {
+    /// SSH destination, e.g. ubuntu@98.81.32.36.
+    #[arg(long)]
+    pub host: String,
+
+    /// SSH private key passed to ssh via rsync's remote shell.
+    #[arg(long)]
+    pub key: Option<PathBuf>,
+
+    /// Remote destination directory.
+    #[arg(long, default_value = "~/cl_beethoven_top")]
+    pub remote_dir: String,
+
+    /// Delete remote files that are absent locally.
+    #[arg(long)]
+    pub delete: bool,
 }
 
 #[derive(Args, Debug)]

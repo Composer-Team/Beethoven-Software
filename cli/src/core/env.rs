@@ -53,11 +53,7 @@ pub fn project_key(project_root: &Path) -> Result<String> {
 /// Absolute lockfile path: `<run-dir>/beethoven-<uid>-<key>.lock`.
 pub fn lockfile_path(project_root: &Path) -> Result<PathBuf> {
     let key = project_key(project_root)?;
-    Ok(runtime_dir().join(format!(
-        "beethoven-{}-{}.lock",
-        effective_uid(),
-        key
-    )))
+    Ok(runtime_dir().join(format!("beethoven-{}-{}.lock", effective_uid(), key)))
 }
 
 /// CLI-managed Beethoven-Hardware checkout. `setup` clones into here

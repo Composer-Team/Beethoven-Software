@@ -46,10 +46,7 @@ pub fn build_launch_command(project: &Project, mode: &str) -> Result<Command> {
             Ok(Command::new(bin))
         }
         "icarus" => {
-            let vvp = exec::require_tool(
-                "vvp",
-                Some("install Icarus Verilog (iverilog package)"),
-            )?;
+            let vvp = exec::require_tool("vvp", Some("install Icarus Verilog (iverilog package)"))?;
             let vvp_file = out.join("beethoven.vvp");
             let vpi_file = out.join("sim_BeethovenRuntime.vpi");
             verify_exists(&vvp_file, "icarus vvp")?;
@@ -102,11 +99,7 @@ fn verify_exists(p: &Path, what: &str) -> Result<()> {
 /// microseconds *after* the lock is taken, and a testbench launched
 /// immediately would race the shmem creation. 200ms is enough margin
 /// without being noticeable.
-pub fn wait_for_ready(
-    project: &Project,
-    child: &mut Child,
-    timeout: Duration,
-) -> Result<()> {
+pub fn wait_for_ready(project: &Project, child: &mut Child, timeout: Duration) -> Result<()> {
     let start = Instant::now();
     loop {
         if let Some(status) = child

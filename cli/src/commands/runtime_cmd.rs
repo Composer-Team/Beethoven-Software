@@ -88,7 +88,11 @@ fn kill_daemon(_args: RuntimeKillArgs) -> Result<()> {
 /// status.
 fn run_daemon(args: RuntimeRunArgs) -> Result<()> {
     let project = Project::discover()?;
-    let mode = if args.release { "synthesis" } else { "simulation" };
+    let mode = if args.release {
+        "synthesis"
+    } else {
+        "simulation"
+    };
 
     // Refuse double-start. Probe is non-blocking and microseconds.
     match probe::probe(&project.root)? {
@@ -119,10 +123,7 @@ fn run_daemon(args: RuntimeRunArgs) -> Result<()> {
     // output in their terminal.
     if let Some(log_path) = &args.log_file {
         let f = std::fs::File::create(log_path).map_err(|e| {
-            CliError::config(format!(
-                "cannot open log file {}: {e}",
-                log_path.display()
-            ))
+            CliError::config(format!("cannot open log file {}: {e}", log_path.display()))
         })?;
         cmd.stderr(std::process::Stdio::from(f));
     }

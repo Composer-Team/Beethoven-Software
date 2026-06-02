@@ -125,7 +125,9 @@ fn print_text(
         ];
         match p.target() {
             Some(t) => {
-                let resolved = p.platform().map_or("?".into(), |pl| pl.as_str().to_string());
+                let resolved = p
+                    .platform()
+                    .map_or("?".into(), |pl| pl.as_str().to_string());
                 rows.push(("target", format!("{t}  →  {resolved}")));
             }
             None => rows.push(("target", "(unset)".into())),
@@ -207,9 +209,9 @@ fn print_json(
         Some(proj) => {
             let target = proj.target();
             let platform = proj.platform().map(|p| p.as_str());
-            let target_specific = proj.target_specific().map(|t| {
-                serde_json::to_value(t).unwrap_or(Value::Null)
-            });
+            let target_specific = proj
+                .target_specific()
+                .map(|t| serde_json::to_value(t).unwrap_or(Value::Null));
             let daemon_json = match daemon {
                 DaemonStatus::Up { pid } => json!({"up": true, "pid": pid}),
                 DaemonStatus::Down => json!({"up": false, "pid": Value::Null}),

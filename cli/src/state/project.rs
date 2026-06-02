@@ -115,8 +115,8 @@ impl Project {
         if let Ok(env_root) = env::var("BEETHOVEN_PROJECT_ROOT") {
             return Self::load(Path::new(&env_root));
         }
-        let cwd = env::current_dir()
-            .map_err(|e| CliError::config(format!("cannot read cwd: {e}")))?;
+        let cwd =
+            env::current_dir().map_err(|e| CliError::config(format!("cannot read cwd: {e}")))?;
         Self::discover_from(&cwd)
     }
 
@@ -142,9 +142,8 @@ impl Project {
         let body = fs::read_to_string(&manifest_path).map_err(|e| {
             CliError::config(format!("cannot read {}: {e}", manifest_path.display()))
         })?;
-        let manifest: Manifest = toml::from_str(&body).map_err(|e| {
-            CliError::config(format!("malformed {}: {e}", manifest_path.display()))
-        })?;
+        let manifest: Manifest = toml::from_str(&body)
+            .map_err(|e| CliError::config(format!("malformed {}: {e}", manifest_path.display())))?;
         Ok(Self {
             root: root.to_path_buf(),
             manifest,

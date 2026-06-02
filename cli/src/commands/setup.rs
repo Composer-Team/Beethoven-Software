@@ -109,7 +109,10 @@ fn prompt_brew_install_if_macos(want_sbt: bool) -> Result<()> {
         return Ok(());
     }
 
-    ui::print_stage("Installing", &format!("brew install {}", formulas.join(" ")));
+    ui::print_stage(
+        "Installing",
+        &format!("brew install {}", formulas.join(" ")),
+    );
     let mut cmd = std::process::Command::new("brew");
     cmd.arg("install").args(&formulas);
     exec::run(&mut cmd)?;
@@ -194,8 +197,8 @@ pub fn do_setup(
     // the stale-"main" trap that motivated this refactor. With
     // `--from` (a user-managed checkout) we still record current
     // HEAD for `info` to display.
-    let resolved_ref = git::current_branch(&checkout)
-        .unwrap_or_else(|_| git_ref.unwrap_or("master").to_string());
+    let resolved_ref =
+        git::current_branch(&checkout).unwrap_or_else(|_| git_ref.unwrap_or("master").to_string());
     persist_config(prefix, &resolved_ref)?;
 
     ui::print_success(&format!(
@@ -331,10 +334,7 @@ fn ensure_hardware_clone(git_ref: Option<&str>) -> Result<PathBuf> {
         }
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
-                CliError::config(format!(
-                    "cannot create {}: {e}",
-                    parent.display()
-                ))
+                CliError::config(format!("cannot create {}: {e}", parent.display()))
             })?;
         }
         ui::print_stage(
@@ -378,9 +378,8 @@ struct HardwareCoords {
 /// metadata without doubling the runtime.
 fn parse_hardware_coords(src: &Path) -> Result<HardwareCoords> {
     let path = src.join("build.sbt");
-    let body = std::fs::read_to_string(&path).map_err(|e| {
-        CliError::config(format!("cannot read {}: {e}", path.display()))
-    })?;
+    let body = std::fs::read_to_string(&path)
+        .map_err(|e| CliError::config(format!("cannot read {}: {e}", path.display())))?;
 
     let extract = |key: &str| -> Option<String> {
         for line in body.lines() {

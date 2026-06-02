@@ -4,6 +4,7 @@
 use crate::cli::Command;
 use crate::error::Result;
 
+pub mod aws;
 pub mod build;
 pub mod check;
 pub mod clean;
@@ -28,6 +29,7 @@ pub fn dispatch(cmd: Command) -> Result<()> {
         Command::Check => check::run(),
         Command::Info(args) => info::run(args),
         Command::Build(args) => build::run(args),
+        Command::Aws { command } => aws::run(command),
         Command::Runtime { command } => runtime_cmd::run(command),
         Command::Sim(args) => sim::run(args),
         Command::Run(args) => run::run(args),
@@ -38,4 +40,3 @@ pub fn dispatch(cmd: Command) -> Result<()> {
         Command::Uninstall(args) => uninstall::run(args),
     }
 }
-

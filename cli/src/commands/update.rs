@@ -14,9 +14,7 @@ use crate::state::UserConfig;
 pub fn run(args: UpdateArgs) -> Result<()> {
     let cfg = UserConfig::load()?;
     let prefix = cfg.prefix.clone().ok_or_else(|| {
-        CliError::config(
-            "update needs `setup` to have been run first (no install prefix recorded)",
-        )
+        CliError::config("update needs `setup` to have been run first (no install prefix recorded)")
     })?;
     // Same ref-resolution as `setup::run`: explicit --ref wins,
     // cfg.git_ref is a soft hint that gracefully falls back to HEAD
