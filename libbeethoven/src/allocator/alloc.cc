@@ -162,6 +162,12 @@ remote_ptr::remote_ptr(remote_ptr &&other) noexcept:
         count(other.count),
         mutex(other.mutex),
         offset(other.offset) {
+  other.mutex = nullptr;
+  other.count = nullptr;
+  other.host_addr = nullptr;
+  other.fpga_addr = 0;
+  other.len = 0;
+  other.offset = 0;
 };
 
 remote_ptr remote_ptr::operator-(int q) const {

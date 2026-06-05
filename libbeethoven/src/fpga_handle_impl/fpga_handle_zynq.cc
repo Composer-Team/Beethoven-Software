@@ -12,12 +12,14 @@
 #include "beethoven/allocator/alloc.h"
 #include "beethoven/arm_cache.h"
 #include <sys/mman.h>
+#include <sys/ioctl.h>
+#include <linux/dma-heap.h>
 #include <pthread.h>
 
 const unsigned zynq_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};
 const unsigned zynq_huge_page_flags[] = {21 << MAP_HUGE_SHIFT, 25 << MAP_HUGE_SHIFT,
                                          30 << MAP_HUGE_SHIFT};
-const unsigned zynq_n_page_sizes = 4;
+const unsigned zynq_n_page_sizes = sizeof(zynq_huge_page_sizes) / sizeof(zynq_huge_page_sizes[0]);
 
 
 using namespace beethoven;
@@ -84,6 +86,62 @@ uint64_t vtop(unsigned long virt_addr) {
     fclose(pagemap);
   }
   return paddr;
+}
+
+
+static size_t page_align(size_t len) {
+  const size_t page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  return (len + page - 1) & ~(page - 1);
+}
+
+static bool verify_contiguous_mapping(void *addr, size_t len) {
+  const size_t page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  const uint64_t first = vtop(reinterpret_cast<unsigned long>(addr));
+  if (first == 0) return false;
+  for (size_t off = page; off < len; off += page) {
+    const uint64_t phys = vtop(reinterpret_cast<unsigned long>(addr) + off);
+    if (phys != first + off) return false;
+  }
+  return true;
+}
+
+static remote_ptr try_dma_heap_malloc(size_t len) {
+  const size_t sz = page_align(len);
+  int heap_fd = open("/dev/dma_heap/reserved", O_RDWR | O_CLOEXEC);
+  if (heap_fd < 0) {
+    throw std::runtime_error("reserved dma_heap unavailable: " + std::string(strerror(errno)));
+  }
+
+  dma_heap_allocation_data allocation{};
+  allocation.len = sz;
+  allocation.fd_flags = O_RDWR | O_CLOEXEC;
+  allocation.heap_flags = 0;
+  if (ioctl(heap_fd, DMA_HEAP_IOCTL_ALLOC, &allocation) < 0) {
+    const std::string err = strerror(errno);
+    close(heap_fd);
+    throw std::runtime_error("reserved dma_heap alloc failed: " + err);
+  }
+  close(heap_fd);
+
+  void *addr = mmap(nullptr, sz, PROT_READ | PROT_WRITE, MAP_SHARED, allocation.fd, 0);
+  if (addr == MAP_FAILED) {
+    const std::string err = strerror(errno);
+    close(allocation.fd);
+    throw std::runtime_error("reserved dma_heap mmap failed: " + err);
+  }
+
+  // Fault every page in before consulting pagemap. Zeroing is acceptable for a
+  // fresh bridge-owned buffer and avoids sparse, not-present page translations.
+  std::memset(addr, 0, sz);
+  if (!verify_contiguous_mapping(addr, sz)) {
+    munmap(addr, sz);
+    close(allocation.fd);
+    throw std::runtime_error("reserved dma_heap returned a non-contiguous mapping");
+  }
+
+  const uint64_t phys = vtop(reinterpret_cast<unsigned long>(addr));
+  close(allocation.fd);
+  return remote_ptr(static_cast<intptr_t>(phys), addr, sz);
 }
 
 static int cacheLineSz;
@@ -263,7 +321,16 @@ remote_ptr fpga_handle_t::malloc(size_t len) {
     return remote_ptr(fpga_addr, ptr, len);
   }
 
-  // Real silicon: host mmap + lock + vtop. The FPGA reads straight from
+  // Real silicon: prefer the kernel reserved DMA heap. On ZynqMP this gives
+  // low, contiguous, PL-accessible DDR; anonymous hugetlb mappings can land
+  // above 4 GiB and have proven unreliable for PL write channels on AUP-ZU3.
+  try {
+    return try_dma_heap_malloc(len);
+  } catch (const std::runtime_error &ex) {
+    std::cerr << "Warning: falling back to hugetlb FPGA malloc: " << ex.what() << std::endl;
+  }
+
+  // Fallback: host mmap + lock + vtop. The FPGA reads straight from
   // the locked page; the daemon plays no role in the data path.
   void *addr;
   size_t sz;

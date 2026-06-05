@@ -36,12 +36,13 @@ void tick_signals(ControlIntf *ctrl) {
 // ------------ HANDLE MEMORY INTERFACES ----------------
   // approx clock diff
   ddr_acc += ddr_clock_inc;
-  while (ddr_acc >= 1) {
+  const int ddr_ticks = static_cast<int>(ddr_acc);
+  ddr_acc -= static_cast<float>(ddr_ticks);
+  for (int tick_idx = 0; tick_idx < ddr_ticks; ++tick_idx) {
     for (auto &axi4_mem: axi4_mems) {
       axi4_mem.mem_sys->ClockTick();
       try_to_enqueue_ddr(axi4_mem);
     }
-    ddr_acc -= 1;
   }
 
 

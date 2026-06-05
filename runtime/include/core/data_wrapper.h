@@ -22,7 +22,12 @@ struct GetSetWrapper: CanBasicSetGet {
   GetSetWrapper() = default;
 
   T get(int idx) const {
-    return this->get(idx);
+    if constexpr (sizeof(T) <= 4) {
+      return *ptr;
+    } else {
+      const uint64_t value = static_cast<uint64_t>(*ptr);
+      return static_cast<T>(idx == 0 ? (value & 0xFFFFFFFFULL) : (value >> 32));
+    }
   }
 
   uint64_t get() const override {
