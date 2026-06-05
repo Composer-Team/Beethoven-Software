@@ -39,7 +39,8 @@ to the underlying tool, and each subcommand has a focused responsibility.
 | [`sim`](sim.md) | Build and run the project end-to-end in simulation. Auto-detects an existing daemon. |
 | [`run`](run.md) | Build and run the project on real FPGA. Auto-detects an existing daemon. |
 | [`runtime`](runtime.md) | Manage the runtime daemon: `runtime {build\|run\|clean}`. |
-| [`synth`](synth.md) | (Placeholder) Vivado synth / P&R / bitgen. |
+| [`synth`](synth.md) | Drive Vivado setup, synthesis, implementation, and bitstream generation. |
+| [`flash`](flash.md) | Program the generated bitstream over Vivado/JTAG. |
 
 ### Install & maintenance
 
@@ -48,8 +49,6 @@ to the underlying tool, and each subcommand has a focused responsibility.
 | [`setup`](setup.md) | First-run bootstrap: clone Beethoven-Software and install libbeethoven. |
 | [`update`](update.md) | Pull the cached clone and reinstall libbeethoven. |
 | [`uninstall`](uninstall.md) | Remove libbeethoven from the install prefix. |
-
-`synth` is a reserved namespace — not yet implemented.
 
 ## Lifecycle
 

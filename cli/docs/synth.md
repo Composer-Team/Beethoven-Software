@@ -1,26 +1,51 @@
 # `beethoven synth`
 
-**Placeholder.** Vivado-related commands (synthesis, place & route,
-bitstream generation) are not yet implemented.
+`beethoven synth` drives the Vivado synthesis/implementation/bitstream flow for
+FPGA targets that emit a Vivado implementation directory.
 
-## Planned scope
+Typical use from a Beethoven project root:
 
-When implemented, `synth` will manage the long-running steps that
-turn the elaborated design into an FPGA bitstream:
+```bash
+beethoven synth
+```
 
-- Synthesis (Vivado `synth_design`)
-- Place & route (`opt_design`, `place_design`, `route_design`)
-- Bitstream generation (`write_bitstream`)
-- Reports (timing, utilization)
+Useful options:
 
-Likely a subgroup pattern, mirroring [`runtime`](runtime.md):
+```bash
+beethoven synth --up-to setup   # generate/open the Vivado project setup only
+beethoven synth --up-to synth   # stop after synth_design
+beethoven synth --up-to impl    # stop after place/route implementation
+beethoven synth --gui           # open Vivado GUI on 0_setup.tcl and exit
+```
 
-    beethoven synth {synth|impl|bitgen|all}
+The command expects the hardware build to emit the project implementation Tcl
+under:
 
-The CLI will not flash the resulting bitstream — that stays with
-vendor tools (`xbutil`, `xsdb`) for now.
+```text
+target/synthesis/implementation/
+```
 
-## Status
+The CLI then runs the generated Tcl pipeline:
 
-Not implemented. This doc reserves the namespace; the design will be
-fleshed out separately.
+```text
+0_setup.tcl
+1_synth.tcl
+2_impl.tcl
+run_bitstream.tcl
+```
+
+`run_bitstream.tcl` is supplied by the CLI when the implementation directory
+does not already contain one. It opens the generated Vivado project and launches
+`impl_1` through `write_bitstream`.
+
+## Flashing the generated bitstream
+
+The matching host-side JTAG programmer is:
+
+```bash
+beethoven flash
+```
+
+See [`flash`](flash.md). `beethoven flash` is a Vivado/JTAG programmer for the
+latest bitstream under `target/synthesis/implementation/`; it is not a generic
+board-side Linux FPGA-manager loader and does not program nonvolatile boot flash.
