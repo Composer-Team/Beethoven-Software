@@ -15,6 +15,7 @@ pub mod new;
 pub(crate) mod pipeline;
 pub mod run;
 pub mod runtime_cmd;
+pub mod scaffold;
 pub mod setup;
 pub mod sim;
 pub mod synth;
