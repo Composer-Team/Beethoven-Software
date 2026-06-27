@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 project(beethoven LANGUAGES C CXX ASM VERSION 0.0.0)
 
 option(BEETHOVEN_BAREMETAL "Build the Cortex-M55 baremetal variant" OFF)

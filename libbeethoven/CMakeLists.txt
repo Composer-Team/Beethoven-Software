@@ -16,7 +16,7 @@
 # platforms/{host,baremetal}/CMakeLists.txt use it for `${_root}/include`,
 # `${_root}/src`, etc.
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 
 if(NOT PROJECT_NAME)
     # Standalone invocation — declare our own project.

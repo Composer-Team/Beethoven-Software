@@ -13,7 +13,19 @@
 #include "beethoven/arm_cache.h"
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#if __has_include(<linux/dma-heap.h>)
 #include <linux/dma-heap.h>
+#else
+#include <linux/types.h>
+struct dma_heap_allocation_data {
+  __u64 len;
+  __u32 fd;
+  __u32 fd_flags;
+  __u64 heap_flags;
+};
+#define DMA_HEAP_IOC_MAGIC 'H'
+#define DMA_HEAP_IOCTL_ALLOC _IOWR(DMA_HEAP_IOC_MAGIC, 0x0, struct dma_heap_allocation_data)
+#endif
 #include <pthread.h>
 
 const unsigned zynq_huge_page_sizes[] = {1 << 21, 1 << 25, 1 << 30};

@@ -31,6 +31,8 @@ check_required_components(beethoven)
 # Shared body for beethoven_build() — defines _beethoven_build_common().
 include("${CMAKE_CURRENT_LIST_DIR}/BeethovenBuildHelpers.cmake")
 
+set(_BEETHOVEN_CONFIG_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 function(beethoven_build TARGET)
     if(NOT BEETHOVEN_PLATFORM)
         message(FATAL_ERROR "beethoven_build: BEETHOVEN_PLATFORM is not set.")
@@ -40,7 +42,7 @@ function(beethoven_build TARGET)
     # bring it in. Lets users write `find_package(beethoven REQUIRED)` without
     # having to thread COMPONENTS through their CMakeLists.
     if(NOT TARGET APEX::beethoven-${BEETHOVEN_PLATFORM})
-        set(_targets "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/beethoven-${BEETHOVEN_PLATFORM}-targets.cmake")
+        set(_targets "${_BEETHOVEN_CONFIG_DIR}/beethoven-${BEETHOVEN_PLATFORM}-targets.cmake")
         if(NOT EXISTS "${_targets}")
             message(FATAL_ERROR
                 "beethoven_build: platform '${BEETHOVEN_PLATFORM}' is not in this libbeethoven install. "

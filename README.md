@@ -130,10 +130,12 @@ cmake project without hardcoding paths.
 ```bash
 mkdir /tmp/find-test && cd /tmp/find-test
 cat > CMakeLists.txt <<'EOF'
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 project(find-test LANGUAGES CXX)
 find_package(beethoven 0.0.0 REQUIRED COMPONENTS discrete zynq)
-get_target_property(_loc APEX::beethoven-discrete IMPORTED_LOCATION_RELEASE)
+get_target_property(_configs APEX::beethoven-discrete IMPORTED_CONFIGURATIONS)
+list(GET _configs 0 _config)
+get_target_property(_loc APEX::beethoven-discrete IMPORTED_LOCATION_${_config})
 message(STATUS "Found: ${_loc}")
 EOF
 cmake -B build

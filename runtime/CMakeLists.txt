@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 project(beethoven_runtime LANGUAGES C CXX VERSION 0.0.0)
 
 # === Required inputs (provided by the CLI) ===
@@ -92,7 +92,7 @@ endif()
 # === Simulator-specific paths ===
 if(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "verilator")
     # === Verilator path ===
-    find_package(verilator REQUIRED VERSION 5.0.0)
+    find_package(verilator 5.0.0 REQUIRED)
 
     file(GLOB _verilog_srcs ${_hw}/*.v ${_hw}/*.sv)
     if(_verilog_srcs STREQUAL "")
@@ -130,8 +130,14 @@ if(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "
 
 elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "icarus")
     # === Icarus Verilog path ===
-    find_program(IVERILOG iverilog REQUIRED)
-    find_program(VVP      vvp      REQUIRED)
+    find_program(IVERILOG iverilog)
+    find_program(VVP      vvp)
+    if(NOT IVERILOG)
+        message(FATAL_ERROR "Required program 'iverilog' not found.")
+    endif()
+    if(NOT VVP)
+        message(FATAL_ERROR "Required program 'vvp' not found.")
+    endif()
 
     # iverilog's vpi_user.h lives at different paths on different
     # distros (e.g. /usr/include/vpi_user.h on some, /usr/include/
@@ -139,8 +145,10 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
     # variant is found by default, the second via the PATH_SUFFIXES
     # extension to standard search dirs (/usr/include, /usr/local/include).
     find_path(IVERILOG_VPI_INCLUDE_DIR vpi_user.h
-        PATH_SUFFIXES iverilog
-        REQUIRED)
+        PATH_SUFFIXES iverilog)
+    if(NOT IVERILOG_VPI_INCLUDE_DIR)
+        message(FATAL_ERROR "Required Icarus Verilog header 'vpi_user.h' not found.")
+    endif()
 
     if(NOT BEETHOVEN_FRONTEND STREQUAL "axi")
         message(FATAL_ERROR "Icarus + chipkit is not currently supported.")
@@ -192,7 +200,10 @@ elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQU
 
 elseif(BEETHOVEN_BUILD_MODE STREQUAL "simulation" AND BEETHOVEN_SIMULATOR STREQUAL "vcs")
     # === VCS path ===
-    find_program(VCS vcs REQUIRED)
+    find_program(VCS vcs)
+    if(NOT VCS)
+        message(FATAL_ERROR "Required program 'vcs' not found.")
+    endif()
 
     if(BEETHOVEN_FRONTEND STREQUAL "axi")
         list(APPEND _core src/frontends/axi/vpi_axi_frontend.cc)
