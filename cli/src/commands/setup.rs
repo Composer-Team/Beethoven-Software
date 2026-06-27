@@ -237,7 +237,7 @@ fn pre_flight(from: Option<&Path>) -> Result<()> {
     }
     exec::require_tool(
         "cmake",
-        Some("install via your package manager (cmake ≥ 3.20)"),
+        Some("install via your package manager (cmake ≥ 3.16)"),
     )?;
     if which::which("g++").is_err() && which::which("clang++").is_err() {
         return Err(crate::error::CliError::missing_tool(
