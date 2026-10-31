@@ -311,11 +311,9 @@ fn validate_hardware_path(p: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Resolve the CLI-managed clone, cloning or fetch+checkout as
-/// needed. With `git_ref = None` we leave the clone on whatever HEAD
-/// the remote chose (e.g. "master") — same self-healing strategy as
-/// the SW path. With Some(r), we checkout if it exists, warn-and-
-/// stay-on-HEAD if it doesn't.
+/// Resolve the CLI-managed clone, cloning or fetching as needed. A requested
+/// remote branch is reset to its freshly fetched `origin/<branch>` so repeated
+/// setup runs cannot silently publish an obsolete local artifact.
 fn ensure_hardware_clone(git_ref: Option<&str>) -> Result<PathBuf> {
     let dest = env::hardware_src_dir();
     if dest.join(".git").is_dir() {
@@ -349,11 +347,13 @@ fn ensure_hardware_clone(git_ref: Option<&str>) -> Result<PathBuf> {
     Ok(dest)
 }
 
-/// Soft checkout: if the ref exists, switch to it; otherwise warn and
-/// leave the clone on whatever HEAD it's at. Mirrors the same logic
-/// used in `do_setup` for the software path.
+/// Check out the requested ref. Prefer a freshly fetched remote branch; tags
+/// and commit IDs fall back to a normal checkout. Missing refs are non-fatal.
 fn checkout_or_warn(repo: &Path, git_ref: &str) -> Result<()> {
-    if git::ref_exists(repo, git_ref) {
+    if git::remote_branch_exists(repo, git_ref) {
+        ui::print_stage("Updating", &format!("{git_ref} from origin/{git_ref}"));
+        git::checkout_remote_branch(repo, git_ref)?;
+    } else if git::ref_exists(repo, git_ref) {
         ui::print_stage("Checking out", git_ref);
         git::checkout(repo, git_ref)?;
     } else {

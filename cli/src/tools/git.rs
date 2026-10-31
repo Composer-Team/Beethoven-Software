@@ -1,7 +1,5 @@
-//! Thin wrappers around the `git` binary. Just enough for `setup` to
-//! fetch a fresh clone and pin a ref — no fetch, stash, or pull-ff,
-//! because update is implemented as uninstall + reinstall (re-clone),
-//! not in-place fast-forward.
+//! Thin wrappers around the `git` binary used by setup to clone,
+//! fetch, and update CLI-managed source checkouts.
 
 use crate::core::exec;
 use crate::error::Result;
@@ -23,6 +21,20 @@ pub fn clone(url: &str, dest: &Path) -> Result<()> {
 pub fn checkout(repo: &Path, git_ref: &str) -> Result<()> {
     let mut cmd = Command::new("git");
     cmd.arg("-C").arg(repo).arg("checkout").arg(git_ref);
+    exec::run(&mut cmd)?;
+    Ok(())
+}
+
+/// Reset a CLI-managed local branch to its freshly fetched remote branch.
+/// The managed checkout is an installation cache, not a user worktree.
+pub fn checkout_remote_branch(repo: &Path, branch: &str) -> Result<()> {
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
+        .arg(repo)
+        .arg("checkout")
+        .arg("-B")
+        .arg(branch)
+        .arg(format!("origin/{branch}"));
     exec::run(&mut cmd)?;
     Ok(())
 }
@@ -79,4 +91,9 @@ pub fn ref_exists(repo: &Path, git_ref: &str) -> bool {
         .output()
         .map(|out| out.status.success())
         .unwrap_or(false)
+}
+
+/// True iff `origin/<branch>` resolves to a commit after fetching.
+pub fn remote_branch_exists(repo: &Path, branch: &str) -> bool {
+    ref_exists(repo, &format!("origin/{branch}"))
 }
