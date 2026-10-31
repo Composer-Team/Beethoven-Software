@@ -5,8 +5,25 @@
 
 use crate::core::exec;
 use crate::error::Result;
-use std::path::Path;
+use std::env;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+fn isolate_sbt_temp(cmd: &mut Command) -> Result<()> {
+    let home = env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| anyhow::anyhow!("HOME is not set; cannot isolate sbt temporary files"))?;
+    let temp = home.join(".cache/beethoven/sbt-tmp");
+    std::fs::create_dir_all(&temp)?;
+
+    let mut opts = env::var("SBT_OPTS").unwrap_or_default();
+    if !opts.is_empty() {
+        opts.push(' ');
+    }
+    opts.push_str(&format!("-Djava.io.tmpdir={}", temp.display()));
+    cmd.env("SBT_OPTS", opts);
+    Ok(())
+}
 
 /// `sbt "run --mode <mode>"` from `project_root`. Inherits stdio so
 /// the user sees sbt's dependency resolution / compile / run output
@@ -28,6 +45,7 @@ pub fn run(project_root: &Path, mode: &str) -> Result<()> {
     let mut cmd = Command::new("sbt");
     cmd.arg(format!("run --mode {mode}"))
         .current_dir(project_root);
+    isolate_sbt_temp(&mut cmd)?;
     exec::run(&mut cmd)?;
     Ok(())
 }
@@ -42,6 +60,7 @@ pub fn run(project_root: &Path, mode: &str) -> Result<()> {
 pub fn publish_local(project_root: &Path) -> Result<()> {
     let mut cmd = Command::new("sbt");
     cmd.arg("publishLocal").current_dir(project_root);
+    isolate_sbt_temp(&mut cmd)?;
     exec::run(&mut cmd)?;
     Ok(())
 }
