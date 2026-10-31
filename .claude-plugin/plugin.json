@@ -1,0 +1,11 @@
+{
+  "name": "beethoven",
+  "version": "1.0.0",
+  "description": "Teaches coding agents to set up, simulate, synthesize, flash, and run Beethoven FPGA-accelerator projects through the beethoven CLI (Zynq and AWS F2).",
+  "author": {
+    "name": "Composer Team"
+  },
+  "homepage": "https://github.com/Composer-Team/Beethoven-Software",
+  "repository": "https://github.com/Composer-Team/Beethoven-Software",
+  "license": "Apache-2.0"
+}

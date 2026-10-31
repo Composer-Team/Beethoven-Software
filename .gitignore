@@ -16,6 +16,8 @@ build-*/
 build_*/
 *.o
 *.json
+!.claude-plugin/marketplace.json
+!.claude-plugin/plugin.json
 *.fst
 *.out
 *.so

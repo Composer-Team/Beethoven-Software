@@ -1,0 +1,16 @@
+{
+  "name": "composer-team",
+  "owner": {
+    "name": "Composer Team"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for the Beethoven FPGA accelerator framework."
+  },
+  "plugins": [
+    {
+      "name": "beethoven",
+      "source": "./",
+      "description": "Agent skill for the beethoven CLI: setup, simulation, Zynq and AWS F2 synthesis, flashing, and running on hardware."
+    }
+  ]
+}

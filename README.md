@@ -223,6 +223,23 @@ libbeethoven only — never the runtime.
 `docs/cli-integration.md` has the full schema, env contract, and CLI
 flow.
 
+## Agent skill
+
+`skills/beethoven/` is an
+[Agent Skill](https://agentskills.io) that teaches coding agents to drive
+the `beethoven` CLI: machine setup, simulation, Zynq and AWS F2
+synthesis, flashing, and running on hardware.
+
+Claude Code — install from this repo's plugin marketplace:
+
+```
+/plugin marketplace add Composer-Team/Beethoven-Software
+/plugin install beethoven@composer-team
+```
+
+Other agents (Codex, Gemini CLI, Cursor, …) — copy the skill folder into
+the agent's skills directory, e.g. `~/.agents/skills/beethoven/`.
+
 ## Repo layout
 
 ```
@@ -252,6 +269,12 @@ Beethoven-Software/
 │   ├── src/{core,frontends/{axi,chipkit},fpga}/
 │   ├── scripts/                            #   tab.tab (VCS), kria_alloc_pages.py
 │   └── verilog_resources/BUFG.v
+│
+├── .claude-plugin/                         # Claude Code marketplace + plugin manifests
+│   ├── marketplace.json                    #   (the repo root is the plugin root)
+│   └── plugin.json
+├── skills/beethoven/                       # agent skill for the beethoven CLI
+│   └── {SKILL.md,references/}
 │
 └── docs/
     ├── cli-integration.md                  # CLI <-> SW build contract
